@@ -32,6 +32,7 @@ public class Verification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "verification_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -42,16 +43,16 @@ public class Verification {
     @JoinColumn(name = "mission_id")
     private Mission mission;
 
-    @Column(nullable = false)
-    private LocalDate day;
+    @Column(name = "verification_date", nullable = false)
+    private LocalDate verificationDate;
 
     @Column(name = "photo_url", nullable = false, length = 255)
     private String photoUrl;
 
-    @Column(name = "exif_data", columnDefinition = "json")
+    @Column(name = "exif_data", columnDefinition = "TEXT")
     private String exifData;
 
-    @Column(name = "rekognition_result", columnDefinition = "json")
+    @Column(name = "rekognition_result", columnDefinition = "TEXT")
     private String rekognitionResult;
 
     @Column(name = "ai_score", precision = 5, scale = 2)

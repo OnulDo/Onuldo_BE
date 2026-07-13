@@ -32,6 +32,7 @@ public class Penalty {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "penalty_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

@@ -31,6 +31,7 @@ public class Challenge {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "challenge_id")
     private Long id;
 
     @Column(nullable = false, length = 100)
@@ -44,7 +45,7 @@ public class Challenge {
     @Column(nullable = false, length = 20)
     private ChallengeType type;
 
-    @Column(name = "duration_options", nullable = false, columnDefinition = "json")
+    @Column(name = "duration_options", nullable = false, columnDefinition = "TEXT")
     private String durationOptions;
 
     @Builder.Default

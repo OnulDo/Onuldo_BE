@@ -31,6 +31,7 @@ public class Mission {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "mission_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

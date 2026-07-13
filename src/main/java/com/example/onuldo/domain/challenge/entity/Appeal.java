@@ -32,6 +32,7 @@ public class Appeal {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "appeal_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

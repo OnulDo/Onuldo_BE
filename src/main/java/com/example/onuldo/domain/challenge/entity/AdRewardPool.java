@@ -22,9 +22,10 @@ public class AdRewardPool {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ad_reward_pool_id")
     private Long id;
 
-    @Column(name = "year_month", nullable = false)
+    @Column(name = "`year_month`", nullable = false)
     private Integer yearMonth;
 
     @Builder.Default

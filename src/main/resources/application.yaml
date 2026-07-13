@@ -1,27 +1,35 @@
 spring:
   application:
-    name: umc
+    name: oneuldo
 
   #  config:
   #    import: "file:./.env[.properties]"
 
   datasource:
-    url: jdbc:mysql://localhost:3306/parkouroot
-    username: parkouroot-user
-    password: vkzmfnxm1234
+    url: ${DB_URL:jdbc:mysql://localhost:3306/oneuldo?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:oneuldo-user}
+    password: ${DB_PASSWORD:qwer1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: true
 
 jwt:
   token:
     secretKey: "local-development-jwt-secret-key-32-characters"
-    refreshKey: ${JWT_TOKEN_EXPIRATION_REFRESH}
+    refreshKey: ${JWT_TOKEN_REFRESH_KEY:local-development-refresh-secret-key-32-characters}
     expiration:
       access: 1800000 # 30분
-      refresh: 1209600000 # 14일
+      refresh: ${JWT_TOKEN_EXPIRATION_REFRESH:1209600000} # 14일
 vote:
   deadline-seconds: ${VOTE_DEADLINE_SECONDS:120}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
