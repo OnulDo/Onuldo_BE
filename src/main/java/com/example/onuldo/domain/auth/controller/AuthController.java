@@ -22,17 +22,29 @@ public class AuthController implements AuthControllerDoc {
     private final AuthService authService;
 
     @PostMapping("/signup")
-    public BaseResponse<AuthResDto> signup(@Valid @RequestBody EmailSignupReqDto request) {
+    public BaseResponse<AuthResDto> signup(
+            @Valid
+            @RequestBody
+            EmailSignupReqDto request
+    ) {
         return BaseResponse.onSuccess(authService.signup(request));
     }
 
     @PostMapping("/login")
-    public BaseResponse<AuthResDto> login(@Valid @RequestBody EmailLoginReqDto request) {
+    public BaseResponse<AuthResDto> login(
+            @Valid
+            @RequestBody
+            EmailLoginReqDto request
+    ) {
         return BaseResponse.onSuccess(authService.login(request));
     }
 
     @PostMapping("/refresh")
-    public BaseResponse<AuthResDto> refresh(@Valid @RequestBody RefreshTokenReqDto request) {
+    public BaseResponse<AuthResDto> refresh(
+            @Valid
+            @RequestBody
+            RefreshTokenReqDto request
+    ) {
         return BaseResponse.onSuccess(authService.refresh(request));
     }
 }

@@ -27,10 +27,14 @@ public class JwtTokenProvider {
     private final long refreshExpirationMillis;
 
     public JwtTokenProvider(
-            @Value("${jwt.token.secretKey}") String accessSecret,
-            @Value("${jwt.token.refreshKey:${jwt.token.secretKey}}") String refreshSecret,
-            @Value("${jwt.token.expiration.access:1800000}") long accessExpirationMillis,
-            @Value("${jwt.token.expiration.refresh:1209600000}") long refreshExpirationMillis
+            @Value("${jwt.token.secretKey}")
+            String accessSecret,
+            @Value("${jwt.token.refreshKey}")
+            String refreshSecret,
+            @Value("${jwt.token.expiration.access:1800000}")
+            long accessExpirationMillis,
+            @Value("${jwt.token.expiration.refresh:1209600000}")
+            long refreshExpirationMillis
     ) {
         this.accessSecretKey = Keys.hmacShaKeyFor(accessSecret.getBytes(StandardCharsets.UTF_8));
         this.refreshSecretKey = Keys.hmacShaKeyFor(refreshSecret.getBytes(StandardCharsets.UTF_8));

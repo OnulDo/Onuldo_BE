@@ -50,7 +50,11 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
-        if (user.getPasswordHash() == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        if (user.getPasswordHash() == null) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
