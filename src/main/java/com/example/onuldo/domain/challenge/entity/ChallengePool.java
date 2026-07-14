@@ -28,6 +28,7 @@ public class ChallengePool {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "challenge_pool_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

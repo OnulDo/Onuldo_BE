@@ -25,15 +25,16 @@ public class Category {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "category_id")
     private Integer id;
 
     @Column(nullable = false, length = 50)
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "character_id")
+    @JoinColumn(name = "challenge_character_id")
     private ChallengeCharacter character;
 
-    @Column(columnDefinition = "json")
+    @Column(columnDefinition = "TEXT")
     private String ruleset;
 }
