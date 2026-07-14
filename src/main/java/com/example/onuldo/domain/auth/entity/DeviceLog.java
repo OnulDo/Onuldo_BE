@@ -28,6 +28,7 @@ public class DeviceLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "device_log_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

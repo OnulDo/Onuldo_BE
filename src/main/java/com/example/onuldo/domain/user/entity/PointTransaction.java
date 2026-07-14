@@ -30,6 +30,7 @@ public class PointTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "point_transaction_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

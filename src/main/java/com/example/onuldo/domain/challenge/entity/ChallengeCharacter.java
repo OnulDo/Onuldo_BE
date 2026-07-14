@@ -20,11 +20,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "`character`")
+@Table(name = "challenge_character")
 public class ChallengeCharacter {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "challenge_character_id")
     private Integer id;
 
     @Column(nullable = false, length = 50)

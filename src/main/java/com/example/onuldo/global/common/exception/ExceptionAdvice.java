@@ -3,19 +3,23 @@ package com.example.onuldo.global.common.exception;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.exception.code.BaseCodeDto;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
-@RestControllerAdvice(annotations = {RestController.class})
-public class ExceptionAdvice extends ResponseEntityExceptionHandler {
+@RestControllerAdvice
+public class ExceptionAdvice {
     /*
      * 직접 정의한 RestApiException 에러 클래스에 대한 예외 처리
      */
@@ -24,6 +28,39 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
     public ResponseEntity<BaseResponse<String>> handleRestApiException(RestApiException e) {
         BaseCodeDto errorCode = e.getErrorCode();
         return handleExceptionInternal(errorCode);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Object> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        Map<String, String> errors = new HashMap<>();
+
+        for (FieldError fieldError : e.getBindingResult().getFieldErrors()) {
+            errors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
+        return handleExceptionInternalObject(GlobalErrorStatus._BAD_REQUEST.getCode(), errors);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> handleConstraintViolationException(ConstraintViolationException e) {
+        Map<String, String> errors = e.getConstraintViolations().stream()
+                .collect(Collectors.toMap(
+                        violation -> violation.getPropertyPath().toString(),
+                        violation -> violation.getMessage(),
+                        (first, second) -> first
+                ));
+
+        return handleExceptionInternalObject(GlobalErrorStatus._BAD_REQUEST.getCode(), errors);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<BaseResponse<String>> handleHandlerMethodValidationException() {
+        return handleExceptionInternal(GlobalErrorStatus._BAD_REQUEST.getCode());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<BaseResponse<String>> handleHttpMessageNotReadableException() {
+        return handleExceptionInternal(GlobalErrorStatus._BAD_REQUEST.getCode());
     }
 
     /*
@@ -58,29 +95,6 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
         return ResponseEntity
                 .status(errorCode.getHttpStatus().value())
                 .body(BaseResponse.onFailure(errorCode.getCode(), errorCode.getMessage(), errorArgs));
-    }
-
-    private boolean hasConstraint(Throwable e, String expectedConstraintName) {
-        Throwable current = e;
-
-        while (current != null) {
-            if (current instanceof ConstraintViolationException constraintViolationException
-                    && matchesConstraintName(constraintViolationException.getConstraintName(), expectedConstraintName)) {
-                return true;
-            }
-
-            if (matchesConstraintName(current.getMessage(), expectedConstraintName)) {
-                return true;
-            }
-
-            current = current.getCause();
-        }
-
-        return false;
-    }
-
-    private boolean matchesConstraintName(String actual, String expected) {
-        return actual != null && actual.toLowerCase().contains(expected.toLowerCase());
     }
 
     private ResponseEntity<BaseResponse<String>> handleExceptionInternalFalse(BaseCodeDto errorCode,
