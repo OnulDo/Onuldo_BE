@@ -27,19 +27,19 @@ public class AuthService {
 
     @Transactional
     public AuthResDto signup(EmailSignupReqDto request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(request.email())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
         }
 
         User user = User.builder()
-                .email(request.getEmail())
-                .nickname(request.getNickname())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .email(request.email())
+                .nickname(request.nickname())
+                .passwordHash(passwordEncoder.encode(request.password()))
                 .socialProvider(SocialProvider.EMAIL)
                 .emailVerified(false)
                 .pointBalance(0L)
                 .status(UserStatus.ACTIVE)
-                .birthDate(request.getBirthDate())
+                .birthDate(request.birthDate())
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -47,14 +47,14 @@ public class AuthService {
     }
 
     public AuthResDto login(EmailLoginReqDto request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
         if (user.getPasswordHash() == null) {
             throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
@@ -66,7 +66,7 @@ public class AuthService {
     }
 
     public AuthResDto refresh(RefreshTokenReqDto request) {
-        Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.getRefreshToken());
+        Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
