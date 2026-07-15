@@ -13,7 +13,19 @@ spring:
 jwt:
   token:
     secretKey: ${JWT_SECRET_KEY}
-    refreshKey: ${JWT_REFRESH_KEY}
+    refreshKey: ${JWT_TOKEN_REFRESH_KEY}
     expiration:
-      access: ${JWT_ACCESS_EXPIRATION}
-      refresh: ${JWT_REFRESH_EXPIRATION}
+      access: ${JWT_TOKEN_EXPIRATION_ACCESS}
+      refresh: ${JWT_TOKEN_EXPIRATION_REFRESH}
+
+server:
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
