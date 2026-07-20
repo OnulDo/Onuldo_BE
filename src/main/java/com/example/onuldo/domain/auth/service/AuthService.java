@@ -44,12 +44,11 @@ public class AuthService {
             TermType.PRIVACY,
             TermType.AGE_14
     );
-    private static final int MAX_LOGIN_FAILURE_COUNT = 5;
-    private static final int LOCK_SECONDS = 60;
 
     private final UserRepository userRepository;
     private final TermRepository termRepository;
     private final TermAgreementRepository termAgreementRepository;
+    private final LoginFailureService loginFailureService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -89,7 +88,7 @@ public class AuthService {
         }
 
         if (user.getPasswordHash() == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            handleLoginFailure(user, now);
+            loginFailureService.recordFailure(user.getId(), now);
             throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
@@ -100,6 +99,7 @@ public class AuthService {
         user.setLoginFailCount(0);
         user.setLockedUntil(null);
         user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
         return createAuthResponse(user);
     }
 
@@ -143,28 +143,25 @@ public class AuthService {
             throw new RestApiException(GlobalErrorStatus._TERMS_REQUIRED);
         }
 
-        Map<Integer, Boolean> agreementMap = termAgreements.stream()
+        Map<TermType, Boolean> agreementMap = termAgreements.stream()
                 .collect(Collectors.toMap(
-                        TermAgreementReqDto::termId,
+                        TermAgreementReqDto::termType,
                         TermAgreementReqDto::value,
                         (first, second) -> second
                 ));
 
         for (TermType requiredType : REQUIRED_TERM_TYPES) {
-            Term term = termRepository.findByType(requiredType)
-                    .orElseThrow(() -> new RestApiException(GlobalErrorStatus._TERMS_REQUIRED));
-
-            if (!Boolean.TRUE.equals(agreementMap.get(term.getId()))) {
+            if (!Boolean.TRUE.equals(agreementMap.get(requiredType))) {
                 throw new RestApiException(GlobalErrorStatus._TERMS_REQUIRED);
             }
         }
     }
 
     private void saveTermAgreements(User user, List<TermAgreementReqDto> termAgreements) {
-        Map<Integer, Boolean> agreementMap = termAgreements.stream()
+        Map<TermType, Boolean> agreementMap = termAgreements.stream()
                 .collect(
                         Collectors.toMap(
-                                TermAgreementReqDto::termId,
+                                TermAgreementReqDto::termType,
                                 TermAgreementReqDto::value,
                                 (first, second) -> second
                         )
@@ -173,7 +170,7 @@ public class AuthService {
         for (TermType requiredType : REQUIRED_TERM_TYPES) {
             termRepository.findByType(requiredType)
                     .ifPresent(term -> {
-                        if (Boolean.TRUE.equals(agreementMap.get(term.getId()))) {
+                        if (Boolean.TRUE.equals(agreementMap.get(requiredType))) {
                             termAgreementRepository.save(createTermAgreement(user, term, true));
                         }
                     });
@@ -181,7 +178,7 @@ public class AuthService {
 
         termRepository.findByType(TermType.MARKETING)
                 .ifPresent(term -> {
-                    boolean agreed = Boolean.TRUE.equals(agreementMap.get(term.getId()));
+                    boolean agreed = Boolean.TRUE.equals(agreementMap.get(TermType.MARKETING));
                     termAgreementRepository.save(createTermAgreement(user, term, agreed));
                 });
     }
@@ -204,27 +201,7 @@ public class AuthService {
         int imageNumber = ThreadLocalRandom.current().nextInt(1, 13);
         return "default_asset:" + imageNumber;
     }
-
-    /** 계정 잠금 여부 반환
-     * */
     private boolean isLocked(User user, LocalDateTime now) {
         return user.getLockedUntil() != null && user.getLockedUntil().isAfter(now);
-    }
-
-    /** 로그인 실패 시 처리 메서드
-     * */
-    private void handleLoginFailure(User user, LocalDateTime now) {
-        // 로그인 잠금 기한 종료 후 재요청 시 count 재설정
-        if (user.getLockedUntil() != null && !user.getLockedUntil().isAfter(now)) {
-            user.setLockedUntil(null);
-            user.setLoginFailCount(0);
-        }
-
-        LocalDateTime lockedUntil = null;
-        if (user.getLoginFailCount() != null && user.getLoginFailCount() + 1 >= MAX_LOGIN_FAILURE_COUNT) {
-            lockedUntil = now.plusSeconds(LOCK_SECONDS);
-        }
-        user.setLoginFailCount(user.getLoginFailCount() == null ? 1 : user.getLoginFailCount() + 1);
-        user.setLockedUntil(lockedUntil);
     }
 }

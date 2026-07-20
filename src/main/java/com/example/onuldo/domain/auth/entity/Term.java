@@ -29,6 +29,6 @@ public class Term {
     private Integer id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, unique = true, length = 20)
     private TermType type;
 }
