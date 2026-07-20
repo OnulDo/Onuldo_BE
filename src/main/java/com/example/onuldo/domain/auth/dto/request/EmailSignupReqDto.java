@@ -1,26 +1,32 @@
 package com.example.onuldo.domain.auth.dto.request;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.Valid;
 import lombok.Builder;
 
-import java.time.LocalDate;
+import java.util.List;
 
 @Builder
 public record EmailSignupReqDto(
         @NotBlank(message = "이메일은 필수입니다.")
-        @Email(message = "올바른 이메일 형식이 아닙니다.")
+        @Pattern(
+                regexp = "^[a-zA-Z0-9+\\-_\\.]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
+                message = "올바른 이메일 형식이 아닙니다."
+        )
         String email,
 
         @NotBlank(message = "비밀번호는 필수입니다.")
-        @Size(min = 8, max = 255, message = "비밀번호는 8자 이상 255자 이하로 입력해주세요.")
         String password,
 
         @NotBlank(message = "닉네임은 필수입니다.")
-        @Size(max = 50, message = "닉네임은 50자 이하로 입력해주세요.")
         String nickname,
 
-        LocalDate birthDate
+        @NotNull(message = "약관 동의 목록은 필수입니다.")
+        @Valid
+        List<TermAgreementReqDto> termAgreements,
+
+        String profileImageUrl
 ) {
 }

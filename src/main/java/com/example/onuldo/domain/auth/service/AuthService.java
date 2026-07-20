@@ -79,4 +79,5 @@ public class AuthService {
                 .refreshToken(jwtTokenProvider.createRefreshToken(user))
                 .build();
     }
+        LocalDateTime lockedUntil = null;
 }
