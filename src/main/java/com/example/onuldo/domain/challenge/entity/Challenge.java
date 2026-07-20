@@ -1,25 +1,18 @@
 package com.example.onuldo.domain.challenge.entity;
 
+import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
-import com.example.onuldo.domain.challenge.enums.ChallengeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -34,23 +27,21 @@ public class Challenge {
     @Column(name = "challenge_id")
     private Long id;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "category_id", nullable = false)
-    private Category category;
+    @Column(name = "explain_content", nullable = false, length = 100)
+    private String explainContent;
+
+    @Column(name = "caption_img_url", nullable = false, length = 500)
+    private String captionImgUrl;
+
+    @Column(name = "participant_count", nullable = false)
+    private Integer participantCount;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private ChallengeType type;
-
-    @Column(name = "duration_options", nullable = false, columnDefinition = "TEXT")
-    private String durationOptions;
-
-    @Builder.Default
-    @Column(name = "is_official", nullable = false)
-    private Boolean isOfficial = true;
+    @Column(nullable = false, length = 40)
+    private ChallengeCategory category;
 
     @Column(name = "time_start")
     private LocalTime timeStart;
@@ -58,11 +49,32 @@ public class Challenge {
     @Column(name = "time_end")
     private LocalTime timeEnd;
 
-    @Column(name = "deposit_min", nullable = false)
-    private Integer depositMin;
+    // 챌린지 진행 기간
+    @Builder.Default
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "duration_option_list", columnDefinition = "json")
+    private List<Integer> durationOptionList = List.of(2, 4, 8, 12);
 
-    @Column(name = "deposit_max", nullable = false)
-    private Integer depositMax;
+    // 상금 리스트
+    @Builder.Default
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "deposit_option_list", columnDefinition = "json")
+    private List<Integer> depositOptionList = List.of(10000, 20000, 30000, 50000);
+
+    // 성공 조건 리스트
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "success_option_list", columnDefinition = "json")
+    private List<String> successConditionList;
+
+    // 실패 조건 리스트
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "failure_option_list", columnDefinition = "json")
+    private List<String> failureConditionList;
+
+    // AWS Rekognition을 통해 받은 라벨 검증 필요 리스트
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "verification_label_list", columnDefinition = "json")
+    private List<String> verificationLabelList;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
