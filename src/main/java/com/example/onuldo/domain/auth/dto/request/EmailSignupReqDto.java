@@ -23,10 +23,10 @@ public record EmailSignupReqDto(
         @NotBlank(message = "닉네임은 필수입니다.")
         String nickname,
 
+        String profileImageUrl,
+
         @NotNull(message = "약관 동의 목록은 필수입니다.")
         @Valid
-        List<TermAgreementReqDto> termAgreements,
-
-        String profileImageUrl
+        List<TermAgreementReqDto> termAgreements
 ) {
 }
