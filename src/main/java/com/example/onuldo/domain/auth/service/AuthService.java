@@ -2,8 +2,16 @@ package com.example.onuldo.domain.auth.service;
 
 import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
+import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
+import com.example.onuldo.domain.auth.entity.Term;
+import com.example.onuldo.domain.auth.entity.TermAgreement;
+import com.example.onuldo.domain.auth.entity.TermAgreementId;
+import com.example.onuldo.domain.auth.enums.TermType;
+import com.example.onuldo.domain.auth.repository.TermAgreementRepository;
+import com.example.onuldo.domain.auth.repository.TermRepository;
+import com.example.onuldo.domain.auth.support.NicknameBannedWords;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.SocialProvider;
 import com.example.onuldo.domain.user.enums.UserStatus;
@@ -16,12 +24,32 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AuthService {
 
+    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]+$");
+    private static final Set<TermType> REQUIRED_TERM_TYPES = Set.of(
+            TermType.SERVICE,
+            TermType.PRIVACY,
+            TermType.AGE_14
+    );
+    private static final int MAX_LOGIN_FAILURE_COUNT = 5;
+    private static final int LOCK_SECONDS = 60;
+
     private final UserRepository userRepository;
+    private final TermRepository termRepository;
+    private final TermAgreementRepository termAgreementRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -31,6 +59,9 @@ public class AuthService {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
         }
 
+        validateNickname(request.nickname());
+        validateRequiredTerms(request.termAgreements());
+
         User user = User.builder()
                 .email(request.email())
                 .nickname(request.nickname())
@@ -39,22 +70,26 @@ public class AuthService {
                 .emailVerified(false)
                 .pointBalance(0L)
                 .status(UserStatus.ACTIVE)
-                .birthDate(request.birthDate())
+                .profileImageUrl(resolveProfileImageUrl(request.profileImageUrl()))
                 .build();
 
         User savedUser = userRepository.save(user);
+        saveTermAgreements(savedUser, request.termAgreements());
         return createAuthResponse(savedUser);
     }
 
+    @Transactional
     public AuthResDto login(EmailLoginReqDto request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
-        if (user.getPasswordHash() == null) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
+        LocalDateTime now = LocalDateTime.now();
+        if (isLocked(user, now)) {
+            throw new RestApiException(GlobalErrorStatus._LOGIN_LOCKED);
         }
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            handleLoginFailure(user, now);
             throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
@@ -62,6 +97,9 @@ public class AuthService {
             throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
+        user.setLoginFailCount(0);
+        user.setLockedUntil(null);
+        user.setLastLoginAt(LocalDateTime.now());
         return createAuthResponse(user);
     }
 
