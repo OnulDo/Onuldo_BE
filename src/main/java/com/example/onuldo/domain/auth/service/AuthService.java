@@ -79,5 +79,114 @@ public class AuthService {
                 .refreshToken(jwtTokenProvider.createRefreshToken(user))
                 .build();
     }
+
+    private void validateNickname(String nickname) {
+        if (nickname.length() < 2) {
+            throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_SHORT);
+        }
+
+        if (nickname.length() > 8) {
+            throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_LONG);
+        }
+
+        if (!NICKNAME_PATTERN.matcher(nickname).matches()) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_NICKNAME);
+        }
+
+        for (String bannedWord : NicknameBannedWords.VALUES) {
+            if (nickname.contains(bannedWord.toLowerCase(Locale.ROOT))) {
+                throw new RestApiException(GlobalErrorStatus._INVALID_NICKNAME);
+            }
+        }
+    }
+
+    private void validateRequiredTerms(List<TermAgreementReqDto> termAgreements) {
+        if (termAgreements == null || termAgreements.isEmpty()) {
+            throw new RestApiException(GlobalErrorStatus._TERMS_REQUIRED);
+        }
+
+        Map<Integer, Boolean> agreementMap = termAgreements.stream()
+                .collect(Collectors.toMap(
+                        TermAgreementReqDto::termId,
+                        TermAgreementReqDto::value,
+                        (first, second) -> second
+                ));
+
+        for (TermType requiredType : REQUIRED_TERM_TYPES) {
+            Term term = termRepository.findByType(requiredType)
+                    .orElseThrow(() -> new RestApiException(GlobalErrorStatus._TERMS_REQUIRED));
+
+            if (!Boolean.TRUE.equals(agreementMap.get(term.getId()))) {
+                throw new RestApiException(GlobalErrorStatus._TERMS_REQUIRED);
+            }
+        }
+    }
+
+    private void saveTermAgreements(User user, List<TermAgreementReqDto> termAgreements) {
+        Map<Integer, Boolean> agreementMap = termAgreements.stream()
+                .collect(
+                        Collectors.toMap(
+                                TermAgreementReqDto::termId,
+                                TermAgreementReqDto::value,
+                                (first, second) -> second
+                        )
+                );
+
+        for (TermType requiredType : REQUIRED_TERM_TYPES) {
+            termRepository.findByType(requiredType)
+                    .ifPresent(term -> {
+                        if (Boolean.TRUE.equals(agreementMap.get(term.getId()))) {
+                            termAgreementRepository.save(createTermAgreement(user, term, true));
+                        }
+                    });
+        }
+
+        termRepository.findByType(TermType.MARKETING)
+                .ifPresent(term -> {
+                    boolean agreed = Boolean.TRUE.equals(agreementMap.get(term.getId()));
+                    termAgreementRepository.save(createTermAgreement(user, term, agreed));
+                });
+    }
+
+    private TermAgreement createTermAgreement(User user, Term term, boolean agreed) {
+        return TermAgreement.builder()
+                .id(new TermAgreementId(user.getId(), term.getId()))
+                .user(user)
+                .term(term)
+                .agreed(agreed)
+                .build();
+    }
+
+    private String resolveProfileImageUrl(String profileImageUrl) {
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            return profileImageUrl;
+        }
+
+        // profileImageUrl이 null인 경우 기본 캐릭터 이미지 1~12중 랜덤 배정
+        int imageNumber = ThreadLocalRandom.current().nextInt(1, 13);
+        return "default_asset:" + imageNumber;
+    }
+
+    /** 계정 잠금 여부 반환
+     * */
+    private boolean isLocked(User user, LocalDateTime now) {
+        return user.getLockedUntil() != null && user.getLockedUntil().isAfter(now);
+    }
+
+    /** 로그인 실패 시 처리 메서드
+     * */
+    private void handleLoginFailure(User user, LocalDateTime now) {
+        // 로그인 잠금 기한 종료 후 재요청 시 count 재설정
+        if (user.getLockedUntil() != null && !user.getLockedUntil().isAfter(now)) {
+            user.setLockedUntil(null);
+            user.setLoginFailCount(0);
+        }
+
         LocalDateTime lockedUntil = null;
+        if (user.getLoginFailCount() != null && user.getLoginFailCount() + 1 >= MAX_LOGIN_FAILURE_COUNT) {
+            lockedUntil = now.plusSeconds(LOCK_SECONDS);
+        }
+        user.setLoginFailCount(user.getLoginFailCount() == null ? 1 : user.getLoginFailCount() + 1);
+        user.setLockedUntil(lockedUntil);
+    }
 }
