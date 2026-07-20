@@ -38,6 +38,10 @@ public class Settlement {
     @JoinColumn(name = "participation_id", nullable = false)
     private Participation participation;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ad_reward_pool_id")
+    private AdRewardPool adRewardPool;
+
     @Column(name = "deposit_amount", nullable = false)
     private Integer depositAmount;
 

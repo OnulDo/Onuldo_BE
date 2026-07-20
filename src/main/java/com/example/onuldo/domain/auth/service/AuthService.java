@@ -2,8 +2,16 @@ package com.example.onuldo.domain.auth.service;
 
 import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
+import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
+import com.example.onuldo.domain.auth.entity.Term;
+import com.example.onuldo.domain.auth.entity.TermAgreement;
+import com.example.onuldo.domain.auth.entity.TermAgreementId;
+import com.example.onuldo.domain.auth.enums.TermType;
+import com.example.onuldo.domain.auth.repository.TermAgreementRepository;
+import com.example.onuldo.domain.auth.repository.TermRepository;
+import com.example.onuldo.domain.auth.support.NicknameBannedWords;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.SocialProvider;
 import com.example.onuldo.domain.user.enums.UserStatus;
@@ -16,12 +24,31 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AuthService {
 
+    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]+$");
+    private static final Set<TermType> REQUIRED_TERM_TYPES = Set.of(
+            TermType.SERVICE,
+            TermType.PRIVACY,
+            TermType.AGE_14
+    );
+
     private final UserRepository userRepository;
+    private final TermRepository termRepository;
+    private final TermAgreementRepository termAgreementRepository;
+    private final LoginFailureService loginFailureService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -31,6 +58,9 @@ public class AuthService {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
         }
 
+        validateNickname(request.nickname());
+        validateRequiredTerms(request.termAgreements());
+
         User user = User.builder()
                 .email(request.email())
                 .nickname(request.nickname())
@@ -39,22 +69,26 @@ public class AuthService {
                 .emailVerified(false)
                 .pointBalance(0L)
                 .status(UserStatus.ACTIVE)
-                .birthDate(request.birthDate())
+                .profileImageUrl(resolveProfileImageUrl(request.profileImageUrl()))
                 .build();
 
         User savedUser = userRepository.save(user);
+        saveTermAgreements(savedUser, request.termAgreements());
         return createAuthResponse(savedUser);
     }
 
+    @Transactional
     public AuthResDto login(EmailLoginReqDto request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
-        if (user.getPasswordHash() == null) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
+        LocalDateTime now = LocalDateTime.now();
+        if (isLocked(user, now)) {
+            throw new RestApiException(GlobalErrorStatus._LOGIN_LOCKED);
         }
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            loginFailureService.recordFailure(user.getId(), now);
             throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
@@ -62,6 +96,10 @@ public class AuthService {
             throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
+        user.setLoginFailCount(0);
+        user.setLockedUntil(null);
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
         return createAuthResponse(user);
     }
 
@@ -78,5 +116,92 @@ public class AuthService {
                 .accessToken(jwtTokenProvider.createAccessToken(user))
                 .refreshToken(jwtTokenProvider.createRefreshToken(user))
                 .build();
+    }
+
+    private void validateNickname(String nickname) {
+        if (nickname.length() < 2) {
+            throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_SHORT);
+        }
+
+        if (nickname.length() > 8) {
+            throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_LONG);
+        }
+
+        if (!NICKNAME_PATTERN.matcher(nickname).matches()) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_NICKNAME);
+        }
+
+        for (String bannedWord : NicknameBannedWords.VALUES) {
+            if (nickname.contains(bannedWord.toLowerCase(Locale.ROOT))) {
+                throw new RestApiException(GlobalErrorStatus._INVALID_NICKNAME);
+            }
+        }
+    }
+
+    private void validateRequiredTerms(List<TermAgreementReqDto> termAgreements) {
+        if (termAgreements == null || termAgreements.isEmpty()) {
+            throw new RestApiException(GlobalErrorStatus._TERMS_REQUIRED);
+        }
+
+        Map<TermType, Boolean> agreementMap = termAgreements.stream()
+                .collect(Collectors.toMap(
+                        TermAgreementReqDto::termType,
+                        TermAgreementReqDto::value,
+                        (first, second) -> second
+                ));
+
+        for (TermType requiredType : REQUIRED_TERM_TYPES) {
+            if (!Boolean.TRUE.equals(agreementMap.get(requiredType))) {
+                throw new RestApiException(GlobalErrorStatus._TERMS_REQUIRED);
+            }
+        }
+    }
+
+    private void saveTermAgreements(User user, List<TermAgreementReqDto> termAgreements) {
+        Map<TermType, Boolean> agreementMap = termAgreements.stream()
+                .collect(
+                        Collectors.toMap(
+                                TermAgreementReqDto::termType,
+                                TermAgreementReqDto::value,
+                                (first, second) -> second
+                        )
+                );
+
+        for (TermType requiredType : REQUIRED_TERM_TYPES) {
+            termRepository.findByType(requiredType)
+                    .ifPresent(term -> {
+                        if (Boolean.TRUE.equals(agreementMap.get(requiredType))) {
+                            termAgreementRepository.save(createTermAgreement(user, term, true));
+                        }
+                    });
+        }
+
+        termRepository.findByType(TermType.MARKETING)
+                .ifPresent(term -> {
+                    boolean agreed = Boolean.TRUE.equals(agreementMap.get(TermType.MARKETING));
+                    termAgreementRepository.save(createTermAgreement(user, term, agreed));
+                });
+    }
+
+    private TermAgreement createTermAgreement(User user, Term term, boolean agreed) {
+        return TermAgreement.builder()
+                .id(new TermAgreementId(user.getId(), term.getId()))
+                .user(user)
+                .term(term)
+                .agreed(agreed)
+                .build();
+    }
+
+    private String resolveProfileImageUrl(String profileImageUrl) {
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            return profileImageUrl;
+        }
+
+        // profileImageUrl이 null인 경우 기본 캐릭터 이미지 1~12중 랜덤 배정
+        int imageNumber = ThreadLocalRandom.current().nextInt(1, 13);
+        return "default_asset:" + imageNumber;
+    }
+    private boolean isLocked(User user, LocalDateTime now) {
+        return user.getLockedUntil() != null && user.getLockedUntil().isAfter(now);
     }
 }

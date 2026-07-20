@@ -15,8 +15,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-
 @Getter
 @Builder
 @AllArgsConstructor
@@ -31,15 +29,6 @@ public class Term {
     private Integer id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, unique = true, length = 20)
     private TermType type;
-
-    @Column(nullable = false, length = 20)
-    private String version;
-
-    @Column(name = "effective_date", nullable = false)
-    private LocalDate effectiveDate;
-
-    @Column(name = "content_url", nullable = false, length = 255)
-    private String contentUrl;
 }
