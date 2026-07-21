@@ -1,5 +1,8 @@
 package com.example.onuldo.domain.user.entity;
 
+import com.example.onuldo.domain.user.enums.NotificationType;
+import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -54,4 +57,16 @@ public class NotificationSetting {
     @Builder.Default
     @Column(name = "deduction_alert", nullable = false)
     private Boolean deductionAlert = false;
+
+    public void apply(NotificationType type, boolean enabled) {
+        switch (type) {
+            case ALL -> allEnabled = enabled;
+            case CHALLENGE_START -> challengeStart = enabled;
+            case VERIFICATION_DEADLINE -> verificationDeadline = enabled;
+            case VERIFICATION_RESULT -> verificationResult = enabled;
+            case REFUND_COMPLETE -> refundComplete = enabled;
+            case DEDUCTION_ALERT -> deductionAlert = enabled;
+            default -> throw new RestApiException(GlobalErrorStatus._BAD_REQUEST);
+        }
+    }
 }
