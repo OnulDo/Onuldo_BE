@@ -15,8 +15,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "users")
+@Table(name = "user")
 public class User {
 
     @Id
@@ -38,40 +38,55 @@ public class User {
     @Column(nullable = false, length = 50)
     private String nickname;
 
-    @Column(name = "profile_image_url", length = 500)
-    private String profileImageUrl;
-
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
+
+    @Column(name = "social_id", length = 255)
+    private String socialId;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "social_provider", nullable = false, length = 20)
     private SocialProvider socialProvider = SocialProvider.EMAIL;
 
+    @Column(name = "profile_image_url", length = 255)
+    @Setter
+    private String profileImageUrl;
+
     @Builder.Default
     @Column(name = "email_verified", nullable = false)
+    @Setter
     private Boolean emailVerified = false;
 
     @Builder.Default
     @Column(name = "point_balance", nullable = false)
+    @Setter
     private Long pointBalance = 0L;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Setter
     private UserStatus status = UserStatus.ACTIVE;
 
     @Column(name = "withdrawal_requested_at")
+    @Setter
     private LocalDateTime withdrawalRequestedAt;
 
-    @Column(name = "birth_date")
-    private LocalDate birthDate;
+    @Builder.Default
+    @Column(name = "login_fail_count", nullable = false)
+    @Setter
+    private Integer loginFailCount = 0;
+
+    @Column(name = "locked_until")
+    @Setter
+    private LocalDateTime lockedUntil;
 
     @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(name = "last_login_at")
+    @Setter
     private LocalDateTime lastLoginAt;
 }

@@ -39,6 +39,10 @@ public class TermAgreement {
     private Term term;
 
     @Builder.Default
+    @Column(name = "agreed", nullable = false)
+    private Boolean agreed = false;
+
+    @Builder.Default
     @Column(name = "agreed_at", nullable = false)
     private LocalDateTime agreedAt = LocalDateTime.now();
 }

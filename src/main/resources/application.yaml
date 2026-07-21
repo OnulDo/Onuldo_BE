@@ -3,6 +3,12 @@ spring:
     name: oneuldo
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
+  jpa:
+    defer-datasource-initialization: true
+
+  sql:
+    init:
+      mode: always
 
 springdoc:
   swagger-ui:

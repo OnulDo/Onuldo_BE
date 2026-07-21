@@ -14,10 +14,7 @@ public record NaverUserInfoResDto(
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Response(
             String id,
-            String email,
-            String nickname,
-            @JsonProperty("profile_image")
-            String profileImage
+            String email
     ) {
     }
 
@@ -26,8 +23,6 @@ public record NaverUserInfoResDto(
                 .provider(SocialProvider.NAVER)
                 .socialId(response.id())
                 .email(response.email())
-                .nickname(response.nickname())
-                .profileImageUrl(response.profileImage())
                 .build();
     }
 }

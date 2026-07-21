@@ -13,34 +13,17 @@ public record KakaoUserInfoResDto(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record KakaoAccount(
-            String email,
-            Profile profile
+            String email
     ) {
-
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        public record Profile(
-                String nickname,
-                @JsonProperty("profile_image_url")
-                String profileImageUrl
-        ) {
-        }
     }
 
     public OAuthUserInfo toOAuthUserInfo() {
         String email = kakaoAccount != null ? kakaoAccount.email() : null;
-        String nickname = kakaoAccount != null && kakaoAccount.profile() != null
-                ? kakaoAccount.profile().nickname()
-                : null;
-        String profileImageUrl = kakaoAccount != null && kakaoAccount.profile() != null
-                ? kakaoAccount.profile().profileImageUrl()
-                : null;
 
         return OAuthUserInfo.builder()
                 .provider(SocialProvider.KAKAO)
                 .socialId(String.valueOf(id))
                 .email(email)
-                .nickname(nickname)
-                .profileImageUrl(profileImageUrl)
                 .build();
     }
 }
