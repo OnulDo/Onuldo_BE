@@ -107,7 +107,25 @@ public interface AuthControllerDoc {
 
     @Operation(
             summary = "소셜 로그인 (카카오/네이버)",
-            description = "클라이언트가 SNS SDK로 발급받은 accessToken을 전달하면, 최초 로그인 시 자동 회원가입 후 accessToken/refreshToken을 발급합니다. isNewUser로 신규 가입 여부를 함께 반환합니다."
+            description = "클라이언트가 SNS SDK로 발급받은 accessToken을 전달하면, " +
+                    "최초 로그인 시 닉네임과 프로필 사진을 함께 전달받아 자동으로 회원가입을 진행하고 " +
+                    "accessToken/refreshToken을 발급합니다. " +
+                    "이때 isNewUser 값으로 신규 가입 여부도 함께 반환합니다."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                            "provider": "KAKAO",
+                            "accessToken": "string",
+                            "nickname": "오늘두",
+                            "profileImageUrl": "string"
+                        }
+                        """
+                    )
+            )
     )
     BaseResponse<OAuthResDto> oauth(
             @Valid
