@@ -3,7 +3,8 @@ package com.example.onuldo.domain.auth.controller;
 import com.example.onuldo.domain.auth.controller.doc.AuthControllerDoc;
 import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
-import com.example.onuldo.domain.auth.dto.request.OAuthReqDto;
+import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
+import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
@@ -51,11 +52,20 @@ public class AuthController implements AuthControllerDoc {
     }
 
     @PostMapping("/oauth/login")
-    public BaseResponse<OAuthResDto> oauth(
+    public BaseResponse<OAuthResDto> oauthLogin(
             @Valid
             @RequestBody
-            OAuthReqDto request
+            OAuthLoginReqDto request
     ) {
-        return BaseResponse.onSuccess(authService.oauth(request));
+        return BaseResponse.onSuccess(authService.oauthLogin(request));
+    }
+
+    @PostMapping("/oauth/signup")
+    public BaseResponse<AuthResDto> oauthSignup(
+            @Valid
+            @RequestBody
+            OAuthSignupReqDto request
+    ) {
+        return BaseResponse.onSuccess(authService.oauthSignup(request));
     }
 }

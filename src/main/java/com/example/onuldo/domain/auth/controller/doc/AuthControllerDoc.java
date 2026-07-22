@@ -2,7 +2,8 @@ package com.example.onuldo.domain.auth.controller.doc;
 
 import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
-import com.example.onuldo.domain.auth.dto.request.OAuthReqDto;
+import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
+import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
@@ -108,9 +109,34 @@ public interface AuthControllerDoc {
     @Operation(
             summary = "소셜 로그인 (카카오/네이버)",
             description = "클라이언트가 SNS SDK로 발급받은 accessToken을 전달하면, " +
-                    "최초 로그인 시 닉네임과 프로필 사진을 함께 전달받아 자동으로 회원가입을 진행하고 " +
-                    "accessToken/refreshToken을 발급합니다. " +
-                    "이때 isNewUser 값으로 신규 가입 여부도 함께 반환합니다."
+                    "가입 여부를 확인하여 이미 가입된 유저라면 accessToken/refreshToken을 발급합니다. " +
+                    "아직 가입되지 않은 유저라면 토큰 없이 isNewUser=true만 반환하며, " +
+                    "이 경우 클라이언트는 oauth/signup API를 호출해 회원가입을 진행해야 합니다."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                            "provider": "KAKAO",
+                            "accessToken": "string"
+                        }
+                        """
+                    )
+            )
+    )
+    BaseResponse<OAuthResDto> oauthLogin(
+            @Valid
+            @RequestBody
+            OAuthLoginReqDto request
+    );
+
+    @Operation(
+            summary = "소셜 회원가입 (카카오/네이버)",
+            description = "oauth/login에서 isNewUser=true를 받은 경우 호출합니다. " +
+                    "SNS SDK로 발급받은 accessToken과 닉네임, 프로필 사진, 약관 동의 여부를 전달받아 " +
+                    "회원가입을 진행하고 accessToken/refreshToken을 발급합니다."
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(
@@ -121,15 +147,33 @@ public interface AuthControllerDoc {
                             "provider": "KAKAO",
                             "accessToken": "string",
                             "nickname": "오늘두",
-                            "profileImageUrl": "string"
+                            "profileImageUrl": "string",
+                            "termAgreements": [
+                               {
+                                  "termType": "SERVICE",
+                                  "value": true
+                               },
+                               {
+                                  "termType": "PRIVACY",
+                                  "value": true
+                               },
+                               {
+                                  "termType": "AGE_14",
+                                  "value": true
+                               },
+                               {
+                                  "termType": "MARKETING",
+                                  "value": false
+                               }
+                            ]
                         }
                         """
                     )
             )
     )
-    BaseResponse<OAuthResDto> oauth(
+    BaseResponse<AuthResDto> oauthSignup(
             @Valid
             @RequestBody
-            OAuthReqDto request
+            OAuthSignupReqDto request
     );
 }

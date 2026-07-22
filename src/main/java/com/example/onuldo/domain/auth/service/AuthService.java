@@ -2,7 +2,8 @@ package com.example.onuldo.domain.auth.service;
 
 import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
-import com.example.onuldo.domain.auth.dto.request.OAuthReqDto;
+import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
+import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
@@ -117,43 +118,56 @@ public class AuthService {
     }
 
     @Transactional
-    public OAuthResDto oauth(OAuthReqDto request) {
+    public OAuthResDto oauthLogin(OAuthLoginReqDto request) {
         OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.accessToken());
 
         Optional<User> existingUser = userRepository.findByEmail(info.email());
-
-        User user;
-        boolean isNewUser;
-        if (existingUser.isPresent()) {
-            User found = existingUser.get();
-            if (found.getSocialProvider() != info.provider()) {
-                throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
-            }
-            found.setLastLoginAt(LocalDateTime.now());
-            userRepository.save(found);
-            user = found;
-            isNewUser = false;
-        } else {
-            validateNickname(request.nickname());
-            user = userRepository.save(User.builder()
-                    .email(info.email())
-                    .nickname(request.nickname())
-                    .profileImageUrl(resolveProfileImageUrl(request.profileImageUrl()))
-                    .socialId(info.socialId())
-                    .socialProvider(info.provider())
-                    .emailVerified(true)
-                    .pointBalance(0L)
-                    .status(UserStatus.ACTIVE)
-                    .lastLoginAt(LocalDateTime.now())
-                    .build());
-            isNewUser = true;
+        if (existingUser.isEmpty()) {
+            return OAuthResDto.builder()
+                    .isNewUser(true)
+                    .build();
         }
+
+        User user = existingUser.get();
+        if (user.getSocialProvider() != info.provider()) {
+            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
 
         return OAuthResDto.builder()
                 .accessToken(jwtTokenProvider.createAccessToken(user))
                 .refreshToken(jwtTokenProvider.createRefreshToken(user))
-                .isNewUser(isNewUser)
+                .isNewUser(false)
                 .build();
+    }
+
+    @Transactional
+    public AuthResDto oauthSignup(OAuthSignupReqDto request) {
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.accessToken());
+
+        if (userRepository.existsByEmail(info.email())) {
+            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        validateNickname(request.nickname());
+        validateRequiredTerms(request.termAgreements());
+
+        User user = userRepository.save(User.builder()
+                .email(info.email())
+                .nickname(request.nickname())
+                .profileImageUrl(resolveProfileImageUrl(request.profileImageUrl()))
+                .socialId(info.socialId())
+                .socialProvider(info.provider())
+                .emailVerified(true)
+                .pointBalance(0L)
+                .status(UserStatus.ACTIVE)
+                .lastLoginAt(LocalDateTime.now())
+                .build());
+
+        saveTermAgreements(user, request.termAgreements());
+        return createAuthResponse(user);
     }
 
     private AuthResDto createAuthResponse(User user) {
@@ -164,7 +178,7 @@ public class AuthService {
     }
 
     private void validateNickname(String nickname) {
-        if (nickname == null || nickname.isBlank() || nickname.length() < 2) {
+        if (nickname.length() < 2) {
             throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_SHORT);
         }
 
