@@ -20,7 +20,7 @@ public class BaseResponse<T> {
 
     //성공한 경우 응답 생성
     public static <T> BaseResponse<T> onSuccess(T result) {
-        return new BaseResponse<>("200", "요청에 성공하였습니다.", result);
+        return new BaseResponse<>("SUCCESS", "요청에 성공하였습니다.", result);
     }
 
     // 실패한 경우 응답 생성

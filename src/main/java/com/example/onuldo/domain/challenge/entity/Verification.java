@@ -39,10 +39,6 @@ public class Verification {
     @JoinColumn(name = "participation_id", nullable = false)
     private Participation participation;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mission_id")
-    private Mission mission;
-
     @Column(name = "verification_date", nullable = false)
     private LocalDate verificationDate;
 
