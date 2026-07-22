@@ -1,5 +1,6 @@
 package com.example.onuldo.domain.user.controller;
 
+import com.example.onuldo.domain.user.controller.doc.UserControllerDoc;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/users/me")
-public class UserController {
+public class UserController implements UserControllerDoc {
 
     private final UserService userService;
 
