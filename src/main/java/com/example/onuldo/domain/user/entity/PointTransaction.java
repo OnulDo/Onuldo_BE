@@ -47,6 +47,9 @@ public class PointTransaction {
     @Column(name = "balance_after", nullable = false)
     private Long balanceAfter;
 
+    @Column(name = "description", nullable = false)
+    private String description;
+
     @Column(name = "ref_type", length = 50)
     private String refType;
 
