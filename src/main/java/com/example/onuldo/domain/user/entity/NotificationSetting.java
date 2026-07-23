@@ -56,11 +56,18 @@ public class NotificationSetting {
 
     @Builder.Default
     @Column(name = "deduction_alert", nullable = false)
-    private Boolean deductionAlert = false;
+    private Boolean deductionAlert = true;
 
     public void apply(NotificationType type, boolean enabled) {
         switch (type) {
-            case ALL -> allEnabled = enabled;
+            case ALL -> {
+                allEnabled = enabled;
+                challengeStart = enabled;
+                verificationDeadline = enabled;
+                verificationResult = enabled;
+                refundComplete = enabled;
+                deductionAlert = enabled;
+            }
             case CHALLENGE_START -> challengeStart = enabled;
             case VERIFICATION_DEADLINE -> verificationDeadline = enabled;
             case VERIFICATION_RESULT -> verificationResult = enabled;
