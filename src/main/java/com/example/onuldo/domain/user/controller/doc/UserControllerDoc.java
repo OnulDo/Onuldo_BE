@@ -26,7 +26,17 @@ public interface UserControllerDoc {
 
     @Operation(
             summary = "알림 설정 변경",
-            description = "로그인한 유저의 특정 알림 타입 on/off 여부를 변경합니다."
+            description = """
+                    로그인한 유저의 특정 알림 타입 on/off 여부를 변경합니다.
+
+                    알림 타입(type)
+                    - ALL: 전체 알림
+                    - CHALLENGE_START: 챌린지 시작 알림
+                    - VERIFICATION_DEADLINE: 인증 마감 임박 알림
+                    - VERIFICATION_RESULT: 인증 결과 알림
+                    - REFUND_COMPLETE: 환급 완료 알림
+                    - DEDUCTION_ALERT: 차감 알림
+                    """
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(
