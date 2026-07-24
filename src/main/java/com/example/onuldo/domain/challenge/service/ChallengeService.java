@@ -6,6 +6,8 @@ import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
+import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +42,14 @@ public class ChallengeService {
                 .totalPages(challengePage.getTotalPages())
                 .hasNext(challengePage.hasNext())
                 .build();
+    }
+
+    public ChallengeResDto getChallenge(Long challengeId) {
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+
+        return toChallengeResDto(challenge);
     }
 
     private ChallengeResDto toChallengeResDto(Challenge challenge) {
