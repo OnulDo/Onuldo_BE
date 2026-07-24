@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -205,7 +206,8 @@ public interface UserControllerDoc {
             @RequestParam(required = false)
             Long cursor,
 
-            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
+            @Parameter(description = "조회할 개수. 기본값 10, 최소 1", example = "10")
+            @Min(1)
             @RequestParam(defaultValue = "10")
             int size
     );

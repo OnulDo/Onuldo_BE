@@ -12,9 +12,12 @@ import com.example.onuldo.domain.user.service.UserService;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/users/me")
@@ -73,6 +76,7 @@ public class UserController implements UserControllerDoc {
             @RequestParam(required = false)
             Long cursor,
 
+            @Min(1)
             @RequestParam(defaultValue = "10")
             int size
     ){
