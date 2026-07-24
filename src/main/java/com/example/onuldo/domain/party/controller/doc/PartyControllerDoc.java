@@ -23,7 +23,7 @@ public interface PartyControllerDoc {
 
     @Operation(
             summary = "파티 생성",
-            description = "파티 이름, 챌린지, 진행 기간, 도전금, 모집 인원을 입력받아 파티를 생성합니다. "
+            description = "파티 이름, 챌린지, 진행 기간, 도전금, 모집 인원을 입력 받아 파티를 생성합니다. "
                     + "생성자는 자동으로 방장(HOST)이 되며, 6자리 초대코드가 발급됩니다. "
                     + "방장의 보유 포인트가 도전금보다 적으면 실패합니다."
     )

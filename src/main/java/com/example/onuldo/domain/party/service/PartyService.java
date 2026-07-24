@@ -19,7 +19,6 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
-import com.example.onuldo.global.common.exception.code.status.PartyErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +38,13 @@ public class PartyService {
     private static final int MAX_INVITE_CODE_RETRY = 10;
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    // PAR-03: 파티 이름은 2~20자 한글·영문·숫자·공백만 허용
+    private static final Pattern PARTY_NAME_PATTERN = Pattern.compile("^[가-힣a-zA-Z0-9\\s]{2,20}$");
+
+    // PAR-02: 모집 인원은 2~5명 (방장 포함)
+    private static final int MIN_MEMBERS = 2;
+    private static final int MAX_MEMBERS = 5;
+
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
     private final PartyChallengeRepository partyChallengeRepository;
@@ -45,15 +52,25 @@ public class PartyService {
     private final ChallengeRepository challengeRepository;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
+        // PAR-03: 파티 이름 규칙 검증 (2~20자 한글·영문·숫자·공백)
+        if (!PARTY_NAME_PATTERN.matcher(request.name()).matches()) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_PARTY_NAME);
+        }
+
+        // PAR-02: 모집 인원 범위 검증 (2~5명)
+        if (request.maxMembers() < MIN_MEMBERS || request.maxMembers() > MAX_MEMBERS) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_MAX_MEMBERS);
+        }
+
         User host = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
         Challenge challenge = challengeRepository.findById(request.challengeId())
-                .orElseThrow(() -> new RestApiException(PartyErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
         // PAR-ERR-02: 파티 생성 시 방장 보유 포인트 < 도전금이면 포인트 충전 안내
         if (host.getPointBalance() < request.depositAmount()) {
-            throw new RestApiException(PartyErrorStatus._INSUFFICIENT_POINT);
+            throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY);
         }
 
         String inviteCode = generateUniqueInviteCode();
@@ -87,7 +104,16 @@ public class PartyService {
                 .build();
         partyChallengeRepository.save(partyChallenge);
 
-        return PartyCreateResDto.from(party);
+        return PartyCreateResDto.builder()
+                .partyId(party.getId())
+                .name(party.getName())
+                .inviteCode(party.getInviteCode())
+                .inviteExpiresAt(party.getInviteExpiresAt())
+                .status(party.getStatus())
+                .hostUserId(party.getHostUser().getId())
+                .maxMembers(party.getMaxMembers())
+                .createdAt(party.getCreatedAt())
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -98,14 +124,14 @@ public class PartyService {
     @Transactional(readOnly = true)
     public PartyWaitingResDto getPartyWaiting(Long partyId, Long userId) {
         Party party = partyRepository.findById(partyId)
-                .orElseThrow(() -> new RestApiException(PartyErrorStatus._PARTY_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
 
         boolean isRequesterMember = partyMembers.stream()
                 .anyMatch(member -> member.getUser().getId().equals(userId));
         if (!isRequesterMember) {
-            throw new RestApiException(PartyErrorStatus._NOT_PARTY_MEMBER);
+            throw new RestApiException(GlobalErrorStatus._NOT_PARTY_MEMBER);
         }
 
         return PartyWaitingResDto.of(party, partyMembers, userId);
@@ -118,7 +144,7 @@ public class PartyService {
             code = generateRandomCode();
             attempts++;
             if (attempts > MAX_INVITE_CODE_RETRY) {
-                throw new RestApiException(PartyErrorStatus._INVITE_CODE_GENERATION_FAILED);
+                throw new RestApiException(GlobalErrorStatus._INVITE_CODE_GENERATION_FAILED);
             }
         } while (partyRepository.existsByInviteCode(code));
         return code;
