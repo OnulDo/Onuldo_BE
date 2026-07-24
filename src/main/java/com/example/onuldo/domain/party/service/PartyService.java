@@ -18,7 +18,6 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
-import com.example.onuldo.global.common.exception.code.status.PartyErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,11 +47,11 @@ public class PartyService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
         Challenge challenge = challengeRepository.findById(request.challengeId())
-                .orElseThrow(() -> new RestApiException(PartyErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
         // PAR-ERR-02: 파티 생성 시 방장 보유 포인트 < 도전금이면 포인트 충전 안내
         if (host.getPointBalance() < request.depositAmount()) {
-            throw new RestApiException(PartyErrorStatus._INSUFFICIENT_POINT);
+            throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT);
         }
 
         String inviteCode = generateUniqueInviteCode();
@@ -84,7 +83,16 @@ public class PartyService {
                 .build();
         partyChallengeRepository.save(partyChallenge);
 
-        return PartyCreateResDto.from(party);
+        return PartyCreateResDto.builder()
+                .partyId(party.getId())
+                .name(party.getName())
+                .inviteCode(party.getInviteCode())
+                .inviteExpiresAt(party.getInviteExpiresAt())
+                .status(party.getStatus())
+                .hostUserId(party.getHostUser().getId())
+                .maxMembers(party.getMaxMembers())
+                .createdAt(party.getCreatedAt())
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -99,7 +107,7 @@ public class PartyService {
             code = generateRandomCode();
             attempts++;
             if (attempts > MAX_INVITE_CODE_RETRY) {
-                throw new RestApiException(PartyErrorStatus._INVITE_CODE_GENERATION_FAILED);
+                throw new RestApiException(GlobalErrorStatus._INVITE_CODE_GENERATION_FAILED);
             }
         } while (partyRepository.existsByInviteCode(code));
         return code;

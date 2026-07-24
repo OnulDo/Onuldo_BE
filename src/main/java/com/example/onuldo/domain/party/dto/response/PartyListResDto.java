@@ -3,14 +3,19 @@ package com.example.onuldo.domain.party.dto.response;
 import com.example.onuldo.domain.party.enums.PartyStatus;
 import lombok.Builder;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 @Builder
 public record PartyListResDto(
         Long partyId,
         String name,
+        String challengeTitle,
         PartyStatus status,
-        Integer dDay,
+        LocalDate endDate,
+        LocalTime verificationDeadline,
         Double progressRate,
-        Integer verifiedToday,
+        Integer verifiedMemberCount,
         Integer totalMembers
 ) {
     // JPQL "new" 생성자 프로젝션 또는 QueryDSL Projections.constructor에서
