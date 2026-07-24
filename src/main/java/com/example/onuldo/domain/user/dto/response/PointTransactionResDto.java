@@ -10,6 +10,8 @@ public record PointTransactionResDto (
         PointTransactionType type,
         String title,
         Integer amount,
+        Integer depositAmount,
+        Integer adjustmentAmount,
         Long balanceAfter,
         LocalDate date
 ){

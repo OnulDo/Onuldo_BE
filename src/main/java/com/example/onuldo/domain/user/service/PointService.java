@@ -61,7 +61,7 @@ public class PointService {
 
         long totalDeposit = participationRepository.sumDepositAmountByUserIdAndStatusNot(userId, ParticipationStatus.ONGOING);
         long totalRefund = pointTransactionRepository.sumAmountByUserIdAndType(userId, PointTransactionType.REFUND);
-        long totalPenalty = pointTransactionRepository.sumAmountByUserIdAndType(userId, PointTransactionType.FORFEIT);
+        long totalPenalty = pointTransactionRepository.sumPenaltyAdjustmentByUserId(userId);
         long pendingPoints = participationRepository.sumDepositAmountByUserIdAndStatus(userId, ParticipationStatus.ONGOING);
         int averageReturnRate = totalDeposit == 0 ? 0 : Math.toIntExact(totalRefund * 100 / totalDeposit);
 
@@ -78,11 +78,12 @@ public class PointService {
     @Transactional(readOnly = true)
     public PointTransactionScrollResDto getPointTransactions(
             Long userId,
+            PointTransactionType type,
             Long cursor,
             int size
     ) {
         List<PointTransaction> transactions = pointTransactionRepository.findByUserIdWithCursor(
-                userId, cursor, PageRequest.of(0, size + 1)
+                userId, type, cursor, PageRequest.of(0, size + 1)
         );
 
         boolean hasNext = transactions.size() > size;
@@ -101,6 +102,8 @@ public class PointService {
                 .type(pointTransaction.getType())
                 .title(pointTransaction.getDescription())
                 .amount(pointTransaction.getAmount())
+                .depositAmount(pointTransaction.getDepositAmount())
+                .adjustmentAmount(pointTransaction.getAdjustmentAmount())
                 .balanceAfter(pointTransaction.getBalanceAfter())
                 .date(pointTransaction.getCreatedAt().toLocalDate())
                 .build();

@@ -4,8 +4,5 @@ public enum PointTransactionType {
     CHARGE,
     WITHDRAW,
     DEPOSIT,
-    REFUND,
-    BONUS,
-    FORFEIT,
-    SIGNUP_BONUS
+    REFUND
 }

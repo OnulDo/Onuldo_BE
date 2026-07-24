@@ -44,6 +44,12 @@ public class PointTransaction {
     @Column(nullable = false)
     private Integer amount;
 
+    @Column(name = "deposit_amount")
+    private Integer depositAmount;
+
+    @Column(name = "adjustment_amount")
+    private Integer adjustmentAmount;
+
     @Column(name = "balance_after", nullable = false)
     private Long balanceAfter;
 

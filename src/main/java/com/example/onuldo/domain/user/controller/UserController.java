@@ -7,6 +7,7 @@ import com.example.onuldo.domain.user.dto.response.*;
 import com.example.onuldo.domain.user.service.PointService;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
+import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.service.UserService;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.security.AuthUser;
@@ -24,7 +25,8 @@ public class UserController implements UserControllerDoc {
 
     @GetMapping("/notification")
     public BaseResponse<GetNotificationResDto> getNotification(
-            @AuthUser Long userId
+            @AuthUser
+            Long userId
     ) {
         return BaseResponse.onSuccess(userService.getNotification(userId));
     }
@@ -66,12 +68,15 @@ public class UserController implements UserControllerDoc {
             Long userId,
 
             @RequestParam(required = false)
+            PointTransactionType type,
+
+            @RequestParam(required = false)
             Long cursor,
 
             @RequestParam(defaultValue = "10")
             int size
     ){
-        return BaseResponse.onSuccess(pointService.getPointTransactions(userId, cursor, size));
+        return BaseResponse.onSuccess(pointService.getPointTransactions(userId, type, cursor, size));
     }
 
 
