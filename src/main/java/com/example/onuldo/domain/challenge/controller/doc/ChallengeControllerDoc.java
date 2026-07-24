@@ -1,11 +1,13 @@
 package com.example.onuldo.domain.challenge.controller.doc;
 
 import com.example.onuldo.domain.challenge.dto.response.ChallengePageResDto;
+import com.example.onuldo.domain.challenge.dto.response.ChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.global.common.base.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Challenge", description = "챌린지 관련 API")
@@ -28,5 +30,14 @@ public interface ChallengeControllerDoc {
             @Parameter(description = "검색어", example = "run")
             @RequestParam(required = false)
             String s
+    );
+
+    @Operation(
+            summary = "챌린지 상세 조회",
+            description = "활성 상태의 챌린지 1건을 조회합니다."
+    )
+    BaseResponse<ChallengeResDto> getChallenge(
+            @Parameter(description = "챌린지 ID", example = "1")
+            @PathVariable Long challengeId
     );
 }
