@@ -1,16 +1,21 @@
 package com.example.onuldo.global.config;
 
+import com.example.onuldo.global.security.AuthUserArgumentResolver;
 import com.example.onuldo.global.security.JwtAuthenticationInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
 
     private final JwtAuthenticationInterceptor jwtAuthenticationInterceptor;
+    private final AuthUserArgumentResolver authUserArgumentResolver;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -26,5 +31,10 @@ public class WebConfig implements WebMvcConfigurer {
                         "/v3/api-docs/**",
                         "/error"
                 );
+    }
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(authUserArgumentResolver);
     }
 }
