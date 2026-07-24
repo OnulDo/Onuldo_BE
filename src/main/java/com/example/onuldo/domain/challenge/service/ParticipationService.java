@@ -77,7 +77,7 @@ public class ParticipationService {
         long shortage = depositAmount.longValue() - user.getPointBalance();
         if (shortage > 0) {
             throw new RestApiException(
-                    GlobalErrorStatus._INSUFFICIENT_POINT,
+                    GlobalErrorStatus._INSUFFICIENT_POINT_FOR_CHALLENGE,
                     "보유 포인트가 " + shortage + "P 부족합니다."
             );
         }
