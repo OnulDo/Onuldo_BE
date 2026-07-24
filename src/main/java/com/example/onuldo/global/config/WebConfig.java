@@ -25,6 +25,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/auth/signup",
                         "/api/auth/login",
                         "/api/auth/refresh",
+                        "/api/auth/oauth/login",
+                        "/api/auth/oauth/signup",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/error"
