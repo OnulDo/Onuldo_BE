@@ -32,7 +32,7 @@ public class PointService {
 
     @Transactional
     public ChargePointResDto chargePoint(Long userId, ChargePointReqDto request) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
         long balanceAfter = user.getPointBalance() + request.point();
