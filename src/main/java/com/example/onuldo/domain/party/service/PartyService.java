@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +37,9 @@ public class PartyService {
     private static final int MAX_INVITE_CODE_RETRY = 10;
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    // PAR-03: 파티 이름은 2~20자 한글·영문·숫자·공백만 허용
+    private static final Pattern PARTY_NAME_PATTERN = Pattern.compile("^[가-힣a-zA-Z0-9\\s]{2,20}$");
+
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
     private final PartyChallengeRepository partyChallengeRepository;
@@ -43,6 +47,11 @@ public class PartyService {
     private final ChallengeRepository challengeRepository;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
+        // PAR-03: 파티 이름 규칙 검증 (2~20자 한글·영문·숫자·공백)
+        if (!PARTY_NAME_PATTERN.matcher(request.name()).matches()) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_PARTY_NAME);
+        }
+
         User host = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 

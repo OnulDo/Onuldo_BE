@@ -27,7 +27,8 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     // Party 관련 에러
     _CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE_NOT_FOUND", "존재하지 않는 챌린지입니다."),
     _INSUFFICIENT_POINT(HttpStatus.CONFLICT, "INSUFFICIENT_POINT", "보유 포인트가 도전금보다 부족합니다."),
-    _INVITE_CODE_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "INVITE_CODE_GENERATION_FAILED", "초대코드 생성에 반복적으로 실패했습니다. 잠시 후 다시 시도해주세요.");
+    _INVITE_CODE_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "INVITE_CODE_GENERATION_FAILED", "초대코드 생성에 반복적으로 실패했습니다. 잠시 후 다시 시도해주세요."),
+    _INVALID_PARTY_NAME(HttpStatus.BAD_REQUEST, "INVALID_PARTY_NAME", "파티 이름은 한글, 영문, 숫자, 공백으로 2~20자 이내로 입력해주세요.");
 
     private final HttpStatus httpStatus;
     private final boolean isSuccess = false;
