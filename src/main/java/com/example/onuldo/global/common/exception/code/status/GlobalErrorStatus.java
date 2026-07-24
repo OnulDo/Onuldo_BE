@@ -24,9 +24,14 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _TERMS_REQUIRED(HttpStatus.BAD_REQUEST, "TERMS_REQUIRED", "필수 약관에 동의해주세요."),
     _USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
 
-    // Party 관련 에러
+    // 챌린지 관련 에러
     _CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE_NOT_FOUND", "존재하지 않는 챌린지입니다."),
-    _INSUFFICIENT_POINT(HttpStatus.CONFLICT, "INSUFFICIENT_POINT", "보유 포인트가 도전금보다 부족합니다."),
+    _INVALID_DEPOSIT_OPTION(HttpStatus.BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "선택할 수 없는 도전금입니다."),
+    _INSUFFICIENT_POINT_FOR_CHALLENGE(HttpStatus.BAD_REQUEST, "INSUFFICIENT_POINT_FOR_CHALLENGE", "보유 포인트가 부족합니다."),
+    _ALREADY_PARTICIPATING_CHALLENGE(HttpStatus.CONFLICT, "ALREADY_PARTICIPATING_CHALLENGE", "이미 참여 중인 챌린지입니다."),
+
+    // Party 관련 에러
+    _INSUFFICIENT_POINT_FOR_PARTY(HttpStatus.CONFLICT, "INSUFFICIENT_POINT_FOR_PARTY", "보유 포인트가 도전금보다 부족합니다."),
     _INVITE_CODE_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "INVITE_CODE_GENERATION_FAILED", "초대코드 생성에 반복적으로 실패했습니다. 잠시 후 다시 시도해주세요."),
     _INVALID_PARTY_NAME(HttpStatus.BAD_REQUEST, "INVALID_PARTY_NAME", "파티 이름은 한글, 영문, 숫자, 공백으로 2~20자 이내로 입력해주세요."),
     _INVALID_MAX_MEMBERS(HttpStatus.BAD_REQUEST, "INVALID_MAX_MEMBERS", "모집 인원은 2명 이상 5명 이하로 설정해주세요.");

@@ -2,11 +2,13 @@ package com.example.onuldo.domain.challenge.controller;
 
 import com.example.onuldo.domain.challenge.controller.doc.ChallengeControllerDoc;
 import com.example.onuldo.domain.challenge.dto.response.ChallengePageResDto;
+import com.example.onuldo.domain.challenge.dto.response.ChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.service.ChallengeService;
 import com.example.onuldo.global.common.base.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,5 +32,12 @@ public class ChallengeController implements ChallengeControllerDoc {
             String s
     ) {
         return BaseResponse.onSuccess(challengeService.getChallenges(page, size, category, s));
+    }
+
+    @GetMapping("/{challengeId}")
+    public BaseResponse<ChallengeResDto> getChallenge(
+            @PathVariable Long challengeId
+    ) {
+        return BaseResponse.onSuccess(challengeService.getChallenge(challengeId));
     }
 }

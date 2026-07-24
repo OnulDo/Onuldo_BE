@@ -27,6 +27,11 @@ public class ExceptionAdvice {
     @ExceptionHandler(value = RestApiException.class)
     public ResponseEntity<BaseResponse<String>> handleRestApiException(RestApiException e) {
         BaseCodeDto errorCode = e.getErrorCode();
+        if (e.getDetailMessage() != null) {
+            return ResponseEntity
+                    .status(errorCode.getHttpStatus().value())
+                    .body(BaseResponse.onFailure(errorCode.getCode(), e.getDetailMessage(), null));
+        }
         return handleExceptionInternal(errorCode);
     }
 

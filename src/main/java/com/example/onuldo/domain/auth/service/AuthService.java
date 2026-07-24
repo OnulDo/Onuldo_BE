@@ -2,15 +2,19 @@ package com.example.onuldo.domain.auth.service;
 
 import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
+import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
+import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
+import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.domain.auth.entity.Term;
 import com.example.onuldo.domain.auth.entity.TermAgreement;
 import com.example.onuldo.domain.auth.entity.TermAgreementId;
 import com.example.onuldo.domain.auth.enums.TermType;
 import com.example.onuldo.domain.auth.repository.TermAgreementRepository;
 import com.example.onuldo.domain.auth.repository.TermRepository;
+import com.example.onuldo.domain.auth.service.client.dto.OAuthUserInfo;
 import com.example.onuldo.domain.auth.support.NicknameBannedWords;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.SocialProvider;
@@ -28,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
@@ -51,6 +56,7 @@ public class AuthService {
     private final LoginFailureService loginFailureService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final OAuthService oAuthService;
 
     @Transactional
     public AuthResDto signup(EmailSignupReqDto request) {
@@ -108,6 +114,59 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
+        return createAuthResponse(user);
+    }
+
+    @Transactional
+    public OAuthResDto oauthLogin(OAuthLoginReqDto request) {
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.accessToken());
+
+        Optional<User> existingUser = userRepository.findByEmail(info.email());
+        if (existingUser.isEmpty()) {
+            return OAuthResDto.builder()
+                    .isNewUser(true)
+                    .build();
+        }
+
+        User user = existingUser.get();
+        if (user.getSocialProvider() != info.provider()) {
+            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        return OAuthResDto.builder()
+                .accessToken(jwtTokenProvider.createAccessToken(user))
+                .refreshToken(jwtTokenProvider.createRefreshToken(user))
+                .isNewUser(false)
+                .build();
+    }
+
+    @Transactional
+    public AuthResDto oauthSignup(OAuthSignupReqDto request) {
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.accessToken());
+
+        if (userRepository.existsByEmail(info.email())) {
+            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        validateNickname(request.nickname());
+        validateRequiredTerms(request.termAgreements());
+
+        User user = userRepository.save(User.builder()
+                .email(info.email())
+                .nickname(request.nickname())
+                .profileImageUrl(resolveProfileImageUrl(request.profileImageUrl()))
+                .socialId(info.socialId())
+                .socialProvider(info.provider())
+                .emailVerified(true)
+                .pointBalance(0L)
+                .status(UserStatus.ACTIVE)
+                .lastLoginAt(LocalDateTime.now())
+                .build());
+
+        saveTermAgreements(user, request.termAgreements());
         return createAuthResponse(user);
     }
 
