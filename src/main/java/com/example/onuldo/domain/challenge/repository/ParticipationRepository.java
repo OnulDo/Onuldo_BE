@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface ParticipationRepository extends JpaRepository<Participation, Long> {
 
+    boolean existsByUser_IdAndChallenge_Id(Long userId, Long challengeId);
     @Query("""
         SELECT COALESCE(SUM(p.depositAmount), 0)
         FROM Participation p
