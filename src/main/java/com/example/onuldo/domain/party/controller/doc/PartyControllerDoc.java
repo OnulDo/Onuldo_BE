@@ -5,7 +5,7 @@ import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.security.JwtAuthenticationInterceptor;
+import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
@@ -69,7 +68,7 @@ public interface PartyControllerDoc {
             )
     )
     BaseResponse<PartyCreateResDto> createParty(
-            @RequestAttribute(JwtAuthenticationInterceptor.AUTHENTICATED_USER_ID_ATTRIBUTE)
+            @AuthUser
             Long userId,
             @Valid
             @RequestBody
@@ -108,7 +107,7 @@ public interface PartyControllerDoc {
             )
     )
     BaseResponse<List<PartyListResDto>> getMyParties(
-            @RequestAttribute(JwtAuthenticationInterceptor.AUTHENTICATED_USER_ID_ATTRIBUTE)
+            @AuthUser
             Long userId
     );
 
@@ -162,7 +161,7 @@ public interface PartyControllerDoc {
             )
     )
     BaseResponse<PartyWaitingResDto> getPartyWaiting(
-            @RequestAttribute(JwtAuthenticationInterceptor.AUTHENTICATED_USER_ID_ATTRIBUTE)
+            @AuthUser
             Long userId,
             @PathVariable
             Long partyId
