@@ -10,7 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@Tag(name = "Participation", description = "개인 챌린지 참여 API")
+@Tag(name = "Challenge")
 public interface ParticipationControllerDoc {
 
     @Operation(
