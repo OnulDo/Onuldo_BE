@@ -30,7 +30,6 @@ public interface UserControllerDoc {
                     로그인한 유저의 특정 알림 타입 on/off 여부를 변경합니다.
 
                     알림 타입(type)
-                    - ALL: 전체 알림
                     - CHALLENGE_START: 챌린지 시작 알림
                     - VERIFICATION_DEADLINE: 인증 마감 임박 알림
                     - VERIFICATION_RESULT: 인증 결과 알림

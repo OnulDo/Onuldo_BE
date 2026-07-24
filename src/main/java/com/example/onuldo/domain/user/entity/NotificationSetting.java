@@ -60,14 +60,6 @@ public class NotificationSetting {
 
     public void apply(NotificationType type, boolean enabled) {
         switch (type) {
-            case ALL -> {
-                allEnabled = enabled;
-                challengeStart = enabled;
-                verificationDeadline = enabled;
-                verificationResult = enabled;
-                refundComplete = enabled;
-                deductionAlert = enabled;
-            }
             case CHALLENGE_START -> challengeStart = enabled;
             case VERIFICATION_DEADLINE -> verificationDeadline = enabled;
             case VERIFICATION_RESULT -> verificationResult = enabled;

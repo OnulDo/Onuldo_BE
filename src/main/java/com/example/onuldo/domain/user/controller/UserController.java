@@ -27,8 +27,11 @@ public class UserController implements UserControllerDoc {
 
     @PatchMapping("/notification")
     public BaseResponse<UpdateNotificationResDto> updateNotification(
-            @AuthUser Long userId,
-            @Valid @RequestBody UpdateNotificationReqDto request
+            @AuthUser
+            Long userId,
+            @Valid
+            @RequestBody
+            UpdateNotificationReqDto request
     ) {
         return BaseResponse.onSuccess(userService.updateNotification(userId, request));
     }
