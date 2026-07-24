@@ -5,6 +5,7 @@ import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
+import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.party.entity.PartyChallenge;
 import com.example.onuldo.domain.party.entity.PartyChallengeId;
@@ -81,6 +82,8 @@ public class PartyService {
                 .inviteCode(inviteCode)
                 .inviteExpiresAt(inviteExpiresAt)
                 .maxMembers(request.maxMembers())
+                .durationDays(request.durationDays())
+                .depositAmount(request.depositAmount())
                 .build();
         partyRepository.save(party);
 
@@ -116,6 +119,22 @@ public class PartyService {
     @Transactional(readOnly = true)
     public List<PartyListResDto> getMyParties(Long userId) {
         return partyRepository.findMyPartiesExcludingWaiting(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public PartyWaitingResDto getPartyWaiting(Long partyId, Long userId) {
+        Party party = partyRepository.findById(partyId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
+
+        List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
+
+        boolean isRequesterMember = partyMembers.stream()
+                .anyMatch(member -> member.getUser().getId().equals(userId));
+        if (!isRequesterMember) {
+            throw new RestApiException(GlobalErrorStatus._NOT_PARTY_MEMBER);
+        }
+
+        return PartyWaitingResDto.of(party, partyMembers, userId);
     }
 
     private String generateUniqueInviteCode() {

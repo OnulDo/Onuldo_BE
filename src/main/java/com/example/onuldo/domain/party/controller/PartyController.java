@@ -4,14 +4,15 @@ import com.example.onuldo.domain.party.controller.doc.PartyControllerDoc;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
+import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.domain.party.service.PartyService;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.security.JwtAuthenticationInterceptor;
+import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,7 +28,7 @@ public class PartyController implements PartyControllerDoc {
 
     @PostMapping
     public BaseResponse<PartyCreateResDto> createParty(
-            @RequestAttribute(JwtAuthenticationInterceptor.AUTHENTICATED_USER_ID_ATTRIBUTE)
+            @AuthUser
             Long userId,
             @Valid
             @RequestBody
@@ -38,9 +39,19 @@ public class PartyController implements PartyControllerDoc {
 
     @GetMapping
     public BaseResponse<List<PartyListResDto>> getMyParties(
-            @RequestAttribute(JwtAuthenticationInterceptor.AUTHENTICATED_USER_ID_ATTRIBUTE)
+            @AuthUser
             Long userId
     ) {
         return BaseResponse.onSuccess(partyService.getMyParties(userId));
+    }
+
+    @GetMapping("/{partyId}/waiting")
+    public BaseResponse<PartyWaitingResDto> getPartyWaiting(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    ) {
+        return BaseResponse.onSuccess(partyService.getPartyWaiting(partyId, userId));
     }
 }
