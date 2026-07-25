@@ -3,6 +3,7 @@ package com.example.onuldo.domain.user.controller;
 import com.example.onuldo.domain.user.controller.doc.UserControllerDoc;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
+import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.service.UserService;
 import com.example.onuldo.global.common.base.BaseResponse;
@@ -17,6 +18,13 @@ import org.springframework.web.bind.annotation.*;
 public class UserController implements UserControllerDoc {
 
     private final UserService userService;
+
+    @GetMapping("/profile")
+    public BaseResponse<GetProfileResDto> getProfile(
+            @AuthUser Long userId
+    ) {
+        return BaseResponse.onSuccess(userService.getProfile(userId));
+    }
 
     @GetMapping("/notification")
     public BaseResponse<GetNotificationResDto> getNotification(

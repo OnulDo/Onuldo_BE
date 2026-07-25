@@ -2,6 +2,7 @@ package com.example.onuldo.domain.user.controller.doc;
 
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
+import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.security.AuthUser;
@@ -14,6 +15,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "User", description = "마이페이지 API")
 public interface UserControllerDoc {
+
+    @Operation(
+            summary = "프로필 조회",
+            description = "현재 로그인한 사용자의 프로필 정보를 조회합니다."
+    )
+    BaseResponse<GetProfileResDto> getProfile(
+            @AuthUser
+            Long userId
+    );
 
     @Operation(
             summary = "알림 설정 조회",
