@@ -2,8 +2,10 @@ package com.example.onuldo.domain.party.controller;
 
 import com.example.onuldo.domain.party.controller.doc.PartyControllerDoc;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
+import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
+import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.domain.party.service.PartyService;
 import com.example.onuldo.global.common.base.BaseResponse;
@@ -53,5 +55,37 @@ public class PartyController implements PartyControllerDoc {
             Long partyId
     ) {
         return BaseResponse.onSuccess(partyService.getPartyWaiting(partyId, userId));
+    }
+
+    @PostMapping("/join")
+    public BaseResponse<PartyWaitingResDto> joinParty(
+            @AuthUser
+            Long userId,
+            @Valid
+            @RequestBody
+            PartyJoinReqDto request
+    ) {
+        return BaseResponse.onSuccess(partyService.joinParty(userId, request));
+    }
+
+    //TODO-BE확인필요 준비완료 전환 API는 API 목록에 없었으나 PAR-05, PAR-ERR-03 근거로 추가함
+    @PostMapping("/{partyId}/ready")
+    public BaseResponse<PartyWaitingResDto> togglePartyMemberReady(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    ) {
+        return BaseResponse.onSuccess(partyService.togglePartyMemberReady(partyId, userId));
+    }
+
+    @PostMapping("/{partyId}/start")
+    public BaseResponse<PartyStartResDto> startParty(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    ) {
+        return BaseResponse.onSuccess(partyService.startParty(partyId, userId));
     }
 }
