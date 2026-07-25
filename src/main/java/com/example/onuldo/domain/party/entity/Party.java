@@ -71,10 +71,15 @@ public class Party {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // PAR-05: 시작 시 상태 전환 + 초대코드 만료 (시작 후 초대코드 만료·파티원 추가 불가)
-    public void start() {
-        this.status = PartyStatus.ONGOING;
-        this.startTriggeredAt = LocalDateTime.now();
-        this.inviteExpiresAt = LocalDateTime.now();
+    public void updateStatus(PartyStatus status) {
+        this.status = status;
+    }
+
+    public void updateStartTriggeredAt(LocalDateTime startTriggeredAt) {
+        this.startTriggeredAt = startTriggeredAt;
+    }
+
+    public void updateInviteExpiresAt(LocalDateTime inviteExpiresAt) {
+        this.inviteExpiresAt = inviteExpiresAt;
     }
 }

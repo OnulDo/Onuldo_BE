@@ -68,7 +68,7 @@ public class PartyController implements PartyControllerDoc {
         return BaseResponse.onSuccess(partyService.joinParty(userId, request));
     }
 
-    //TODO-BE확인필요 준비완료 전환 API는 API 목록에 없었으나 PAR-05, PAR-ERR-03 근거로 추가함
+    // 준비완료 전환 API는 파티 API 목록(7개)에 명시되어 있지 않았으나 PAR-05, PAR-ERR-03 근거로 추가함 (BE 확인 필요)
     @PostMapping("/{partyId}/ready")
     public BaseResponse<PartyWaitingResDto> togglePartyMemberReady(
             @AuthUser

@@ -164,7 +164,7 @@ public class PartyService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
-        //TODO-파티 중복 참여 방지용 코드 (정책서에 근거 없음..)
+        // 파티 중복 참여 방지용 코드 (정책서 근거 없음)
         if (partyMemberRepository.existsByParty_IdAndUser_Id(party.getId(), userId)) {
             throw new RestApiException(GlobalErrorStatus._ALREADY_PARTY_MEMBER);
         }
@@ -181,7 +181,7 @@ public class PartyService {
         return PartyWaitingResDto.of(party, partyMembers, userId);
     }
 
-    //TODO-BE확인필요 준비완료 전환 API는 API 목록에 없었으나 PAR-05, PAR-ERR-03 근거로 추가함
+    // 준비완료 전환 API는 파티 API 목록(7개)에 명시되어 있지 않았으나 PAR-05, PAR-ERR-03 근거로 추가함 (BE 확인 필요)
     // PAR-05, PAR-ERR-03: 파티원 준비완료/대기 상태 토글
     public PartyWaitingResDto togglePartyMemberReady(Long partyId, Long userId) {
         Party party = partyRepository.findById(partyId)
@@ -245,12 +245,14 @@ public class PartyService {
             userRepository.save(user);
         }
 
-        // PAR-05: 시작 시 상태 전환 + 초대코드 만료 (엔티티 내부에서 처리)
-        party.start();
+        // PAR-05: 시작 시 상태 전환 + 초대코드 만료 (시작 후 초대코드 만료·파티원 추가 불가)
+        LocalDateTime now = LocalDateTime.now();
+        party.updateStatus(PartyStatus.ONGOING);
+        party.updateStartTriggeredAt(now);
+        party.updateInviteExpiresAt(now);
         partyRepository.save(party);
 
-        //TODO-챌린지 진행 시작(파티와 연계된 Challenge/Participation 기록 생성)은 챌린지 도메인과의 연동 방식이 확정되지 않아 이번 커밋에서는 제외함. 추후 논의 필요.
-
+        // 챌린지 진행 시작(파티와 연계된 Challenge/Participation 기록 생성)은 도메인 연동 방식이 확정되지 않아 이번 커밋에서는 제외함
         return PartyStartResDto.of(party);
     }
 
