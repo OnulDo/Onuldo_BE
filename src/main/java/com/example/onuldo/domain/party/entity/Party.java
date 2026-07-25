@@ -70,4 +70,16 @@ public class Party {
     @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public void updateStatus(PartyStatus status) {
+        this.status = status;
+    }
+
+    public void updateStartTriggeredAt(LocalDateTime startTriggeredAt) {
+        this.startTriggeredAt = startTriggeredAt;
+    }
+
+    public void updateInviteExpiresAt(LocalDateTime inviteExpiresAt) {
+        this.inviteExpiresAt = inviteExpiresAt;
+    }
 }

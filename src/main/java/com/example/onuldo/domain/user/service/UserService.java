@@ -1,6 +1,7 @@
 package com.example.onuldo.domain.user.service;
 
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
+import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
@@ -30,6 +31,19 @@ public class UserService {
                 .nickname(user.getNickname())
                 .email(user.getEmail())
                 .profileImageUrl(user.getProfileImageUrl())
+                .build();
+    }
+
+    public GetMyPageResDto getMyPage(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+        return GetMyPageResDto.builder()
+                .nickname(user.getNickname())
+                .email(user.getEmail())
+                .profileImageUrl(user.getProfileImageUrl())
+                .currentPoint(user.getPointBalance())
+                .joinedAt(user.getCreatedAt().toLocalDate())
                 .build();
     }
 
