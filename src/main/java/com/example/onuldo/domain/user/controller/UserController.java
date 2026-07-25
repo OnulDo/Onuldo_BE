@@ -2,6 +2,7 @@ package com.example.onuldo.domain.user.controller;
 
 import com.example.onuldo.domain.user.controller.doc.UserControllerDoc;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
+import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.service.UserService;
@@ -18,9 +19,18 @@ public class UserController implements UserControllerDoc {
 
     private final UserService userService;
 
+    @GetMapping
+    public BaseResponse<GetMyPageResDto> getMyPage(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess("마이페이지 메인 조회에 성공했습니다.", userService.getMyPage(userId));
+    }
+
     @GetMapping("/notification")
     public BaseResponse<GetNotificationResDto> getNotification(
-            @AuthUser Long userId
+            @AuthUser
+            Long userId
     ) {
         return BaseResponse.onSuccess(userService.getNotification(userId));
     }
