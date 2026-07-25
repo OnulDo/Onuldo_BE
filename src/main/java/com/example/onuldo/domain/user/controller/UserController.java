@@ -21,14 +21,16 @@ public class UserController implements UserControllerDoc {
 
     @GetMapping
     public BaseResponse<GetMyPageResDto> getMyPage(
-            @AuthUser Long userId
+            @AuthUser
+            Long userId
     ) {
         return BaseResponse.onSuccess("마이페이지 메인 조회에 성공했습니다.", userService.getMyPage(userId));
     }
 
     @GetMapping("/notification")
     public BaseResponse<GetNotificationResDto> getNotification(
-            @AuthUser Long userId
+            @AuthUser
+            Long userId
     ) {
         return BaseResponse.onSuccess(userService.getNotification(userId));
     }
