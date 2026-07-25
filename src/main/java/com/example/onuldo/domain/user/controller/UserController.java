@@ -35,7 +35,7 @@ public class UserController implements UserControllerDoc {
             @AuthUser
             Long userId
     ) {
-        return BaseResponse.onSuccess(userService.getProfile(userId));
+        return BaseResponse.onSuccess("프로필 조회에 성공했습니다.", userService.getProfile(userId));
     }
 
     @GetMapping
