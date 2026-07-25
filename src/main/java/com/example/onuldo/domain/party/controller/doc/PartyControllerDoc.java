@@ -3,6 +3,7 @@ package com.example.onuldo.domain.party.controller.doc;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
+import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
-@Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작 관련 API")
+@Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작, 진행 피드 관련 API")
 public interface PartyControllerDoc {
 
     @Operation(
@@ -283,7 +284,8 @@ public interface PartyControllerDoc {
     @Operation(
             summary = "파티 시작",
             description = "방장이 파티를 시작합니다. 파티원이 2인 이상 모이고 전원 준비완료 상태여야 시작할 수 있습니다. "
-                    + "시작 시 파티원 전원의 도전금이 일괄 예치(포인트 차감)되며, 파티 상태가 진행 중(ONGOING)으로 전환되고 초대코드가 만료됩니다."
+                    + "시작 시 파티원 전원의 도전금이 일괄 예치(포인트 차감)되며, 파티 상태가 진행 중(ONGOING)으로 전환되고 초대코드가 만료됩니다. "
+                    + "파티원별 챌린지 참여 기록도 이 시점에 생성됩니다."
     )
     @ApiResponse(
             responseCode = "200",
@@ -306,6 +308,60 @@ public interface PartyControllerDoc {
             )
     )
     BaseResponse<PartyStartResDto> startParty(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    );
+
+    @Operation(
+            summary = "파티 진행 피드 조회",
+            description = "파티의 오늘 팀 진행률(오늘 인증 완료 파티원 비율)과 파티원별 오늘 인증 현황을 조회합니다. "
+                    + "인증이 AI 자동 심사에서 통과(AUTO_PASS)한 경우에만 인증 완료로 집계합니다. "
+                    + "요청자가 해당 파티의 파티원이 아니면 조회할 수 없습니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                          "timestamp": "2026-07-23T13:00:00",
+                          "code": "SUCCESS",
+                          "message": "요청에 성공하였습니다.",
+                          "result": {
+                            "partyId": 101,
+                            "name": "갓생팟",
+                            "challengeTitle": "새벽 6시 기상",
+                            "progressRate": 0.72,
+                            "verifiedMemberCount": 3,
+                            "totalMemberCount": 4,
+                            "members": [
+                              {
+                                "userId": 5,
+                                "nickname": "민지",
+                                "profileImageUrl": "https://cdn.onuldo.com/profile/5.png",
+                                "isVerifiedToday": true,
+                                "verificationPhotoUrl": "https://cdn.onuldo.com/verification/101.png",
+                                "verifiedAt": "2026-07-23T09:00:00"
+                              },
+                              {
+                                "userId": 9,
+                                "nickname": "하늘",
+                                "profileImageUrl": "https://cdn.onuldo.com/profile/9.png",
+                                "isVerifiedToday": false,
+                                "verificationPhotoUrl": null,
+                                "verifiedAt": null
+                              }
+                            ]
+                          }
+                        }
+                        """
+                    )
+            )
+    )
+    BaseResponse<PartyFeedResDto> getPartyFeed(
             @AuthUser
             Long userId,
             @PathVariable
