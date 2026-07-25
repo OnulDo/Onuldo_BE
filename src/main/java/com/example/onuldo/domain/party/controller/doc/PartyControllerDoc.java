@@ -1,8 +1,10 @@
 package com.example.onuldo.domain.party.controller.doc;
 
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
+import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
+import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.security.AuthUser;
@@ -17,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
-@Tag(name = "Party", description = "파티 생성, 조회 관련 API")
+@Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작 관련 API")
 public interface PartyControllerDoc {
 
     @Operation(
@@ -161,6 +163,149 @@ public interface PartyControllerDoc {
             )
     )
     BaseResponse<PartyWaitingResDto> getPartyWaiting(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    );
+
+    @Operation(
+            summary = "초대코드로 파티 참여",
+            description = "6자리 초대코드를 입력받아 유효성을 검증하고 파티에 참여합니다. "
+                    + "무효한 코드, 이미 시작된 파티, 인원 초과, 만료된 코드인 경우 각각 다른 오류 메시지를 반환합니다. "
+                    + "참여 성공 시 파티 대기방 정보를 함께 반환합니다."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                          "inviteCode": "82K3H9"
+                        }
+                        """
+                    )
+            )
+    )
+    @ApiResponse(
+            responseCode = "200",
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                          "timestamp": "2026-07-23T13:00:00",
+                          "code": "SUCCESS",
+                          "message": "요청에 성공하였습니다.",
+                          "result": {
+                            "partyId": 101,
+                            "name": "갓생팟",
+                            "status": "WAITING",
+                            "inviteCode": "82K3H9",
+                            "currentMembers": 4,
+                            "maxMembers": 4,
+                            "durationDays": 28,
+                            "depositAmount": 30000,
+                            "members": [
+                              {
+                                "userId": 5,
+                                "nickname": "김민지",
+                                "profileImageUrl": "https://cdn.onuldo.com/profile/5.png",
+                                "role": "HOST",
+                                "status": "WAITING"
+                              }
+                            ],
+                            "isHost": false,
+                            "canStart": false
+                          }
+                        }
+                        """
+                    )
+            )
+    )
+    BaseResponse<PartyWaitingResDto> joinParty(
+            @AuthUser
+            Long userId,
+            @Valid
+            @RequestBody
+            PartyJoinReqDto request
+    );
+
+    @Operation(
+            summary = "파티원 준비완료 상태 토글",
+            description = "파티원이 대기방에서 [준비완료]/[대기] 상태를 전환합니다. "
+                    + "방장은 준비완료 대상이 아닙니다. "
+                    + "준비완료로 전환 시 보유 포인트가 도전금보다 부족하면 전환에 실패합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                          "timestamp": "2026-07-23T13:00:00",
+                          "code": "SUCCESS",
+                          "message": "요청에 성공하였습니다.",
+                          "result": {
+                            "partyId": 101,
+                            "name": "갓생팟",
+                            "status": "WAITING",
+                            "inviteCode": "82K3H9",
+                            "currentMembers": 4,
+                            "maxMembers": 4,
+                            "durationDays": 28,
+                            "depositAmount": 30000,
+                            "members": [
+                              {
+                                "userId": 7,
+                                "nickname": "이서연",
+                                "profileImageUrl": "https://cdn.onuldo.com/profile/7.png",
+                                "role": "MEMBER",
+                                "status": "READY"
+                              }
+                            ],
+                            "isHost": false,
+                            "canStart": false
+                          }
+                        }
+                        """
+                    )
+            )
+    )
+    BaseResponse<PartyWaitingResDto> togglePartyMemberReady(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    );
+
+    @Operation(
+            summary = "파티 시작",
+            description = "방장이 파티를 시작합니다. 파티원이 2인 이상 모이고 전원 준비완료 상태여야 시작할 수 있습니다. "
+                    + "시작 시 파티원 전원의 도전금이 일괄 예치(포인트 차감)되며, 파티 상태가 진행 중(ONGOING)으로 전환되고 초대코드가 만료됩니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                          "timestamp": "2026-07-23T13:00:00",
+                          "code": "SUCCESS",
+                          "message": "요청에 성공하였습니다.",
+                          "result": {
+                            "partyId": 101,
+                            "status": "ONGOING",
+                            "startTriggeredAt": "2026-07-23T13:00:00"
+                          }
+                        }
+                        """
+                    )
+            )
+    )
+    BaseResponse<PartyStartResDto> startParty(
             @AuthUser
             Long userId,
             @PathVariable

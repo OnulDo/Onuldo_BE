@@ -36,7 +36,21 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _INVALID_PARTY_NAME(HttpStatus.BAD_REQUEST, "INVALID_PARTY_NAME", "파티 이름은 한글, 영문, 숫자, 공백으로 2~20자 이내로 입력해주세요."),
     _INVALID_MAX_MEMBERS(HttpStatus.BAD_REQUEST, "INVALID_MAX_MEMBERS", "모집 인원은 2명 이상 5명 이하로 설정해주세요."),
     _PARTY_NOT_FOUND(HttpStatus.NOT_FOUND, "PARTY_NOT_FOUND", "존재하지 않는 파티입니다."),
-    _NOT_PARTY_MEMBER(HttpStatus.FORBIDDEN, "NOT_PARTY_MEMBER", "해당 파티의 파티원이 아닙니다.");
+    _NOT_PARTY_MEMBER(HttpStatus.FORBIDDEN, "NOT_PARTY_MEMBER", "해당 파티의 파티원이 아닙니다."),
+
+    // PAR-ERR-01: 초대코드 오류 4종
+    _INVALID_INVITE_CODE(HttpStatus.BAD_REQUEST, "INVALID_INVITE_CODE", "잘못된 초대코드예요. 코드를 다시 확인해주세요."),
+    _PARTY_ALREADY_STARTED(HttpStatus.CONFLICT, "PARTY_ALREADY_STARTED", "이미 시작된 파티예요."),
+    _PARTY_FULL(HttpStatus.CONFLICT, "PARTY_FULL", "파티 인원이 가득 찼어요."),
+    _INVITE_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "INVITE_CODE_EXPIRED", "만료된 초대코드예요."),
+
+    // PAR-04: 초대코드로 이미 참여 중인 파티에 중복 참여 방지 (정책서에 명시되지 않았으나 PK 제약상 필요한 기술적 방어 로직)
+    _ALREADY_PARTY_MEMBER(HttpStatus.CONFLICT, "ALREADY_PARTY_MEMBER", "이미 참여 중인 파티입니다."),
+
+    // PAR-05: 파티 시작/준비완료
+    _NOT_PARTY_HOST(HttpStatus.FORBIDDEN, "NOT_PARTY_HOST", "방장만 파티를 시작할 수 있습니다."),
+    _PARTY_NOT_READY_TO_START(HttpStatus.BAD_REQUEST, "PARTY_NOT_READY_TO_START", "파티원이 2인 이상 모이고 전원 준비완료해야 시작할 수 있습니다."),
+    _HOST_CANNOT_READY(HttpStatus.BAD_REQUEST, "HOST_CANNOT_READY", "방장은 준비완료 대상이 아닙니다.");
 
     private final HttpStatus httpStatus;
     private final boolean isSuccess = false;
