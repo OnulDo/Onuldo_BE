@@ -56,6 +56,14 @@ public class Party {
     @Column(name = "max_members", nullable = false)
     private Integer maxMembers = 5;
 
+    // PAR-06: 대기방 헤더에 진행 기간 표시, PAR-05: 파티 시작 시 파티원 전원 도전금 예치에 사용
+    @Column(name = "duration_days", nullable = false)
+    private Integer durationDays;
+
+    // PAR-06: 대기방 헤더에 1인 도전금 표시, PAR-05: 파티 시작 시 파티원 전원 도전금 예치에 사용
+    @Column(name = "deposit_amount", nullable = false)
+    private Integer depositAmount;
+
     @Column(name = "start_triggered_at")
     private LocalDateTime startTriggeredAt;
 

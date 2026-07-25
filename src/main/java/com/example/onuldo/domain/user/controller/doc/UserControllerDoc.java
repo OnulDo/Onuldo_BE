@@ -2,6 +2,7 @@ package com.example.onuldo.domain.user.controller.doc;
 
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
+import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.PointTransactionScrollResDto;
@@ -23,6 +24,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "User", description = "마이페이지 API")
 public interface UserControllerDoc {
+
+    @Operation(
+            summary = "마이페이지 메인 조회",
+            description = "현재 로그인한 사용자의 마이페이지 메인 정보를 조회합니다."
+    )
+    BaseResponse<GetMyPageResDto> getMyPage(
+            @AuthUser
+            Long userId
+    );
 
     @Operation(
             summary = "알림 설정 조회",
@@ -71,6 +81,18 @@ public interface UserControllerDoc {
     @Operation(
             summary = "포인트 충전",
             description = "결제 수단을 통해 포인트를 충전하고 충전된 금액과 충전 후 잔액을 반환합니다."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                          "point": 10000
+                        }
+                        """
+                    )
+            )
     )
     @ApiResponse(
             responseCode = "200",

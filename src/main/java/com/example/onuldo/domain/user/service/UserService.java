@@ -1,6 +1,7 @@
 package com.example.onuldo.domain.user.service;
 
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
+import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.entity.NotificationSetting;
@@ -20,6 +21,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final NotificationSettingRepository notificationSettingRepository;
+
+    public GetMyPageResDto getMyPage(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+        return GetMyPageResDto.builder()
+                .nickname(user.getNickname())
+                .email(user.getEmail())
+                .profileImageUrl(user.getProfileImageUrl())
+                .currentPoint(user.getPointBalance())
+                .joinedAt(user.getCreatedAt().toLocalDate())
+                .build();
+    }
 
     @Transactional
     public GetNotificationResDto getNotification(Long userId) {
