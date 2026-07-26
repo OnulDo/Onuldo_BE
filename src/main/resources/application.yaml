@@ -1,27 +1,19 @@
 spring:
   application:
-    name: umc
-
-  #  config:
-  #    import: "file:./.env[.properties]"
-
-  datasource:
-    url: jdbc:mysql://localhost:3306/parkouroot
-    username: parkouroot-user
-    password: vkzmfnxm1234
-    driver-class-name: com.mysql.cj.jdbc.Driver
-
+    name: oneuldo
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
+    defer-datasource-initialization: true
 
-jwt:
-  token:
-    secretKey: "local-development-jwt-secret-key-32-characters"
-    refreshKey: ${JWT_TOKEN_EXPIRATION_REFRESH}
-    expiration:
-      access: 1800000 # 30분
-      refresh: 1209600000 # 14일
-vote:
-  deadline-seconds: ${VOTE_DEADLINE_SECONDS:120}
+  sql:
+    init:
+      mode: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs

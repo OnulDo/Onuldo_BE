@@ -18,9 +18,14 @@ public class BaseResponse<T> {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private T result;
 
-    //성공한 경우 응답 생성
+    //성공한 경우 응답 생성 (기본 메시지)
     public static <T> BaseResponse<T> onSuccess(T result) {
-        return new BaseResponse<>("200", "요청에 성공하였습니다.", result);
+        return new BaseResponse<>("SUCCESS", "요청에 성공하였습니다.", result);
+    }
+
+    //성공한 경우 응답 생성 (커스텀 메시지)
+    public static <T> BaseResponse<T> onSuccess(String message, T result) {
+        return new BaseResponse<>("SUCCESS", message, result);
     }
 
     // 실패한 경우 응답 생성

@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: false
+
+jwt:
+  token:
+    secretKey: ${JWT_SECRET_KEY}
+    refreshKey: ${JWT_TOKEN_REFRESH_KEY}
+    expiration:
+      access: ${JWT_TOKEN_EXPIRATION_ACCESS}
+      refresh: ${JWT_TOKEN_EXPIRATION_REFRESH}
+
+server:
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always

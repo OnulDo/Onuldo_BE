@@ -36,4 +36,12 @@ out/
 ### VS Code ###
 .vscode/
 
-.env
+.env*
+!.env.example
+
+.omc/
+.DS_Store
+
+*.pem
+*.key
+*.p12

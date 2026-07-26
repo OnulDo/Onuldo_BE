@@ -1,0 +1,102 @@
+package com.example.onuldo.domain.party.controller;
+
+import com.example.onuldo.domain.party.controller.doc.PartyControllerDoc;
+import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
+import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
+import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
+import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
+import com.example.onuldo.domain.party.dto.response.PartyListResDto;
+import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
+import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
+import com.example.onuldo.domain.party.service.PartyService;
+import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.security.AuthUser;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/parties")
+public class PartyController implements PartyControllerDoc {
+
+    private final PartyService partyService;
+
+    @PostMapping
+    public BaseResponse<PartyCreateResDto> createParty(
+            @AuthUser
+            Long userId,
+            @Valid
+            @RequestBody
+            PartyCreateReqDto request
+    ) {
+        return BaseResponse.onSuccess(partyService.createParty(userId, request));
+    }
+
+    @GetMapping
+    public BaseResponse<List<PartyListResDto>> getMyParties(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess(partyService.getMyParties(userId));
+    }
+
+    @GetMapping("/{partyId}/waiting")
+    public BaseResponse<PartyWaitingResDto> getPartyWaiting(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    ) {
+        return BaseResponse.onSuccess(partyService.getPartyWaiting(partyId, userId));
+    }
+
+    @PostMapping("/join")
+    public BaseResponse<PartyWaitingResDto> joinParty(
+            @AuthUser
+            Long userId,
+            @Valid
+            @RequestBody
+            PartyJoinReqDto request
+    ) {
+        return BaseResponse.onSuccess(partyService.joinParty(userId, request));
+    }
+
+    // 준비완료 전환 API는 파티 API 목록(7개)에 명시되어 있지 않았으나 PAR-05, PAR-ERR-03 근거로 추가함 (BE 확인 필요)
+    @PostMapping("/{partyId}/ready")
+    public BaseResponse<PartyWaitingResDto> togglePartyMemberReady(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    ) {
+        return BaseResponse.onSuccess(partyService.togglePartyMemberReady(partyId, userId));
+    }
+
+    @PostMapping("/{partyId}/start")
+    public BaseResponse<PartyStartResDto> startParty(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    ) {
+        return BaseResponse.onSuccess(partyService.startParty(partyId, userId));
+    }
+
+    @GetMapping("/{partyId}/feed")
+    public BaseResponse<PartyFeedResDto> getPartyFeed(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    ) {
+        return BaseResponse.onSuccess(partyService.getPartyFeed(partyId, userId));
+    }
+}
