@@ -2,9 +2,12 @@ package com.example.onuldo.domain.challenge.service;
 
 import com.example.onuldo.domain.challenge.dto.request.ParticipationReqDto;
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
+import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
+import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
@@ -20,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -75,6 +79,18 @@ public class ParticipationService {
                 .build();
     }
 
+    public UserChallengeListResDto getUserChallenges(Long userId, ParticipationStatus status) {
+        List<Participation> participations = status == null
+                ? participationRepository.findAllByUser_IdOrderByIdDesc(userId)
+                : participationRepository.findAllByUser_IdAndStatusOrderByIdDesc(userId, status);
+
+        return UserChallengeListResDto.builder()
+                .challenges(participations.stream()
+                        .map(this::toUserChallengeResDto)
+                        .toList())
+                .build();
+    }
+
     private void validateDepositOption(Challenge challenge, Integer depositAmount) {
         if (challenge.getDepositOptionList() == null || !challenge.getDepositOptionList().contains(depositAmount)) {
             throw new RestApiException(GlobalErrorStatus._INVALID_DEPOSIT_OPTION);
@@ -114,6 +130,31 @@ public class ParticipationService {
                 .durationWeeks(durationWeeks)
                 .startDate(startDate)
                 .endDate(endDate)
+                .build();
+    }
+
+    private UserChallengeResDto toUserChallengeResDto(Participation participation) {
+        Challenge challenge = participation.getChallenge();
+
+        return UserChallengeResDto.builder()
+                .participationId(participation.getId())
+                .participationStatus(participation.getStatus())
+                .participationType(participation.getParticipationType())
+                .challengeId(challenge.getId())
+                .challengeName(challenge.getName())
+                .challengeExplainContent(challenge.getExplainContent())
+                .challengeDescription(challenge.getDescription())
+                .challengeCaptionImgUrl(challenge.getCaptionImgUrl())
+                .challengeVerifyMethodContent(challenge.getVerifyMethodContent())
+                .challengeVerificationExamplePhotoUrl(challenge.getVerificationExamplePhotoUrl())
+                .participantCount(challenge.getParticipantCount())
+                .category(challenge.getCategory())
+                .timeStart(challenge.getTimeStart())
+                .timeEnd(challenge.getTimeEnd())
+                .depositAmount(participation.getDepositAmount())
+                .durationWeeks(participation.getDurationWeeks())
+                .startDate(participation.getStartDate())
+                .endDate(participation.getEndDate())
                 .build();
     }
 }

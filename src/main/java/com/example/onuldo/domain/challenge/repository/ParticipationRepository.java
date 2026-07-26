@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface ParticipationRepository extends JpaRepository<Participation, Long> {
 
     boolean existsByUser_IdAndChallenge_Id(Long userId, Long challengeId);
@@ -31,4 +33,8 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             @Param("status") ParticipationStatus status
     );
 
+
+    List<Participation> findAllByUser_IdOrderByIdDesc(Long userId);
+
+    List<Participation> findAllByUser_IdAndStatusOrderByIdDesc(Long userId, ParticipationStatus status);
 }
