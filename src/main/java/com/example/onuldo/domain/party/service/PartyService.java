@@ -1,10 +1,17 @@
 package com.example.onuldo.domain.party.service;
 
 import com.example.onuldo.domain.challenge.entity.Challenge;
+import com.example.onuldo.domain.challenge.entity.Participation;
+import com.example.onuldo.domain.challenge.entity.Verification;
+import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
+import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
+import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
+import com.example.onuldo.domain.party.dto.response.PartyFeedItemResDto;
+import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
@@ -30,9 +37,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -54,11 +64,16 @@ public class PartyService {
     // PAR-05: [시작하기] 활성화를 위한 최소 인원 (방장 포함 2인 이상)
     private static final int MIN_MEMBERS_TO_START = 2;
 
+    // 파티 진행 기간은 2/4/8/12주 단위(일수 14/28/56/84)로만 생성되어 7로 나누어떨어짐
+    private static final int DAYS_PER_WEEK = 7;
+
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
     private final PartyChallengeRepository partyChallengeRepository;
     private final UserRepository userRepository;
     private final ChallengeRepository challengeRepository;
+    private final ParticipationRepository participationRepository;
+    private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
@@ -277,8 +292,82 @@ public class PartyService {
         party.updateInviteExpiresAt(now);
         partyRepository.save(party);
 
-        // 챌린지 진행 시작(파티와 연계된 Challenge/Participation 기록 생성)은 도메인 연동 방식이 확정되지 않아 이번 커밋에서는 제외함
+        // PAR-05: 시작 시 챌린지 진행 시작 — 파티원별 Participation(참여 기록) 생성
+        // (인증/진행 피드 조회가 이 Participation을 기준으로 동작하므로 시작 시점에 반드시 생성되어야 함)
+        PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(partyId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+        Challenge challenge = partyChallenge.getChallenge();
+
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = startDate.plusDays(party.getDurationDays());
+        int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
+
+        for (PartyMember member : partyMembers) {
+            Participation participation = Participation.builder()
+                    .user(member.getUser())
+                    .challenge(challenge)
+                    .party(party)
+                    .participationType(ParticipationType.PARTY)
+                    .depositAmount(party.getDepositAmount())
+                    .durationWeeks(durationWeeks)
+                    .startDate(startDate)
+                    .endDate(endDate)
+                    .build();
+            participationRepository.save(participation);
+        }
+
         return PartyStartResDto.of(party);
+    }
+
+    // 파티 진행 피드: 팀 진행률(오늘 인증 완료 비율)과 파티원별 오늘 인증 현황 조회
+    @Transactional(readOnly = true)
+    public PartyFeedResDto getPartyFeed(Long partyId, Long userId) {
+        Party party = partyRepository.findById(partyId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
+
+        List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
+
+        boolean isRequesterMember = partyMembers.stream()
+                .anyMatch(member -> member.getUser().getId().equals(userId));
+        if (!isRequesterMember) {
+            throw new RestApiException(GlobalErrorStatus._NOT_PARTY_MEMBER);
+        }
+
+        PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(partyId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+
+        List<Verification> todayVerifications =
+                verificationRepository.findTodayAutoPassVerificationsByPartyId(partyId, LocalDate.now());
+
+        // 파티원 1인당 하루 1회 인증이 원칙이므로 userId 기준으로 매핑
+        Map<Long, Verification> verificationByUserId = todayVerifications.stream()
+                .collect(Collectors.toMap(
+                        v -> v.getParticipation().getUser().getId(),
+                        v -> v
+                ));
+
+        List<PartyFeedItemResDto> members = partyMembers.stream()
+                .map(member -> {
+                    Verification verification = verificationByUserId.get(member.getUser().getId());
+                    return verification != null
+                            ? PartyFeedItemResDto.verified(member.getUser(), verification)
+                            : PartyFeedItemResDto.notVerified(member.getUser());
+                })
+                .toList();
+
+        int verifiedMemberCount = verificationByUserId.size();
+        int totalMemberCount = partyMembers.size();
+        double progressRate = totalMemberCount == 0 ? 0.0 : (double) verifiedMemberCount / totalMemberCount;
+
+        return PartyFeedResDto.builder()
+                .partyId(party.getId())
+                .name(party.getName())
+                .challengeTitle(partyChallenge.getChallenge().getName())
+                .progressRate(progressRate)
+                .verifiedMemberCount(verifiedMemberCount)
+                .totalMemberCount(totalMemberCount)
+                .members(members)
+                .build();
     }
 
     private String generateUniqueInviteCode() {

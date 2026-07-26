@@ -8,5 +8,6 @@ import java.util.Optional;
 
 public interface PartyChallengeRepository extends JpaRepository<PartyChallenge, PartyChallengeId> {
 
+    // PAR-01: 1개 파티 = 1개 챌린지 연계
     Optional<PartyChallenge> findByParty_Id(Long partyId);
 }
