@@ -18,7 +18,10 @@ import com.example.onuldo.domain.party.enums.PartyStatus;
 import com.example.onuldo.domain.party.repository.PartyChallengeRepository;
 import com.example.onuldo.domain.party.repository.PartyMemberRepository;
 import com.example.onuldo.domain.party.repository.PartyRepository;
+import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
+import com.example.onuldo.domain.user.enums.PointTransactionType;
+import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
@@ -56,6 +59,7 @@ public class PartyService {
     private final PartyChallengeRepository partyChallengeRepository;
     private final UserRepository userRepository;
     private final ChallengeRepository challengeRepository;
+    private final PointTransactionRepository pointTransactionRepository;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
         // PAR-03: 파티 이름 규칙 검증 (2~20자 한글·영문·숫자·공백)
@@ -233,16 +237,37 @@ public class PartyService {
             throw new RestApiException(GlobalErrorStatus._PARTY_NOT_READY_TO_START);
         }
 
-        // PAR-05: 시작 시 파티원 전원 도전금 일괄 예치 — 먼저 전원 포인트 충분한지 확인 후 일괄 차감
-        for (PartyMember member : partyMembers) {
-            if (member.getUser().getPointBalance() < party.getDepositAmount()) {
+        String challengeName = partyChallengeRepository.findByParty_Id(partyId)
+                .map(partyChallenge -> partyChallenge.getChallenge().getName())
+                .orElse(party.getName());
+
+        // PAR-05: 시작 시 파티원 전원 도전금 일괄 예치
+        // (부족한 파티원이 있으면 예외 발생 → @Transactional에 의해 그 전에 차감된 파티원분까지 전부 롤백됨)
+        List<Long> memberUserIds = partyMembers.stream()
+                .map(member -> member.getUser().getId())
+                .sorted()
+                .toList();
+
+        for (Long memberUserId : memberUserIds) {
+            User user = userRepository.findByIdForUpdate(memberUserId)
+                    .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+            if (user.getPointBalance() < party.getDepositAmount()) {
                 throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY);
             }
-        }
-        for (PartyMember member : partyMembers) {
-            User user = member.getUser();
-            user.setPointBalance(user.getPointBalance() - party.getDepositAmount());
+
+            long balanceAfter = user.getPointBalance() - party.getDepositAmount();
+            user.setPointBalance(balanceAfter);
             userRepository.save(user);
+
+            pointTransactionRepository.save(PointTransaction.builder()
+                    .user(user)
+                    .type(PointTransactionType.DEPOSIT)
+                    .amount(-party.getDepositAmount())
+                    .balanceAfter(balanceAfter)
+                    .description(challengeName)
+                    .build()
+            );
         }
 
         // PAR-05: 시작 시 상태 전환 + 초대코드 만료 (시작 후 초대코드 만료·파티원 추가 불가)
