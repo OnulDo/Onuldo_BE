@@ -11,7 +11,10 @@ import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
+import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
+import com.example.onuldo.domain.user.enums.PointTransactionType;
+import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
@@ -30,9 +33,10 @@ public class ParticipationService {
     private final UserRepository userRepository;
     private final ChallengeRepository challengeRepository;
     private final ParticipationRepository participationRepository;
+    private final PointTransactionRepository pointTransactionRepository;
 
     public ParticipationResDto participatePersonalChallenge(Long userId, Long challengeId, ParticipationReqDto request) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
         Challenge challenge = challengeRepository.findById(challengeId)
@@ -47,13 +51,23 @@ public class ParticipationService {
         LocalDate endDate = startDate.plusWeeks(request.durationWeeks());
         Integer durationDays = request.durationWeeks() * 7;
 
-        user.setPointBalance(user.getPointBalance() - request.depositAmount());
+        long balanceAfter = user.getPointBalance() - request.depositAmount();
+        user.setPointBalance(balanceAfter);
         userRepository.save(user);
 
         Participation participation = createPersonalParticipation(
                 user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate
         );
         participationRepository.save(participation);
+
+        pointTransactionRepository.save(PointTransaction.builder()
+                .user(user)
+                .type(PointTransactionType.DEPOSIT)
+                .amount(-request.depositAmount())
+                .balanceAfter(balanceAfter)
+                .description(challenge.getName())
+                .build()
+        );
 
         return ParticipationResDto.builder()
                 .startDate(startDate)
@@ -93,7 +107,7 @@ public class ParticipationService {
         long shortage = depositAmount.longValue() - user.getPointBalance();
         if (shortage > 0) {
             throw new RestApiException(
-                    GlobalErrorStatus._INSUFFICIENT_POINT,
+                    GlobalErrorStatus._INSUFFICIENT_POINT_FOR_CHALLENGE,
                     "보유 포인트가 " + shortage + "P 부족합니다."
             );
         }

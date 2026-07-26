@@ -23,10 +23,34 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _NICKNAME_TOO_LONG(HttpStatus.BAD_REQUEST, "NICKNAME_TOO_LONG", "8자 이내로 입력해주세요."),
     _TERMS_REQUIRED(HttpStatus.BAD_REQUEST, "TERMS_REQUIRED", "필수 약관에 동의해주세요."),
     _USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
-    _CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE_NOT_FOUND", "챌린지를 찾을 수 없습니다."),
+
+    // 챌린지 관련 에러
+    _CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE_NOT_FOUND", "존재하지 않는 챌린지입니다."),
     _INVALID_DEPOSIT_OPTION(HttpStatus.BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "선택할 수 없는 도전금입니다."),
-    _INSUFFICIENT_POINT(HttpStatus.BAD_REQUEST, "INSUFFICIENT_POINT", "보유 포인트가 부족합니다."),
-    _ALREADY_PARTICIPATING_CHALLENGE(HttpStatus.CONFLICT, "ALREADY_PARTICIPATING_CHALLENGE", "이미 참여 중인 챌린지입니다.");
+    _INSUFFICIENT_POINT_FOR_CHALLENGE(HttpStatus.BAD_REQUEST, "INSUFFICIENT_POINT_FOR_CHALLENGE", "보유 포인트가 부족합니다."),
+    _ALREADY_PARTICIPATING_CHALLENGE(HttpStatus.CONFLICT, "ALREADY_PARTICIPATING_CHALLENGE", "이미 참여 중인 챌린지입니다."),
+
+    // Party 관련 에러
+    _INSUFFICIENT_POINT_FOR_PARTY(HttpStatus.CONFLICT, "INSUFFICIENT_POINT_FOR_PARTY", "보유 포인트가 도전금보다 부족합니다."),
+    _INVITE_CODE_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "INVITE_CODE_GENERATION_FAILED", "초대코드 생성에 반복적으로 실패했습니다. 잠시 후 다시 시도해주세요."),
+    _INVALID_PARTY_NAME(HttpStatus.BAD_REQUEST, "INVALID_PARTY_NAME", "파티 이름은 한글, 영문, 숫자, 공백으로 2~20자 이내로 입력해주세요."),
+    _INVALID_MAX_MEMBERS(HttpStatus.BAD_REQUEST, "INVALID_MAX_MEMBERS", "모집 인원은 2명 이상 5명 이하로 설정해주세요."),
+    _PARTY_NOT_FOUND(HttpStatus.NOT_FOUND, "PARTY_NOT_FOUND", "존재하지 않는 파티입니다."),
+    _NOT_PARTY_MEMBER(HttpStatus.FORBIDDEN, "NOT_PARTY_MEMBER", "해당 파티의 파티원이 아닙니다."),
+
+    // PAR-ERR-01: 초대코드 오류 4종
+    _INVALID_INVITE_CODE(HttpStatus.BAD_REQUEST, "INVALID_INVITE_CODE", "잘못된 초대코드예요. 코드를 다시 확인해주세요."),
+    _PARTY_ALREADY_STARTED(HttpStatus.CONFLICT, "PARTY_ALREADY_STARTED", "이미 시작된 파티예요."),
+    _PARTY_FULL(HttpStatus.CONFLICT, "PARTY_FULL", "파티 인원이 가득 찼어요."),
+    _INVITE_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "INVITE_CODE_EXPIRED", "만료된 초대코드예요."),
+
+    // PAR-04: 초대코드로 이미 참여 중인 파티에 중복 참여 방지 (정책서에 명시되지 않았으나 PK 제약상 필요한 기술적 방어 로직)
+    _ALREADY_PARTY_MEMBER(HttpStatus.CONFLICT, "ALREADY_PARTY_MEMBER", "이미 참여 중인 파티입니다."),
+
+    // PAR-05: 파티 시작/준비완료
+    _NOT_PARTY_HOST(HttpStatus.FORBIDDEN, "NOT_PARTY_HOST", "방장만 파티를 시작할 수 있습니다."),
+    _PARTY_NOT_READY_TO_START(HttpStatus.BAD_REQUEST, "PARTY_NOT_READY_TO_START", "파티원이 2인 이상 모이고 전원 준비완료해야 시작할 수 있습니다."),
+    _HOST_CANNOT_READY(HttpStatus.BAD_REQUEST, "HOST_CANNOT_READY", "방장은 준비완료 대상이 아닙니다.");
 
     private final HttpStatus httpStatus;
     private final boolean isSuccess = false;
