@@ -66,6 +66,18 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(pointService.chargePoint(userId, request));
     }
 
+    @PostMapping("/wallet/signup-bonus")
+    public BaseResponse<ChargePointResDto> grantSignupBonus(
+            @AuthUser
+            Long userId,
+
+            @Valid
+            @RequestBody
+            ChargePointReqDto request
+    ) {
+        return BaseResponse.onSuccess(pointService.grantSignupBonus(userId, request));
+    }
+
     @GetMapping("/wallet/summary")
     public BaseResponse<PointWalletSummaryResDto> getPointWalletSummary(
             @AuthUser
