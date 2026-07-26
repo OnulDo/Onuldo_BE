@@ -5,6 +5,7 @@ import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
+import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
 import com.example.onuldo.domain.user.dto.response.PointTransactionScrollResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
@@ -24,6 +25,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "User", description = "마이페이지 API")
 public interface UserControllerDoc {
+
+    @Operation(
+            summary = "프로필 조회",
+            description = "현재 로그인한 사용자의 프로필 정보를 조회합니다."
+    )
+    BaseResponse<GetProfileResDto> getProfile(
+            @AuthUser
+            Long userId
+    );
 
     @Operation(
             summary = "마이페이지 메인 조회",
@@ -123,6 +133,50 @@ public interface UserControllerDoc {
     );
 
     @Operation(
+            summary = "신규 회원 가입 포인트 지급",
+            description = "회원가입 직후 클라이언트가 호출하여 신규 회원 가입 포인트를 지급받고, 지급된 금액과 지급 후 잔액을 반환합니다."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                          "point": 3000
+                        }
+                        """
+                    )
+            )
+    )
+    @ApiResponse(
+            responseCode = "200",
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                          "timestamp": "2026-07-26T15:28:37.047Z",
+                          "code": "SUCCESS",
+                          "message": "요청에 성공하였습니다.",
+                          "result": {
+                            "amount": 3000,
+                            "balanceAfter": 3000
+                          }
+                        }
+                        """
+                    )
+            )
+    )
+    BaseResponse<ChargePointResDto> grantSignupBonus(
+            @AuthUser
+            Long userId,
+
+            @Valid
+            @RequestBody
+            ChargePointReqDto request
+    );
+
+    @Operation(
             summary = "포인트 지갑 요약 조회",
             description = "잔액, 예치 중인 포인트, 누적 예치액, 누적 환급액, 누적 차감액, 평균 환급률을 조회합니다."
     )
@@ -160,7 +214,7 @@ public interface UserControllerDoc {
                     로그인한 유저의 포인트 거래 내역을 최신순으로 커서 기반 스크롤 조회합니다.
 
                     거래 타입(type)
-                    - CHARGE: 충전
+                    - CHARGE: 충전 (신규 회원 가입 포인트 지급 포함)
                     - WITHDRAW: 출금
                     - DEPOSIT: 예치
                     - REFUND: 환급 (예치금 + 보너스/차감 조정액 포함)

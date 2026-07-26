@@ -2,13 +2,19 @@ package com.example.onuldo.domain.challenge.service;
 
 import com.example.onuldo.domain.challenge.dto.request.ParticipationReqDto;
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
+import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
+import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
+import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
+import com.example.onuldo.domain.user.enums.PointTransactionType;
+import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
@@ -17,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -26,9 +33,10 @@ public class ParticipationService {
     private final UserRepository userRepository;
     private final ChallengeRepository challengeRepository;
     private final ParticipationRepository participationRepository;
+    private final PointTransactionRepository pointTransactionRepository;
 
     public ParticipationResDto participatePersonalChallenge(Long userId, Long challengeId, ParticipationReqDto request) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
         Challenge challenge = challengeRepository.findById(challengeId)
@@ -43,13 +51,23 @@ public class ParticipationService {
         LocalDate endDate = startDate.plusWeeks(request.durationWeeks());
         Integer durationDays = request.durationWeeks() * 7;
 
-        user.setPointBalance(user.getPointBalance() - request.depositAmount());
+        long balanceAfter = user.getPointBalance() - request.depositAmount();
+        user.setPointBalance(balanceAfter);
         userRepository.save(user);
 
         Participation participation = createPersonalParticipation(
                 user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate
         );
         participationRepository.save(participation);
+
+        pointTransactionRepository.save(PointTransaction.builder()
+                .user(user)
+                .type(PointTransactionType.DEPOSIT)
+                .amount(-request.depositAmount())
+                .balanceAfter(balanceAfter)
+                .description(challenge.getName())
+                .build()
+        );
 
         return ParticipationResDto.builder()
                 .startDate(startDate)
@@ -58,6 +76,18 @@ public class ParticipationService {
                 .durationDays(durationDays)
                 .depositAmount(request.depositAmount())
                 .expectedRefundAmount(request.depositAmount())
+                .build();
+    }
+
+    public UserChallengeListResDto getUserChallenges(Long userId, ParticipationStatus status) {
+        List<Participation> participations = status == null
+                ? participationRepository.findAllByUser_IdOrderByIdDesc(userId)
+                : participationRepository.findAllByUser_IdAndStatusOrderByIdDesc(userId, status);
+
+        return UserChallengeListResDto.builder()
+                .challenges(participations.stream()
+                        .map(this::toUserChallengeResDto)
+                        .toList())
                 .build();
     }
 
@@ -100,6 +130,31 @@ public class ParticipationService {
                 .durationWeeks(durationWeeks)
                 .startDate(startDate)
                 .endDate(endDate)
+                .build();
+    }
+
+    private UserChallengeResDto toUserChallengeResDto(Participation participation) {
+        Challenge challenge = participation.getChallenge();
+
+        return UserChallengeResDto.builder()
+                .participationId(participation.getId())
+                .participationStatus(participation.getStatus())
+                .participationType(participation.getParticipationType())
+                .challengeId(challenge.getId())
+                .challengeName(challenge.getName())
+                .challengeExplainContent(challenge.getExplainContent())
+                .challengeDescription(challenge.getDescription())
+                .challengeCaptionImgUrl(challenge.getCaptionImgUrl())
+                .challengeVerifyMethodContent(challenge.getVerifyMethodContent())
+                .challengeVerificationExamplePhotoUrl(challenge.getVerificationExamplePhotoUrl())
+                .participantCount(challenge.getParticipantCount())
+                .category(challenge.getCategory())
+                .timeStart(challenge.getTimeStart())
+                .timeEnd(challenge.getTimeEnd())
+                .depositAmount(participation.getDepositAmount())
+                .durationWeeks(participation.getDurationWeeks())
+                .startDate(participation.getStartDate())
+                .endDate(participation.getEndDate())
                 .build();
     }
 }

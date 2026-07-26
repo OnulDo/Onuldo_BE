@@ -11,6 +11,8 @@ import java.util.List;
 
 public interface PointTransactionRepository extends JpaRepository<PointTransaction, Long> {
 
+    boolean existsByUser_IdAndDescription(Long userId, String description);
+
     @Query("SELECT COALESCE(SUM(pt.amount), 0) " +
             "FROM PointTransaction pt " +
             "WHERE pt.user.id = :userId AND pt.type = :type")
