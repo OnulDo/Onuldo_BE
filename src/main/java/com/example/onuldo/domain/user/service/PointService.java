@@ -54,6 +54,30 @@ public class PointService {
                 .build();
     }
 
+    @Transactional
+    public ChargePointResDto grantSignupBonus(Long userId, ChargePointReqDto request) {
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+        long balanceAfter = user.getPointBalance() + request.point();
+        user.setPointBalance(balanceAfter);
+        userRepository.save(user);
+
+        pointTransactionRepository.save(PointTransaction.builder()
+                .user(user)
+                .type(PointTransactionType.CHARGE)
+                .amount(request.point())
+                .balanceAfter(balanceAfter)
+                .description("신규 회원 가입 포인트 지급")
+                .build()
+        );
+
+        return ChargePointResDto.builder()
+                .amount(request.point())
+                .balanceAfter(balanceAfter)
+                .build();
+    }
+
     @Transactional(readOnly = true)
     public PointWalletSummaryResDto getPointWalletSummary(Long userId) {
         User user = userRepository.findById(userId)
