@@ -3,12 +3,15 @@ package com.example.onuldo.domain.user.controller;
 import com.example.onuldo.domain.user.controller.doc.UserControllerDoc;
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
+import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
-import com.example.onuldo.domain.user.dto.response.*;
-import com.example.onuldo.domain.user.service.PointService;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
+import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
+import com.example.onuldo.domain.user.dto.response.PointTransactionScrollResDto;
+import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
+import com.example.onuldo.domain.user.service.PointService;
 import com.example.onuldo.domain.user.service.UserService;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.security.AuthUser;
@@ -26,6 +29,14 @@ public class UserController implements UserControllerDoc {
 
     private final PointService pointService;
     private final UserService userService;
+
+    @GetMapping("/profile")
+    public BaseResponse<GetProfileResDto> getProfile(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess("프로필 조회에 성공했습니다.", userService.getProfile(userId));
+    }
 
     @GetMapping
     public BaseResponse<GetMyPageResDto> getMyPage(
