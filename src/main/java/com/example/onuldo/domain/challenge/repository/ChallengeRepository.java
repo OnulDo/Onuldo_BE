@@ -17,15 +17,15 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
             where c.status = :status
               and (:category is null or c.category = :category)
               and (
-                    :s is null
-                    or lower(c.name) like lower(concat('%', :s, '%'))
+                    :keyword is null
+                    or lower(c.name) like lower(concat('%', :keyword, '%'))
               )
             order by c.participantCount desc, c.id desc
             """)
     Page<Challenge> findChallenges(
             @Param("status") ChallengeStatus status,
             @Param("category") ChallengeCategory category,
-            @Param("s") String s,
+            @Param("keyword") String keyword,
             Pageable pageable
     );
 }

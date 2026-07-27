@@ -15,7 +15,7 @@ public interface ChallengeControllerDoc {
 
     @Operation(
             summary = "챌린지 목록 조회",
-            description = "오프셋 페이지네이션으로 활성 챌린지 목록을 조회합니다. category와 s(검색어)로 필터링할 수 있습니다."
+            description = "오프셋 페이지네이션으로 활성 챌린지 목록을 조회합니다. category와 keyword(검색어)로 필터링할 수 있습니다."
     )
     BaseResponse<ChallengePageResDto> getChallenges(
             @Parameter(description = "조회할 페이지 번호. 기본값 0", example = "0")
@@ -29,7 +29,7 @@ public interface ChallengeControllerDoc {
             ChallengeCategory category,
             @Parameter(description = "검색어", example = "run")
             @RequestParam(required = false)
-            String s
+            String keyword
     );
 
     @Operation(

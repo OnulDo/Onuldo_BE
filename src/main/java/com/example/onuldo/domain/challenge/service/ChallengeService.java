@@ -19,19 +19,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ChallengeService {
 
+    private static final int MAX_PAGE_SIZE = 50;
+
     private final ChallengeRepository challengeRepository;
 
     public ChallengePageResDto getChallenges(
             int page,
             int size,
             ChallengeCategory category,
-            String s
+            String keyword
     ) {
+        validatePage(page);
+        int resolvedSize = getResolvedSize(size);
+
         Page<Challenge> challengePage = challengeRepository.findChallenges(
                 ChallengeStatus.ACTIVE,
                 category,
-                normalizeKeyword(s),
-                PageRequest.of(page, resolveSize(size))
+                normalizeKeyword(keyword),
+                PageRequest.of(page, resolvedSize)
         );
 
         return ChallengePageResDto.builder()
@@ -80,7 +85,17 @@ public class ChallengeService {
         return s.trim();
     }
 
-    private int resolveSize(int size) {
-        return Math.min(size, 50);
+    private int getResolvedSize(int size) {
+        if (size <= 0) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 크기는 1 이상이어야 합니다.");
+        }
+
+        return Math.min(size, MAX_PAGE_SIZE);
+    }
+
+    private void validatePage(int page) {
+        if (page < 0) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.");
+        }
     }
 }

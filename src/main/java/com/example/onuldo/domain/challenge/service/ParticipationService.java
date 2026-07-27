@@ -35,7 +35,11 @@ public class ParticipationService {
     private final ParticipationRepository participationRepository;
     private final PointTransactionRepository pointTransactionRepository;
 
-    public ParticipationResDto participatePersonalChallenge(Long userId, Long challengeId, ParticipationReqDto request) {
+    public ParticipationResDto participatePersonalChallenge(
+            Long userId,
+            Long challengeId,
+            ParticipationReqDto request
+    ) {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
@@ -121,7 +125,7 @@ public class ParticipationService {
             LocalDate startDate,
             LocalDate endDate
     ) {
-        return Participation.builder()
+        Participation participation = Participation.builder()
                 .user(user)
                 .challenge(challenge)
                 .party(null)
@@ -131,6 +135,18 @@ public class ParticipationService {
                 .startDate(startDate)
                 .endDate(endDate)
                 .build();
+        validateParticipationState(participation);
+        return participation;
+    }
+
+    private void validateParticipationState(Participation participation) {
+        if (participation.getParticipationType() == ParticipationType.PERSONAL && participation.getParty() != null) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "개인 참여에는 party가 연결되면 안 됩니다.");
+        }
+
+        if (participation.getParticipationType() == ParticipationType.PARTY && participation.getParty() == null) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "party 참여에는 party가 필요합니다.");
+        }
     }
 
     private UserChallengeResDto toUserChallengeResDto(Participation participation) {

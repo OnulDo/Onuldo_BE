@@ -19,13 +19,22 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/users/me")
 public class UserController implements UserControllerDoc {
+
+    private static final String DEFAULT_TRANSACTION_PAGE_SIZE = "10";
+    private static final int MIN_TRANSACTION_PAGE_SIZE = 1;
 
     private final PointService pointService;
     private final UserService userService;
@@ -46,7 +55,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess("마이페이지 메인 조회에 성공했습니다.", userService.getMyPage(userId));
     }
 
-    @GetMapping("/notification")
+    @GetMapping("/notification-settings")
     public BaseResponse<GetNotificationResDto> getNotification(
             @AuthUser
             Long userId
@@ -54,7 +63,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(userService.getNotification(userId));
     }
 
-    @PatchMapping("/notification")
+    @PatchMapping("/notification-settings")
     public BaseResponse<UpdateNotificationResDto> updateNotification(
             @AuthUser
             Long userId,
@@ -65,7 +74,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(userService.updateNotification(userId, request));
     }
 
-    @PostMapping("/wallet/charge")
+    @PostMapping("/wallet/charges")
     public BaseResponse<ChargePointResDto> chargePoint(
             @AuthUser
             Long userId,
@@ -77,7 +86,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(pointService.chargePoint(userId, request));
     }
 
-    @PostMapping("/wallet/signup-bonus")
+    @PostMapping("/wallet/signup-bonuses")
     public BaseResponse<ChargePointResDto> grantSignupBonus(
             @AuthUser
             Long userId,
@@ -108,12 +117,10 @@ public class UserController implements UserControllerDoc {
             @RequestParam(required = false)
             Long cursor,
 
-            @Min(1)
-            @RequestParam(defaultValue = "10")
+            @Min(MIN_TRANSACTION_PAGE_SIZE)
+            @RequestParam(defaultValue = DEFAULT_TRANSACTION_PAGE_SIZE)
             int size
-    ){
+    ) {
         return BaseResponse.onSuccess(pointService.getPointTransactions(userId, type, cursor, size));
     }
-
-
 }

@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum SuccessStatus implements BaseCodeInterface {
-    // For test
     _OK(HttpStatus.OK, "SUCCESS", "응답에 성공했습니다.");
 
     private final HttpStatus httpStatus;
