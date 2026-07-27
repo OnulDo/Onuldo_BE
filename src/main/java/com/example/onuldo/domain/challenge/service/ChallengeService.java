@@ -29,11 +29,14 @@ public class ChallengeService {
             ChallengeCategory category,
             String keyword
     ) {
+        validatePage(page);
+        int resolvedSize = getResolvedSize(size);
+
         Page<Challenge> challengePage = challengeRepository.findChallenges(
                 ChallengeStatus.ACTIVE,
                 category,
                 normalizeKeyword(keyword),
-                PageRequest.of(page, getResolvedSize(size))
+                PageRequest.of(page, resolvedSize)
         );
 
         return ChallengePageResDto.builder()
@@ -83,6 +86,16 @@ public class ChallengeService {
     }
 
     private int getResolvedSize(int size) {
+        if (size <= 0) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 크기는 1 이상이어야 합니다.");
+        }
+
         return Math.min(size, MAX_PAGE_SIZE);
+    }
+
+    private void validatePage(int page) {
+        if (page < 0) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.");
+        }
     }
 }

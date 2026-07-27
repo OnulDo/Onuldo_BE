@@ -19,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigInteger;
 import java.util.List;
 
 @Service
@@ -100,9 +101,7 @@ public class PointService {
                 userId,
                 ParticipationStatus.ONGOING
         );
-        int averageReturnRate = totalDeposit == 0
-                ? 0
-                : Math.toIntExact(totalRefund * PERCENT_MULTIPLIER / totalDeposit);
+        int averageReturnRate = calculateAverageReturnRate(totalDeposit, totalRefund);
 
         return PointWalletSummaryResDto.builder()
                 .balance(user.getPointBalance())
@@ -121,19 +120,43 @@ public class PointService {
             Long cursor,
             int size
     ) {
+        validateTransactionPageSize(size);
+
         List<PointTransaction> transactions = pointTransactionRepository.findByUserIdWithCursor(
                 userId, type, cursor, PageRequest.of(0, size + 1)
         );
 
         boolean hasNext = transactions.size() > size;
         List<PointTransaction> content = hasNext ? transactions.subList(0, size) : transactions;
-        Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
+        Long nextCursor = hasNext ? content.getLast().getId() : null;
 
         return PointTransactionScrollResDto.builder()
                 .pointTransactions(content.stream().map(this::toPointTransactionResDto).toList())
                 .nextCursor(nextCursor)
                 .hasNext(hasNext)
                 .build();
+    }
+
+    private int calculateAverageReturnRate(long totalDeposit, long totalRefund) {
+        if (totalDeposit == 0) {
+            return 0;
+        }
+
+        BigInteger averageReturnRate = BigInteger.valueOf(totalRefund)
+                .multiply(BigInteger.valueOf(PERCENT_MULTIPLIER))
+                .divide(BigInteger.valueOf(totalDeposit));
+
+        try {
+            return averageReturnRate.intValueExact();
+        } catch (ArithmeticException e) {
+            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "평균 환급률이 허용 범위를 초과했습니다.");
+        }
+    }
+
+    private void validateTransactionPageSize(int size) {
+        if (size <= 0) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 크기는 1 이상이어야 합니다.");
+        }
     }
 
     private PointTransactionResDto toPointTransactionResDto(PointTransaction pointTransaction) {

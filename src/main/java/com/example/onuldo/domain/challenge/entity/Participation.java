@@ -4,7 +4,8 @@ import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.user.entity.User;
-import com.example.onuldo.global.common.exception.EntityStateException;
+import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -77,11 +78,11 @@ public class Participation {
     @PreUpdate
     private void validateParticipationType() {
         if (participationType == ParticipationType.PERSONAL && party != null) {
-            throw new EntityStateException("개인 참여에는 party가 연결되면 안 됩니다.");
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "개인 참여에는 party가 연결되면 안 됩니다.");
         }
 
         if (participationType == ParticipationType.PARTY && party == null) {
-            throw new EntityStateException("party 참여에는 party가 필요합니다.");
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "party 참여에는 party가 필요합니다.");
         }
     }
 }

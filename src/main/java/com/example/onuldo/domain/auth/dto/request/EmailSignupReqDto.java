@@ -32,7 +32,6 @@ public record EmailSignupReqDto(
 
         @Schema(description = "약관 동의 목록")
         @NotNull(message = "약관 동의 목록은 필수입니다.")
-        @Valid
-        List<TermAgreementReqDto> termAgreements
+        List<@NotNull @Valid TermAgreementReqDto> termAgreements
 ) {
 }

@@ -313,10 +313,21 @@ public class PartyService {
                     .startDate(startDate)
                     .endDate(endDate)
                     .build();
+            validateParticipationState(participation);
             participationRepository.save(participation);
         }
 
         return PartyStartResDto.of(party);
+    }
+
+    private void validateParticipationState(Participation participation) {
+        if (participation.getParticipationType() == ParticipationType.PERSONAL && participation.getParty() != null) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "개인 참여에는 party가 연결되면 안 됩니다.");
+        }
+
+        if (participation.getParticipationType() == ParticipationType.PARTY && participation.getParty() == null) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "party 참여에는 party가 필요합니다.");
+        }
     }
 
     // 파티 진행 피드: 팀 진행률(오늘 인증 완료 비율)과 파티원별 오늘 인증 현황 조회

@@ -17,11 +17,11 @@ public record ChallengeResDto(
         String explainContent,
         @Schema(example = "매일 30분 이상 걷기를 실천하는 챌린지입니다.")
         String description,
-        @Schema(example = "https://cdn.onuldo.com/challenges/1.png", nullable = true)
+        @Schema(example = "https://cdn.onuldo.com/challenges/1.png")
         String captionImgUrl,
         @Schema(example = "걸음 수를 인증해주세요.")
         String verifyMethodContent,
-        @Schema(example = "https://cdn.onuldo.com/challenges/1-example.png", nullable = true)
+        @Schema(example = "https://cdn.onuldo.com/challenges/1-example.png")
         String verificationExamplePhotoUrl,
         @Schema(example = "120")
         Integer participantCount,

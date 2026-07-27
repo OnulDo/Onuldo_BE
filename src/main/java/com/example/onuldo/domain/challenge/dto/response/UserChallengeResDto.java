@@ -8,7 +8,6 @@ import lombok.Builder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 
 @Builder
 public record UserChallengeResDto(
@@ -26,11 +25,11 @@ public record UserChallengeResDto(
         String challengeExplainContent,
         @Schema(example = "매일 30분 이상 걷기를 실천하는 챌린지입니다.")
         String challengeDescription,
-        @Schema(example = "https://cdn.onuldo.com/challenges/1.png", nullable = true)
+        @Schema(example = "https://cdn.onuldo.com/challenges/1.png")
         String challengeCaptionImgUrl,
         @Schema(example = "걸음 수를 인증해주세요.")
         String challengeVerifyMethodContent,
-        @Schema(example = "https://cdn.onuldo.com/challenges/1-example.png", nullable = true)
+        @Schema(example = "https://cdn.onuldo.com/challenges/1-example.png")
         String challengeVerificationExamplePhotoUrl,
         @Schema(example = "120")
         Integer participantCount,
