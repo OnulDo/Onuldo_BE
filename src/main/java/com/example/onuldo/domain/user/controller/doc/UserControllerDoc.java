@@ -15,7 +15,6 @@ import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -67,17 +66,7 @@ public interface UserControllerDoc {
                     """
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(
-                            value = """
-                        {
-                          "type": "CHALLENGE_START",
-                          "enabled": false
-                        }
-                        """
-                    )
-            )
+            content = @Content(mediaType = "application/json")
     )
     BaseResponse<UpdateNotificationResDto> updateNotification(
             @AuthUser
@@ -93,35 +82,11 @@ public interface UserControllerDoc {
             description = "결제 수단을 통해 포인트를 충전하고 충전된 금액과 충전 후 잔액을 반환합니다."
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(
-                            value = """
-                        {
-                          "point": 10000
-                        }
-                        """
-                    )
-            )
+            content = @Content(mediaType = "application/json")
     )
     @ApiResponse(
             responseCode = "200",
-            content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(
-                            value = """
-                        {
-                          "timestamp": "2026-07-24T15:28:37.047Z",
-                          "code": "SUCCESS",
-                          "message": "요청에 성공하였습니다.",
-                          "result": {
-                            "amount": 10000,
-                            "balanceAfter": 10000
-                          }
-                        }
-                        """
-                    )
-            )
+            content = @Content(mediaType = "application/json")
     )
     BaseResponse<ChargePointResDto> chargePoint(
             @AuthUser
@@ -137,35 +102,11 @@ public interface UserControllerDoc {
             description = "회원가입 직후 클라이언트가 호출하여 신규 회원 가입 포인트를 지급받고, 지급된 금액과 지급 후 잔액을 반환합니다."
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(
-                            value = """
-                        {
-                          "point": 3000
-                        }
-                        """
-                    )
-            )
+            content = @Content(mediaType = "application/json")
     )
     @ApiResponse(
             responseCode = "200",
-            content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(
-                            value = """
-                        {
-                          "timestamp": "2026-07-26T15:28:37.047Z",
-                          "code": "SUCCESS",
-                          "message": "요청에 성공하였습니다.",
-                          "result": {
-                            "amount": 3000,
-                            "balanceAfter": 3000
-                          }
-                        }
-                        """
-                    )
-            )
+            content = @Content(mediaType = "application/json")
     )
     BaseResponse<ChargePointResDto> grantSignupBonus(
             @AuthUser
@@ -182,26 +123,7 @@ public interface UserControllerDoc {
     )
     @ApiResponse(
             responseCode = "200",
-            content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(
-                            value = """
-                        {
-                          "timestamp": "2026-07-24T15:28:37.050Z",
-                          "code": "SUCCESS",
-                          "message": "요청에 성공하였습니다.",
-                          "result": {
-                            "balance": 10000,
-                            "pendingPoints": 0,
-                            "totalDeposit": 5000,
-                            "totalRefund": 5000,
-                            "totalPenalty": 500,
-                            "averageReturnRate": 100
-                          }
-                        }
-                        """
-                    )
-            )
+            content = @Content(mediaType = "application/json")
     )
     BaseResponse<PointWalletSummaryResDto> getPointWalletSummary(
             @AuthUser
@@ -224,51 +146,7 @@ public interface UserControllerDoc {
     )
     @ApiResponse(
             responseCode = "200",
-            content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(
-                            value = """
-                        {
-                          "timestamp": "2026-07-24T15:28:37.047Z",
-                          "code": "SUCCESS",
-                          "message": "요청에 성공하였습니다.",
-                          "result": {
-                            "pointTransactions": [
-                              {
-                                "type": "REFUND",
-                                "title": "2챌린지 실패",
-                                "amount": 3500,
-                                "depositAmount": 3000,
-                                "adjustmentAmount": 500,
-                                "balanceAfter": 10000,
-                                "date": "2026-07-24"
-                              },
-                              {
-                                "type": "REFUND",
-                                "title": "1챌린지 실패",
-                                "amount": 1500,
-                                "depositAmount": 2000,
-                                "adjustmentAmount": -500,
-                                "balanceAfter": 6500,
-                                "date": "2026-07-24"
-                              },
-                              {
-                                "type": "DEPOSIT",
-                                "title": "2챌린지 예치",
-                                "amount": -3000,
-                                "depositAmount": null,
-                                "adjustmentAmount": null,
-                                "balanceAfter": 5000,
-                                "date": "2026-07-19"
-                              }
-                            ],
-                            "nextCursor": 2,
-                            "hasNext": true
-                          }
-                        }
-                        """
-                    )
-            )
+            content = @Content(mediaType = "application/json")
     )
     BaseResponse<PointTransactionScrollResDto> getPointTransactions(
             @AuthUser
