@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
@@ -24,4 +25,6 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("partyId") Long partyId,
             @Param("date") LocalDate date
     );
+
+    List<Verification> findAllByParticipation_IdIn(Collection<Long> participationIds);
 }

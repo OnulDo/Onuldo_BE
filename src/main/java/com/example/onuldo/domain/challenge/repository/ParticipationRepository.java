@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface ParticipationRepository extends JpaRepository<Participation, Long> {
@@ -37,4 +38,30 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     List<Participation> findAllByUser_IdOrderByIdDesc(Long userId);
 
     List<Participation> findAllByUser_IdAndStatusOrderByIdDesc(Long userId, ParticipationStatus status);
+
+    @Query("""
+            SELECT p
+            FROM Participation p
+            JOIN FETCH p.challenge
+            WHERE p.user.id = :userId
+            AND p.status = :status
+            ORDER BY p.id DESC
+            """)
+    List<Participation> findAllWithChallengeByUserIdAndStatusOrderByIdDesc(
+            @Param("userId") Long userId,
+            @Param("status") ParticipationStatus status
+    );
+
+    @Query("""
+            SELECT p
+            FROM Participation p
+            JOIN FETCH p.challenge
+            WHERE p.user.id = :userId
+            AND p.status IN :statuses
+            ORDER BY p.endDate DESC, p.id DESC
+            """)
+    List<Participation> findAllWithChallengeByUserIdAndStatusInOrderByEndDateDesc(
+            @Param("userId") Long userId,
+            @Param("statuses") Collection<ParticipationStatus> statuses
+    );
 }

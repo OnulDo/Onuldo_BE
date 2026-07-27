@@ -1,6 +1,8 @@
 package com.example.onuldo.domain.challenge.controller;
 
 import com.example.onuldo.domain.challenge.controller.doc.UserChallengeControllerDoc;
+import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeRecordSummaryResDto;
+import com.example.onuldo.domain.challenge.dto.response.OngoingChallengeRecordResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.service.ParticipationService;
@@ -11,6 +13,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,5 +31,21 @@ public class UserChallengeController implements UserChallengeControllerDoc {
             ParticipationStatus status
     ) {
         return BaseResponse.onSuccess(participationService.getUserChallenges(userId, status));
+    }
+
+    @GetMapping("/challenges/records/ongoing")
+    public BaseResponse<List<OngoingChallengeRecordResDto>> getOngoingChallengeRecords(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess(participationService.getOngoingChallengeRecords(userId));
+    }
+
+    @GetMapping("/challenges/records/completed")
+    public BaseResponse<CompletedChallengeRecordSummaryResDto> getCompletedChallengeRecords(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess(participationService.getCompletedChallengeRecords(userId));
     }
 }
