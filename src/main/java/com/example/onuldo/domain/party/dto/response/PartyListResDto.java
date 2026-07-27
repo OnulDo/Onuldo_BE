@@ -18,6 +18,4 @@ public record PartyListResDto(
         Integer verifiedMemberCount,
         Integer totalMemberCount
 ) {
-    // JPQL "new" 생성자 프로젝션 또는 QueryDSL Projections.constructor에서
-    // 이 record의 canonical constructor를 그대로 사용
 }

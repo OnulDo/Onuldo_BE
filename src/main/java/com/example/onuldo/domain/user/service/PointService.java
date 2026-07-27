@@ -26,6 +26,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class PointService {
 
+    private static final int PERCENT_MULTIPLIER = 100;
     private static final String SIGNUP_BONUS_DESCRIPTION = "신규 회원 가입 포인트 지급";
 
     private final UserRepository userRepository;
@@ -89,11 +90,19 @@ public class PointService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
-        long totalDeposit = participationRepository.sumDepositAmountByUserIdAndStatusNot(userId, ParticipationStatus.ONGOING);
+        long totalDeposit = participationRepository.sumDepositAmountByUserIdAndStatusNot(
+                userId,
+                ParticipationStatus.ONGOING
+        );
         long totalRefund = pointTransactionRepository.sumAmountByUserIdAndType(userId, PointTransactionType.REFUND);
         long totalPenalty = pointTransactionRepository.sumPenaltyAdjustmentByUserId(userId);
-        long pendingPoints = participationRepository.sumDepositAmountByUserIdAndStatus(userId, ParticipationStatus.ONGOING);
-        int averageReturnRate = totalDeposit == 0 ? 0 : Math.toIntExact(totalRefund * 100 / totalDeposit);
+        long pendingPoints = participationRepository.sumDepositAmountByUserIdAndStatus(
+                userId,
+                ParticipationStatus.ONGOING
+        );
+        int averageReturnRate = totalDeposit == 0
+                ? 0
+                : Math.toIntExact(totalRefund * PERCENT_MULTIPLIER / totalDeposit);
 
         return PointWalletSummaryResDto.builder()
                 .balance(user.getPointBalance())

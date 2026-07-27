@@ -18,20 +18,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/challenges")
 public class ChallengeController implements ChallengeControllerDoc {
 
+    private static final String DEFAULT_PAGE = "0";
+    private static final String DEFAULT_PAGE_SIZE = "10";
+
     private final ChallengeService challengeService;
 
     @GetMapping
     public BaseResponse<ChallengePageResDto> getChallenges(
-            @RequestParam(defaultValue = "0")
+            @RequestParam(defaultValue = DEFAULT_PAGE)
             int page,
-            @RequestParam(defaultValue = "10")
+            @RequestParam(defaultValue = DEFAULT_PAGE_SIZE)
             int size,
             @RequestParam(required = false)
             ChallengeCategory category,
-            @RequestParam(required = false)
-            String s
+            @RequestParam(name = "s", required = false)
+            String keyword
     ) {
-        return BaseResponse.onSuccess(challengeService.getChallenges(page, size, category, s));
+        return BaseResponse.onSuccess(challengeService.getChallenges(page, size, category, keyword));
     }
 
     @GetMapping("/{challengeId}")

@@ -84,22 +84,10 @@ public class ExceptionAdvice {
         return handleExceptionInternalFalse(GlobalErrorStatus._INTERNAL_SERVER_ERROR.getCode(), e.getMessage());
     }
 
-    private ResponseEntity<BaseResponse<String>> handleExceptionHttpMessage(BaseCodeDto errorCode) {
-        return ResponseEntity
-                .status(errorCode.getHttpStatus().value())
-                .body(BaseResponse.onFailure(errorCode.getCode(), errorCode.getMessage(), null));
-    }
-
     private ResponseEntity<BaseResponse<String>> handleExceptionInternal(BaseCodeDto errorCode) {
         return ResponseEntity
                 .status(errorCode.getHttpStatus().value())
                 .body(BaseResponse.onFailure(errorCode.getCode(), errorCode.getMessage(), null));
-    }
-
-    private ResponseEntity<Object> handleExceptionInternalArgs(BaseCodeDto errorCode, Map<String, String> errorArgs) {
-        return ResponseEntity
-                .status(errorCode.getHttpStatus().value())
-                .body(BaseResponse.onFailure(errorCode.getCode(), errorCode.getMessage(), errorArgs));
     }
 
     private ResponseEntity<Object> handleExceptionInternalObject(BaseCodeDto errorCode, Object errorArgs) {

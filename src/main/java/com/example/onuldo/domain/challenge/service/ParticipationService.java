@@ -35,7 +35,11 @@ public class ParticipationService {
     private final ParticipationRepository participationRepository;
     private final PointTransactionRepository pointTransactionRepository;
 
-    public ParticipationResDto participatePersonalChallenge(Long userId, Long challengeId, ParticipationReqDto request) {
+    public ParticipationResDto participatePersonalChallenge(
+            Long userId,
+            Long challengeId,
+            ParticipationReqDto request
+    ) {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 

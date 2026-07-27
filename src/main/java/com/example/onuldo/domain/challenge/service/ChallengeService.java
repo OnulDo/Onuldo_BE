@@ -19,19 +19,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ChallengeService {
 
+    private static final int MAX_PAGE_SIZE = 50;
+
     private final ChallengeRepository challengeRepository;
 
     public ChallengePageResDto getChallenges(
             int page,
             int size,
             ChallengeCategory category,
-            String s
+            String keyword
     ) {
         Page<Challenge> challengePage = challengeRepository.findChallenges(
                 ChallengeStatus.ACTIVE,
                 category,
-                normalizeKeyword(s),
-                PageRequest.of(page, resolveSize(size))
+                normalizeKeyword(keyword),
+                PageRequest.of(page, getResolvedSize(size))
         );
 
         return ChallengePageResDto.builder()
@@ -80,7 +82,7 @@ public class ChallengeService {
         return s.trim();
     }
 
-    private int resolveSize(int size) {
-        return Math.min(size, 50);
+    private int getResolvedSize(int size) {
+        return Math.min(size, MAX_PAGE_SIZE);
     }
 }

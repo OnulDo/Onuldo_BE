@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
 
 @Component
@@ -67,15 +68,15 @@ public class JwtTokenProvider {
     }
 
     private String createToken(User user, TokenType tokenType, SecretKey secretKey, long expirationMillis) {
-        Date now = new Date();
-        Date expiresAt = new Date(now.getTime() + expirationMillis);
+        Instant now = Instant.now();
+        Instant expiresAt = now.plusMillis(expirationMillis);
 
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim(USER_ID_CLAIM, user.getId())
                 .claim(TOKEN_TYPE_CLAIM, tokenType.name())
-                .issuedAt(now)
-                .expiration(expiresAt)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiresAt))
                 .signWith(secretKey)
                 .compact();
     }

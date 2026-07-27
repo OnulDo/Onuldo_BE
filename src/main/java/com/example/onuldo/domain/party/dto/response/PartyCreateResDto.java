@@ -16,5 +16,4 @@ public record PartyCreateResDto(
         Integer maxMembers,
         LocalDateTime createdAt
 ) {
-    // Entity -> DTO 변환은 Service에서 처리
 }

@@ -4,8 +4,8 @@ import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
-import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
+import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.domain.auth.entity.Term;
@@ -44,6 +44,10 @@ import java.util.stream.Collectors;
 public class AuthService {
 
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]+$");
+    private static final int MIN_NICKNAME_LENGTH = 2;
+    private static final int MAX_NICKNAME_LENGTH = 8;
+    private static final int DEFAULT_PROFILE_IMAGE_MIN_NUMBER = 1;
+    private static final int DEFAULT_PROFILE_IMAGE_MAX_NUMBER_EXCLUSIVE = 13;
     private static final Set<TermType> REQUIRED_TERM_TYPES = Set.of(
             TermType.SERVICE,
             TermType.PRIVACY,
@@ -178,11 +182,11 @@ public class AuthService {
     }
 
     private void validateNickname(String nickname) {
-        if (nickname.length() < 2) {
+        if (nickname.length() < MIN_NICKNAME_LENGTH) {
             throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_SHORT);
         }
 
-        if (nickname.length() > 8) {
+        if (nickname.length() > MAX_NICKNAME_LENGTH) {
             throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_LONG);
         }
 
@@ -256,10 +260,13 @@ public class AuthService {
             return profileImageUrl;
         }
 
-        // profileImageUrl이 null인 경우 기본 캐릭터 이미지 1~12중 랜덤 배정
-        int imageNumber = ThreadLocalRandom.current().nextInt(1, 13);
+        int imageNumber = ThreadLocalRandom.current().nextInt(
+                DEFAULT_PROFILE_IMAGE_MIN_NUMBER,
+                DEFAULT_PROFILE_IMAGE_MAX_NUMBER_EXCLUSIVE
+        );
         return "default_asset:" + imageNumber;
     }
+
     private boolean isLocked(User user, LocalDateTime now) {
         return user.getLockedUntil() != null && user.getLockedUntil().isAfter(now);
     }

@@ -4,6 +4,7 @@ import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.user.entity.User;
+import com.example.onuldo.global.common.exception.EntityStateException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -76,11 +77,11 @@ public class Participation {
     @PreUpdate
     private void validateParticipationType() {
         if (participationType == ParticipationType.PERSONAL && party != null) {
-            throw new IllegalStateException("개인 참여에는 party가 연결되면 안 됩니다.");
+            throw new EntityStateException("개인 참여에는 party가 연결되면 안 됩니다.");
         }
 
         if (participationType == ParticipationType.PARTY && party == null) {
-            throw new IllegalStateException("party 참여에는 party가 필요합니다.");
+            throw new EntityStateException("party 참여에는 party가 필요합니다.");
         }
     }
 }
