@@ -55,7 +55,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess("마이페이지 메인 조회에 성공했습니다.", userService.getMyPage(userId));
     }
 
-    @GetMapping("/notification")
+    @GetMapping("/notification-settings")
     public BaseResponse<GetNotificationResDto> getNotification(
             @AuthUser
             Long userId
@@ -63,7 +63,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(userService.getNotification(userId));
     }
 
-    @PatchMapping("/notification")
+    @PatchMapping("/notification-settings")
     public BaseResponse<UpdateNotificationResDto> updateNotification(
             @AuthUser
             Long userId,
@@ -74,7 +74,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(userService.updateNotification(userId, request));
     }
 
-    @PostMapping("/wallet/charge")
+    @PostMapping("/wallet/charges")
     public BaseResponse<ChargePointResDto> chargePoint(
             @AuthUser
             Long userId,
@@ -86,7 +86,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(pointService.chargePoint(userId, request));
     }
 
-    @PostMapping("/wallet/signup-bonus")
+    @PostMapping("/wallet/signup-bonuses")
     public BaseResponse<ChargePointResDto> grantSignupBonus(
             @AuthUser
             Long userId,

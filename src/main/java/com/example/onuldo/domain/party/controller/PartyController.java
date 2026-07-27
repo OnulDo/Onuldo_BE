@@ -48,7 +48,7 @@ public class PartyController implements PartyControllerDoc {
         return BaseResponse.onSuccess(partyService.getMyParties(userId));
     }
 
-    @GetMapping("/{partyId}/waiting")
+    @GetMapping("/{partyId}/waiting-room")
     public BaseResponse<PartyWaitingResDto> getPartyWaiting(
             @AuthUser
             Long userId,

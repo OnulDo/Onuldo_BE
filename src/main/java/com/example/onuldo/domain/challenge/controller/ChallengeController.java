@@ -31,7 +31,7 @@ public class ChallengeController implements ChallengeControllerDoc {
             int size,
             @RequestParam(required = false)
             ChallengeCategory category,
-            @RequestParam(name = "s", required = false)
+            @RequestParam(required = false)
             String keyword
     ) {
         return BaseResponse.onSuccess(challengeService.getChallenges(page, size, category, keyword));
