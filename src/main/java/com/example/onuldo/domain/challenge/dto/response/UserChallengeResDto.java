@@ -1,7 +1,7 @@
 package com.example.onuldo.domain.challenge.dto.response;
 
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
-import com.example.onuldo.global.dto.response.ContentBlockDto;
+import com.example.onuldo.global.dto.response.ContentBlockResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -26,7 +26,7 @@ public record UserChallengeResDto(
         @Schema(example = "하루 30분 걷기")
         String challengeExplainContent,
         @Schema(example = "[{\"type\":\"h2\",\"content\":\"이 챌린지는?\"}]")
-        List<ContentBlockDto> challengeDescription,
+        List<ContentBlockResDto> challengeDescription,
         @Schema(example = "https://cdn.onuldo.com/challenges/1.png")
         String challengeCaptionImgUrl,
         @Schema(example = "걸음 수를 인증해주세요.")
