@@ -20,6 +20,7 @@ import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -87,28 +88,31 @@ public class ChallengeService {
                 .findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
-        LocalDate today = LocalDate.now();
-        if (verificationRepository.existsByParticipation_IdAndVerificationDate(participation.getId(), today)) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
-        }
-
         List<String> detectedLabelNames = rekognitionService.detectLabelNamesByFileId(request.fileId());
+
         boolean matchedChallengeLabel = hasMatchingLabel(challenge.getVerificationLabelList(), detectedLabelNames);
         VerificationReviewStatus review = matchedChallengeLabel
                 ? VerificationReviewStatus.AUTO_PASS
                 : VerificationReviewStatus.AUTO_FAIL;
+
         BigDecimal dayScore = matchedChallengeLabel ? BigDecimal.valueOf(100) : BigDecimal.ZERO;
         String rekognitionResult = toJson(detectedLabelNames);
+        LocalDate today = LocalDate.now();
 
-        Verification verification = verificationRepository.save(Verification.builder()
-                .participation(participation)
-                .verificationDate(today)
-                .photoUrl(request.fileId())
-                .rekognitionResult(rekognitionResult)
-                .review(review)
-                .dayScore(dayScore)
-                .verifiedAt(LocalDateTime.now())
-                .build());
+        Verification verification;
+        try {
+            verification = verificationRepository.saveAndFlush(Verification.builder()
+                    .participation(participation)
+                    .verificationDate(today)
+                    .photoUrl(request.fileId())
+                    .rekognitionResult(rekognitionResult)
+                    .review(review)
+                    .dayScore(dayScore)
+                    .verifiedAt(LocalDateTime.now())
+                    .build());
+        } catch (DataIntegrityViolationException e) {
+            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY, "오늘은 이미 인증했습니다.");
+        }
 
         return ChallengeVerificationResDto.builder()
                 .verificationId(verification.getId())
@@ -164,7 +168,10 @@ public class ChallengeService {
     }
 
     private boolean hasMatchingLabel(List<String> challengeLabels, List<String> detectedLabels) {
-        if (challengeLabels == null || challengeLabels.isEmpty() || detectedLabels == null || detectedLabels.isEmpty()) {
+        if(challengeLabels == null || challengeLabels.isEmpty()) {
+            return false;
+        }
+        if (detectedLabels == null || detectedLabels.isEmpty()) {
             return false;
         }
 

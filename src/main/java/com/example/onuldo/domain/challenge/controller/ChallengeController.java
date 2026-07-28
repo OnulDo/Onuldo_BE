@@ -54,7 +54,8 @@ public class ChallengeController implements ChallengeControllerDoc {
     public BaseResponse<ChallengeVerificationResDto> verifyChallenge(
             @AuthUser
             Long userId,
-            @PathVariable Long challengeId,
+            @PathVariable
+            Long challengeId,
             @Valid
             @RequestBody
             ChallengeVerificationReqDto request

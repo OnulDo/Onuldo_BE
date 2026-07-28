@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,7 +28,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "verification")
+@Table(
+        name = "verification",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_verification_participation_date",
+                columnNames = {"participation_id", "verification_date"}
+        )
+)
 public class Verification {
 
     @Id

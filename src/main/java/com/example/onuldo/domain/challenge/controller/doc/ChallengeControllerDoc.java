@@ -48,12 +48,16 @@ public interface ChallengeControllerDoc {
 
     @Operation(
             summary = "챌린지 인증",
-            description = "challengeId로 참여 중인 챌린지를 찾아 fileId 기준 AWS Rekognition 라벨을 검사하고 인증합니다.."
+            description = "challengeId로 참여 중인 챌린지를 찾아 fileId 기준 AWS Rekognition 라벨을 검사하고 인증합니다."
     )
     BaseResponse<ChallengeVerificationResDto> verifyChallenge(
-            @AuthUser Long userId,
+            @AuthUser
+            Long userId,
             @Parameter(description = "챌린지 ID", example = "1")
-            @PathVariable Long challengeId,
-            @Valid @RequestBody ChallengeVerificationReqDto request
+            @PathVariable
+            Long challengeId,
+            @Valid
+            @RequestBody
+            ChallengeVerificationReqDto request
     );
 }
