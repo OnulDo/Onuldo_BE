@@ -15,6 +15,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Getter
 @Builder
 @AllArgsConstructor
@@ -31,4 +33,13 @@ public class Term {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, unique = true, length = 20)
     private TermType type;
+
+    @Column(nullable = false, length = 100)
+    private String title;
+
+    @Column(name = "effective_date", nullable = false)
+    private LocalDate effectiveDate;
+
+    @Column(nullable = true, columnDefinition = "json")
+    private String content;
 }
