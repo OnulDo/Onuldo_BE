@@ -10,6 +10,7 @@ import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,7 +23,37 @@ public interface AuthControllerDoc {
             description = "이메일, 비밀번호, 닉네임으로 가입하고 accessToken 및 refreshToken을 발급합니다."
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            content = @Content(mediaType = "application/json")
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                          "email": "onuldo@onuldo.com",
+                          "password": "onuldo1234!",
+                          "nickname": "오늘두",
+                          "profileImageUrl": null,
+                          "termAgreements": [
+                             {
+                                "termType": "SERVICE",
+                                "value": true
+                             },
+                             {
+                                "termType": "PRIVACY",
+                                "value": true
+                             },
+                             {
+                                "termType": "AGE_14",
+                                "value": true
+                             },
+                             {
+                                "termType": "MARKETING",
+                                "value": false
+                             }
+                          ]
+                        }
+                        """
+                    )
+            )
     )
     BaseResponse<AuthResDto> signup(
             @Valid
@@ -79,7 +110,37 @@ public interface AuthControllerDoc {
                     "회원가입을 진행하고 accessToken/refreshToken을 발급합니다."
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            content = @Content(mediaType = "application/json")
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            value = """
+                        {
+                            "provider": "KAKAO",
+                            "accessToken": "string",
+                            "nickname": "오늘두",
+                            "profileImageUrl": "string",
+                            "termAgreements": [
+                               {
+                                  "termType": "SERVICE",
+                                  "value": true
+                               },
+                               {
+                                  "termType": "PRIVACY",
+                                  "value": true
+                               },
+                               {
+                                  "termType": "AGE_14",
+                                  "value": true
+                               },
+                               {
+                                  "termType": "MARKETING",
+                                  "value": false
+                               }
+                            ]
+                        }
+                        """
+                    )
+            )
     )
     BaseResponse<AuthResDto> oauthSignup(
             @Valid
