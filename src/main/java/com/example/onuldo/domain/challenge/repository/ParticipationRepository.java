@@ -6,7 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface ParticipationRepository extends JpaRepository<Participation, Long> {
 
@@ -37,4 +39,12 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     List<Participation> findAllByUser_IdOrderByIdDesc(Long userId);
 
     List<Participation> findAllByUser_IdAndStatusOrderByIdDesc(Long userId, ParticipationStatus status);
+
+    Optional<Participation> findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(
+            Long userId,
+            Long challengeId,
+            ParticipationStatus status
+    );
+
+    List<Participation> findAllByIdIn(Collection<Long> ids);
 }

@@ -2,13 +2,18 @@ package com.example.onuldo.domain.challenge.controller.doc;
 
 import com.example.onuldo.domain.challenge.dto.response.ChallengePageResDto;
 import com.example.onuldo.domain.challenge.dto.response.ChallengeResDto;
+import com.example.onuldo.domain.challenge.dto.response.ChallengeVerificationResDto;
+import com.example.onuldo.domain.challenge.dto.request.ChallengeVerificationReqDto;
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import jakarta.validation.Valid;
 
 @Tag(name = "Challenge", description = "챌린지 관련 API")
 public interface ChallengeControllerDoc {
@@ -39,5 +44,16 @@ public interface ChallengeControllerDoc {
     BaseResponse<ChallengeResDto> getChallenge(
             @Parameter(description = "챌린지 ID", example = "1")
             @PathVariable Long challengeId
+    );
+
+    @Operation(
+            summary = "챌린지 인증",
+            description = "challengeId로 참여 중인 챌린지를 찾아 fileId 기준 AWS Rekognition 라벨을 검사하고 인증합니다.."
+    )
+    BaseResponse<ChallengeVerificationResDto> verifyChallenge(
+            @AuthUser Long userId,
+            @Parameter(description = "챌린지 ID", example = "1")
+            @PathVariable Long challengeId,
+            @Valid @RequestBody ChallengeVerificationReqDto request
     );
 }

@@ -29,3 +29,16 @@ management:
   endpoint:
     health:
       show-details: always
+
+aws:
+  region: ${AWS_REGION:ap-northeast-2}
+  credentials:
+    access-key-id: ${AWS_ACCESS_KEY_ID:}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    public-base-url: ${AWS_S3_PUBLIC_BASE_URL}
+    upload-prefix: ${AWS_S3_UPLOAD_PREFIX:uploads}
+  rekognition:
+    max-labels: ${AWS_REKOGNITION_MAX_LABELS:10}
+    min-confidence: ${AWS_REKOGNITION_MIN_CONFIDENCE:80}
