@@ -24,10 +24,10 @@ public interface ChallengeControllerDoc {
             @Parameter(description = "페이지 크기. 기본값 10", example = "10")
             @RequestParam(defaultValue = "10")
             int size,
-            @Parameter(description = "카테고리 필터", example = "FITNESS")
+            @Parameter(description = "카테고리 필터")
             @RequestParam(required = false)
             ChallengeCategory category,
-            @Parameter(description = "검색어", example = "run")
+            @Parameter(description = "검색어")
             @RequestParam(required = false)
             String keyword
     );
