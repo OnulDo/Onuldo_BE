@@ -44,7 +44,9 @@ import java.util.stream.Collectors;
 public class AuthService {
 
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]+$");
-    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).+$");
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile(
+            "^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*\\p{Punct})[a-zA-Z0-9\\p{Punct}]+$"
+    );
     private static final int MIN_NICKNAME_LENGTH = 2;
     private static final int MAX_NICKNAME_LENGTH = 8;
     private static final int MIN_PASSWORD_LENGTH = 8;
