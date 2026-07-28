@@ -1,34 +1,28 @@
 package com.example.onuldo.global.aws.service;
 
 import com.example.onuldo.domain.file.dto.S3UploadResDto;
+import com.example.onuldo.domain.file.dto.S3FileUrlResDto;
 import com.example.onuldo.global.aws.config.AwsProperties;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import lombok.RequiredArgsConstructor;
-import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class S3FileService {
-
-    private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
-    private static final String IMAGE_VIEW_PATH = "/api/file/images/view";
-
     private final S3Client s3Client;
     private final AwsProperties awsProperties;
 
@@ -60,41 +54,16 @@ public class S3FileService {
                 .build();
     }
 
-    public S3ImageFile getImage(String fileId) {
-        validateImageFileId(fileId);
+    public S3FileUrlResDto getFileUrl(String fileId) {
+        String bucket = resolveBucket();
+        validateFileId(fileId);
+        verifyObjectExists(bucket, fileId);
 
-        try {
-            ResponseInputStream<GetObjectResponse> inputStream = s3Client.getObject(
-                    GetObjectRequest.builder()
-                            .bucket(resolveBucket())
-                            .key(fileId)
-                            .build()
-            );
-            String contentType = resolveImageContentType(fileId, inputStream.response().contentType());
-
-            if (!contentType.startsWith("image/")) {
-                closeQuietly(inputStream);
-                throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "이미지 파일만 조회할 수 있습니다.");
-            }
-
-            return new S3ImageFile(
-                    fileId,
-                    contentType,
-                    inputStream.response().contentLength(),
-                    inputStream
-            );
-        } catch (NoSuchKeyException e) {
-            throw new RestApiException(GlobalErrorStatus._FILE_NOT_FOUND);
-        } catch (S3Exception e) {
-            if (e.statusCode() == 404) {
-                throw new RestApiException(GlobalErrorStatus._FILE_NOT_FOUND);
-            }
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "S3 이미지 조회에 실패했습니다.");
-        } catch (RestApiException e) {
-            throw e;
-        } catch (RuntimeException e) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "이미지 조회에 실패했습니다.");
-        }
+        return S3FileUrlResDto.builder()
+                .bucket(bucket)
+                .fileId(fileId)
+                .url(createAccessUrl(bucket, fileId))
+                .build();
     }
 
     private ImageUploadPayload readAndValidateImage(MultipartFile file) {
@@ -130,17 +99,6 @@ public class S3FileService {
         }
     }
 
-    private void validateImageFileId(String fileId) {
-        if (fileId == null || fileId.isBlank()) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "조회할 이미지 fileId가 필요합니다.");
-        }
-
-        String prefix = normalizePrefix(awsProperties.s3().uploadPrefix());
-        if (fileId.startsWith("/") || !fileId.startsWith(prefix + "/")) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "업로드된 이미지 fileId만 조회할 수 있습니다.");
-        }
-    }
-
     private String resolveBucket() {
         String bucket = awsProperties.s3().bucket();
         if (bucket == null || bucket.isBlank()) {
@@ -150,17 +108,30 @@ public class S3FileService {
         return bucket;
     }
 
-    private String extractExtension(String filename) {
-        if (filename == null || filename.isBlank()) {
-            return "";
+    private void validateFileId(String fileId) {
+        if (fileId == null || fileId.isBlank()) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "fileId는 필수입니다.");
         }
+    }
 
-        int dotIndex = filename.lastIndexOf(".");
-        if (dotIndex < 0 || dotIndex == filename.length() - 1) {
-            return "";
+    private void verifyObjectExists(String bucket, String fileId) {
+        try {
+            s3Client.headObject(
+                    HeadObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(fileId)
+                            .build()
+            );
+        } catch (NoSuchKeyException e) {
+            throw new RestApiException(GlobalErrorStatus._FILE_NOT_FOUND);
+        } catch (S3Exception e) {
+            if (e.statusCode() == 404) {
+                throw new RestApiException(GlobalErrorStatus._FILE_NOT_FOUND);
+            }
+            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "파일 존재 여부 확인에 실패했습니다.");
+        } catch (SdkException | IllegalArgumentException e) {
+            throw new RestApiException(GlobalErrorStatus._FILE_NOT_FOUND);
         }
-
-        return filename.substring(dotIndex).toLowerCase();
     }
 
     private String normalizePrefix(String prefix) {
@@ -171,39 +142,17 @@ public class S3FileService {
         return prefix.replaceAll("^/+", "").replaceAll("/+$", "");
     }
 
-    private String resolveImageContentType(String fileId, String objectContentType) {
-        if (objectContentType != null && objectContentType.startsWith("image/")) {
-            return objectContentType;
-        }
-
-        return switch (extractExtension(fileId)) {
-            case ".jpg", ".jpeg" -> "image/jpeg";
-            case ".png" -> "image/png";
-            case ".gif" -> "image/gif";
-            case ".webp" -> "image/webp";
-            case ".svg" -> "image/svg+xml";
-            case ".bmp" -> "image/bmp";
-            case ".ico" -> "image/x-icon";
-            case ".heic" -> "image/heic";
-            case ".heif" -> "image/heif";
-            default -> DEFAULT_CONTENT_TYPE;
-        };
-    }
-
-    private void closeQuietly(ResponseInputStream<GetObjectResponse> inputStream) {
-        try {
-            inputStream.close();
-        } catch (IOException ignored) {
-        }
-    }
-
     private String createFileUrl(String key) {
+        return createAccessUrl(resolveBucket(), key);
+    }
+
+    private String createAccessUrl(String bucket, String key) {
         String publicBaseUrl = awsProperties.s3().publicBaseUrl();
         if (publicBaseUrl != null && !publicBaseUrl.isBlank()) {
             return publicBaseUrl.replaceAll("/+$", "") + "/" + key;
         }
 
-        return IMAGE_VIEW_PATH + "?fileId=" + URLEncoder.encode(key, StandardCharsets.UTF_8);
+        return "https://%s.s3.%s.amazonaws.com/%s".formatted(bucket, awsProperties.region(), key);
     }
 
     private String createObjectKey(String contentType) {
@@ -252,14 +201,6 @@ public class S3FileService {
                 && (bytes[5] & 0xFF) == 0x0A
                 && (bytes[6] & 0xFF) == 0x1A
                 && (bytes[7] & 0xFF) == 0x0A;
-    }
-
-    public record S3ImageFile(
-            String fileId,
-            String contentType,
-            Long contentLength,
-            ResponseInputStream<GetObjectResponse> inputStream
-    ) {
     }
 
     private record ImageUploadPayload(String contentType, byte[] bytes) {
