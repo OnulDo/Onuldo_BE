@@ -6,6 +6,7 @@ import com.example.onuldo.global.aws.config.AwsProperties;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import software.amazon.awssdk.core.exception.SdkException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -125,12 +126,12 @@ public class S3FileService {
         } catch (NoSuchKeyException e) {
             throw new RestApiException(GlobalErrorStatus._FILE_NOT_FOUND);
         } catch (S3Exception e) {
-            if (e.statusCode() == 404) {
+            if (e.statusCode() == HttpStatus.NOT_FOUND.value()) {
                 throw new RestApiException(GlobalErrorStatus._FILE_NOT_FOUND);
             }
             throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "파일 존재 여부 확인에 실패했습니다.");
         } catch (SdkException | IllegalArgumentException e) {
-            throw new RestApiException(GlobalErrorStatus._FILE_NOT_FOUND);
+            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "파일 존재 여부 확인에 실패했습니다.");
         }
     }
 
@@ -148,11 +149,11 @@ public class S3FileService {
 
     private String createAccessUrl(String bucket, String key) {
         String publicBaseUrl = awsProperties.s3().publicBaseUrl();
-        if (publicBaseUrl != null && !publicBaseUrl.isBlank()) {
-            return publicBaseUrl.replaceAll("/+$", "") + "/" + key;
+        if (publicBaseUrl == null || publicBaseUrl.isBlank()) {
+            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "AWS S3 publicBaseUrl 설정이 필요합니다.");
         }
 
-        return "https://%s.s3.%s.amazonaws.com/%s".formatted(bucket, awsProperties.region(), key);
+        return publicBaseUrl.replaceAll("/+$", "") + "/" + key;
     }
 
     private String createObjectKey(String contentType) {
