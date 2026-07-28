@@ -9,6 +9,10 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
+  servlet:
+    multipart:
+      max-file-size: 20MB      # 파일 하나당 최대 크기
+      max-request-size: 20MB
 
 jwt:
   token:
