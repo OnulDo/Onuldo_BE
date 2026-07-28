@@ -2,7 +2,7 @@ package com.example.onuldo.domain.challenge.entity;
 
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
-import com.example.onuldo.domain.challenge.dto.ChallengeContentBlockDto;
+import com.example.onuldo.global.dto.response.ContentBlockDto;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -46,7 +46,7 @@ public class Challenge {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "description", nullable = false, columnDefinition = "TEXT")
-    private List<ChallengeContentBlockDto> description;
+    private List<ContentBlockDto> description;
 
     @Column(name = "caption_img_url", nullable = false, length = 500)
     private String captionImgUrl;

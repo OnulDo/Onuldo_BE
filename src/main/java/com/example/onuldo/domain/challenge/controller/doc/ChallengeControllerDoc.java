@@ -15,7 +15,17 @@ public interface ChallengeControllerDoc {
 
     @Operation(
             summary = "챌린지 목록 조회",
-            description = "오프셋 페이지네이션으로 활성 챌린지 목록을 조회합니다. category와 keyword(검색어)로 필터링할 수 있습니다."
+            description = """
+        오프셋 페이지네이션으로 활성 챌린지 목록을 조회합니다.
+        category와 keyword(검색어)로 필터링할 수 있습니다.
+
+        챌린지 상세 설명 json의 type 값은 다음으로 구성됩니다.
+        - h2
+        - h3
+        - paragraph
+        - linebreak
+        - blockquote
+        """
     )
     BaseResponse<ChallengePageResDto> getChallenges(
             @Parameter(description = "조회할 페이지 번호. 기본값 0", example = "0")
