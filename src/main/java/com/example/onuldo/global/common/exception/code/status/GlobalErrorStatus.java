@@ -28,11 +28,17 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
     _SIGNUP_BONUS_ALREADY_GRANTED(HttpStatus.CONFLICT, "SIGNUP_BONUS_ALREADY_GRANTED", "이미 신규 회원 가입 포인트가 지급되었습니다."),
 
+    // 파일 관련 에러
+    _FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_NOT_FOUND", "파일을 찾을 수 없습니다."),
+
     // 챌린지 관련 에러
     _CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE_NOT_FOUND", "존재하지 않는 챌린지입니다."),
     _INVALID_DEPOSIT_OPTION(HttpStatus.BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "선택할 수 없는 도전금입니다."),
     _INSUFFICIENT_POINT_FOR_CHALLENGE(HttpStatus.BAD_REQUEST, "INSUFFICIENT_POINT_FOR_CHALLENGE", "보유 포인트가 부족합니다."),
     _ALREADY_PARTICIPATING_CHALLENGE(HttpStatus.CONFLICT, "ALREADY_PARTICIPATING_CHALLENGE", "이미 참여 중인 챌린지입니다."),
+    _DUPLICATE_VERIFICATION_PHOTO(HttpStatus.CONFLICT, "DUPLICATE_VERIFICATION_PHOTO", "이미 인증에 사용한 사진입니다."),
+    _ALREADY_VERIFIED_TODAY(HttpStatus.CONFLICT, "ALREADY_VERIFIED_TODAY", "오늘은 이미 인증했습니다."),
+    _PARTICIPATION_NOT_FOUND(HttpStatus.NOT_FOUND, "PARTICIPATION_NOT_FOUND", "해당 챌린지 참여 기록을 찾을 수 없습니다."),
 
     // Party 관련 에러
     _INSUFFICIENT_POINT_FOR_PARTY(HttpStatus.CONFLICT, "INSUFFICIENT_POINT_FOR_PARTY", "보유 포인트가 도전금보다 부족합니다."),

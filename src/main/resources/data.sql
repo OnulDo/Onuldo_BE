@@ -42,7 +42,7 @@ SELECT
     '[10000,20000,30000,50000]',
     '["이불 개어진 사진"]',
     '["이불이 보이지 않아요"]',
-    '["PILLOW","WAKEUP"]',
+    '["PERSON"]',
     'ACTIVE'
     WHERE NOT EXISTS (
     SELECT 1
@@ -83,7 +83,7 @@ SELECT
     '[10000,20000,30000,50000]',
     '["운동 중인 사진"]',
     '["운동 장면이 보이지 않아요"]',
-    '["SPORT","FITNESS"]',
+    '["PERSON"]',
     'ACTIVE'
     WHERE NOT EXISTS (
     SELECT 1
@@ -124,7 +124,7 @@ SELECT
     '[10000,20000,30000,50000]',
     '["책 읽는 사진"]',
     '["책이 보이지 않아요"]',
-    '["BOOK"]',
+    '["PERSON"]',
     'ACTIVE'
     WHERE NOT EXISTS (
     SELECT 1
@@ -165,7 +165,7 @@ SELECT
     '[10000,20000,30000,50000]',
     '["아침 식사 사진"]',
     '["음식이 보이지 않아요"]',
-    '["FOOD","MEAL"]',
+    '["PERSON"]',
     'ACTIVE'
     WHERE NOT EXISTS (
     SELECT 1
