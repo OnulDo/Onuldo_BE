@@ -43,13 +43,6 @@ public interface UserChallengeControllerDoc {
     조건은 `ONGOING` 상태이면서 startDate <= date <= endDate 입니다.
 
     각 챌린지에는 해당 날짜 인증 기록이 있는지 여부(`verifiedOnDate`)가 포함됩니다.
-
-    챌린지 상세 설명 json의 type 값은 다음으로 구성됩니다.
-        - h2
-        - h3
-        - paragraph
-        - linebreak
-        - blockquote
     """
     )
     BaseResponse<DailyChallengeListResDto> getDailyChallenges(
@@ -57,7 +50,7 @@ public interface UserChallengeControllerDoc {
             @AuthUser
             Long userId,
             @Parameter(description = "조회할 날짜", example = "2026-07-29")
-            @RequestParam(required = false)
+            @RequestParam(required = true)
             LocalDate date
     );
 }
