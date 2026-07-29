@@ -29,6 +29,8 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
 
     boolean existsByParticipation_IdAndVerificationDate(Long participationId, LocalDate verificationDate);
 
+    boolean existsByPhotoUrl(String photoUrl);
+
     Optional<Verification> findTopByParticipation_IdAndVerificationDateOrderByIdDesc(
             Long participationId,
             LocalDate verificationDate

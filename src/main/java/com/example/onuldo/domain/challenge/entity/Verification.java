@@ -30,10 +30,16 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "verification",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_verification_participation_date",
-                columnNames = {"participation_id", "verification_date"}
-        )
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_verification_participation_date",
+                        columnNames = {"participation_id", "verification_date"}
+                ),
+                @UniqueConstraint(
+                        name = "uk_verification_file_id",
+                        columnNames = {"file_id"}
+                )
+        }
 )
 public class Verification {
 

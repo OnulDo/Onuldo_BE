@@ -15,6 +15,7 @@ import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.challenge.dto.request.ChallengeVerificationReqDto;
 import com.example.onuldo.global.aws.service.RekognitionService;
+import com.example.onuldo.global.aws.service.S3FileService;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -43,6 +44,8 @@ public class ChallengeService {
     private final VerificationRepository verificationRepository;
     private final RekognitionService rekognitionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private final S3FileService s3FileService;
 
     public ChallengePageResDto getChallenges(
             int page,
@@ -88,6 +91,10 @@ public class ChallengeService {
                 .findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
+        if (verificationRepository.existsByPhotoUrl(s3FileService.getFileUrl(request.fileId()).url())) {
+            throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
+        }
+
         List<String> detectedLabelNames = rekognitionService.detectLabelNamesByFileId(request.fileId());
 
         boolean matchedChallengeLabel = hasMatchingLabel(challenge.getVerificationLabelList(), detectedLabelNames);
@@ -104,7 +111,7 @@ public class ChallengeService {
             verification = verificationRepository.saveAndFlush(Verification.builder()
                     .participation(participation)
                     .verificationDate(today)
-                    .photoUrl(request.fileId())
+                    .photoUrl(s3FileService.getFileUrl(request.fileId()).url())
                     .rekognitionResult(rekognitionResult)
                     .review(review)
                     .dayScore(dayScore)
