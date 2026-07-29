@@ -34,7 +34,7 @@ public class TermService {
                     .content(term.getContent())
                     .build();
         } catch (Exception e) {
-            throw new IllegalStateException("약관 content JSON 변환에 실패했습니다.", e);
+            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "약관 content JSON 변환에 실패했습니다.");
         }
     }
 }

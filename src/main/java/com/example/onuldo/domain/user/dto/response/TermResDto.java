@@ -14,7 +14,7 @@ public record TermResDto(
         TermType termType,
         @Schema(example = "서비스 이용 약관")
         String title,
-        @Schema(example = "SERVICE")
+        @Schema(example = "2026-05-30")
         LocalDate effectiveDate,
         @Schema(example = "[{\"type\":\"h2\",\"content\":\"서비스 이용 시 회원가입은 무조건 해야합니다.\"}]")
         List<ContentBlockResDto> content
