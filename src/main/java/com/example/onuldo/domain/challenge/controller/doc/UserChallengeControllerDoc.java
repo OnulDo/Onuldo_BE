@@ -13,7 +13,17 @@ public interface UserChallengeControllerDoc {
 
     @Operation(
             summary = "내 챌린지 참여 목록 조회",
-            description = "참가 상태를 기준으로 챌린지 참여 정보를 조회합니다. status가 없으면 모든 상태를 조회합니다."
+            description = """
+    참가 상태를 기준으로 챌린지 참여 정보를 조회합니다. 
+    status가 없으면 모든 상태를 조회합니다.
+    
+    참여중인 챌린지의 상세 설명 json의 type 값은 다음으로 구성됩니다.
+        - h2
+        - h3
+        - paragraph
+        - linebreak
+        - blockquote
+    """
     )
     BaseResponse<UserChallengeListResDto> getUserChallenges(
             @AuthUser

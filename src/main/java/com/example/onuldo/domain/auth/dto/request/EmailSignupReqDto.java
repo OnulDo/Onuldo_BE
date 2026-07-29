@@ -1,10 +1,10 @@
 package com.example.onuldo.domain.auth.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.Valid;
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 import java.util.List;
@@ -19,7 +19,7 @@ public record EmailSignupReqDto(
         )
         String email,
 
-        @Schema(example = "12341234")
+        @Schema(example = "onuldo1234!")
         @NotBlank(message = "비밀번호는 필수입니다.")
         String password,
 
@@ -30,7 +30,13 @@ public record EmailSignupReqDto(
         @Schema(example = "https://cdn.onuldo.com/profile/default.png", nullable = true)
         String profileImageUrl,
 
-        @Schema(description = "약관 동의 목록")
+        @Schema(
+                description = "약관 동의 목록",
+                example = "[{\"termType\":\"SERVICE\",\"value\":true}," +
+                        "{\"termType\":\"PRIVACY\",\"value\":true}," +
+                        "{\"termType\":\"AGE_14\",\"value\":true}," +
+                        "{\"termType\":\"MARKETING\",\"value\":false}]"
+        )
         @NotNull(message = "약관 동의 목록은 필수입니다.")
         List<@NotNull @Valid TermAgreementReqDto> termAgreements
 ) {
