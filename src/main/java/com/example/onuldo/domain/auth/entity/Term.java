@@ -1,6 +1,7 @@
 package com.example.onuldo.domain.auth.entity;
 
 import com.example.onuldo.domain.auth.enums.TermType;
+import com.example.onuldo.global.dto.response.ContentBlockResDto;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,8 +15,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Builder
@@ -40,6 +44,7 @@ public class Term {
     @Column(name = "effective_date", nullable = false)
     private LocalDate effectiveDate;
 
-    @Column(nullable = true, columnDefinition = "json")
-    private String content;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    private List<ContentBlockResDto> content;
 }

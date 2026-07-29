@@ -6,7 +6,6 @@ import com.example.onuldo.domain.auth.repository.TermRepository;
 import com.example.onuldo.domain.user.dto.response.TermResDto;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,8 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class TermService {
 
     private final TermRepository termRepository;
-
-    final ObjectMapper objectMapper = new ObjectMapper();
 
     public TermResDto getTerm(TermType termType) {
         if (termType != TermType.SERVICE && termType != TermType.PRIVACY && termType != TermType.REFUND) {
@@ -34,7 +31,7 @@ public class TermService {
                     .termType(term.getType())
                     .title(term.getTitle())
                     .effectiveDate(term.getEffectiveDate())
-                    .content(objectMapper.readTree(term.getContent()))
+                    .content(term.getContent())
                     .build();
         } catch (Exception e) {
             throw new IllegalStateException("약관 content JSON 변환에 실패했습니다.", e);

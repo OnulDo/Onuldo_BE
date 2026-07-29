@@ -1,20 +1,21 @@
 package com.example.onuldo.domain.user.dto.response;
 
 import com.example.onuldo.domain.auth.enums.TermType;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.example.onuldo.global.dto.response.ContentBlockResDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Builder
 public record TermResDto(
-        @Schema(description = "약관 종류")
+        @Schema(example = "SERVICE")
         TermType termType,
-        @Schema(description = "약관 제목")
+        @Schema(example = "서비스 이용 약관")
         String title,
-        @Schema(description = "시행 일자")
+        @Schema(example = "SERVICE")
         LocalDate effectiveDate,
-        @Schema(description = "약관 내용(json)")
-        JsonNode content
+        @Schema(example = "[{\"type\":\"h2\",\"content\":\"서비스 이용 시 회원가입은 무조건 해야합니다.\"}]")
+        List<ContentBlockResDto> content
 ) {}
