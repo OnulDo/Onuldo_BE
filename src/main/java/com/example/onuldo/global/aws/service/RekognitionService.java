@@ -10,6 +10,9 @@ import software.amazon.awssdk.services.rekognition.RekognitionClient;
 import software.amazon.awssdk.services.rekognition.model.DetectLabelsRequest;
 import software.amazon.awssdk.services.rekognition.model.Image;
 import software.amazon.awssdk.services.rekognition.model.S3Object;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.util.List;
 
@@ -19,6 +22,8 @@ public class RekognitionService {
 
     private final RekognitionClient rekognitionClient;
     private final AwsProperties awsProperties;
+
+    private final S3Client s3Client;
 
     public List<RekognitionLabelResDto> detectLabelsByFileId(String bucket, String fileId) {
         if (bucket == null || bucket.isBlank()) {
@@ -43,6 +48,12 @@ public class RekognitionService {
 
     public List<RekognitionLabelResDto> detectLabels(String bucket, String key) {
         try {
+            // S3 파일 존재 여부 확인
+            s3Client.headObject(HeadObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build());
+
             return rekognitionClient.detectLabels(DetectLabelsRequest.builder()
                             .image(Image.builder()
                                     .s3Object(S3Object.builder()
@@ -60,8 +71,15 @@ public class RekognitionService {
                             .confidence(label.confidence())
                             .build())
                     .toList();
-        } catch (RuntimeException e) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "AWS Rekognition 객체 감지에 실패했습니다.");
+
+        } catch (S3Exception e) {
+            if (e.statusCode() == 404) {
+                throw new RestApiException(GlobalErrorStatus._FILE_NOT_FOUND);
+            }
+            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, e.getMessage());
+
+        } catch (Exception e) {
+            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
