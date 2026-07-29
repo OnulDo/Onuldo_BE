@@ -29,6 +29,18 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
 
     boolean existsByParticipation_IdAndVerificationDate(Long participationId, LocalDate verificationDate);
 
+    @Query("""
+            SELECT DISTINCT p.challenge.id
+            FROM Verification v
+            JOIN v.participation p
+            WHERE p.user.id = :userId
+            AND v.verificationDate = :date
+            """)
+    List<Long> findVerifiedChallengeIdsByUserIdAndVerificationDate(
+            @Param("userId") Long userId,
+            @Param("date") LocalDate date
+    );
+
     boolean existsByPhotoUrl(String photoUrl);
 
     Optional<Verification> findTopByParticipation_IdAndVerificationDateOrderByIdDesc(

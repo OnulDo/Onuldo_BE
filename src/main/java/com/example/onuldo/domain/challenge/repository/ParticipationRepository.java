@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,6 +40,13 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     List<Participation> findAllByUser_IdOrderByIdDesc(Long userId);
 
     List<Participation> findAllByUser_IdAndStatusOrderByIdDesc(Long userId, ParticipationStatus status);
+
+    List<Participation> findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
+            Long userId,
+            ParticipationStatus status,
+            LocalDate startDate,
+            LocalDate endDate
+    );
 
     Optional<Participation> findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(
             Long userId,
