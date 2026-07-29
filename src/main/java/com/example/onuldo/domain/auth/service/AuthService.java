@@ -16,9 +16,11 @@ import com.example.onuldo.domain.auth.repository.TermAgreementRepository;
 import com.example.onuldo.domain.auth.repository.TermRepository;
 import com.example.onuldo.domain.auth.service.client.dto.OAuthUserInfo;
 import com.example.onuldo.domain.auth.support.NicknameBannedWords;
+import com.example.onuldo.domain.user.entity.NotificationSetting;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.SocialProvider;
 import com.example.onuldo.domain.user.enums.UserStatus;
+import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
@@ -62,6 +64,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final TermRepository termRepository;
     private final TermAgreementRepository termAgreementRepository;
+    private final NotificationSettingRepository notificationSettingRepository;
     private final LoginFailureService loginFailureService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -90,6 +93,7 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
         saveTermAgreements(savedUser, request.termAgreements());
+        saveDefaultNotificationSetting(savedUser);
         return createAuthResponse(savedUser);
     }
 
@@ -177,6 +181,7 @@ public class AuthService {
                 .build());
 
         saveTermAgreements(user, request.termAgreements());
+        saveDefaultNotificationSetting(user);
         return createAuthResponse(user);
     }
 
@@ -238,6 +243,14 @@ public class AuthService {
                 throw new RestApiException(GlobalErrorStatus._TERMS_REQUIRED);
             }
         }
+    }
+
+    private void saveDefaultNotificationSetting(User user) {
+        notificationSettingRepository.save(
+                NotificationSetting.builder()
+                        .user(user)
+                        .build()
+        );
     }
 
     private void saveTermAgreements(User user, List<TermAgreementReqDto> termAgreements) {
