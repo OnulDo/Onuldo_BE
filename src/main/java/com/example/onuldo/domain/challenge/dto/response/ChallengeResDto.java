@@ -16,6 +16,7 @@ public record ChallengeResDto(
         String name,
         @Schema(example = "하루 30분 걷기")
         String explainContent,
+        @Schema(example = "[{\"type\":\"h2\",\"content\":\"이 챌린지는?\"}]")
         List<ContentBlockResDto> description,
         @Schema(example = "https://cdn.onuldo.com/challenges/1.png")
         String captionImgUrl,

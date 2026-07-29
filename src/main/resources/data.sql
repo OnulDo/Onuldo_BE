@@ -1,12 +1,26 @@
 -- 초기 기본 데이터 정의
 
 -- Term 테이블 약관 추가
-INSERT IGNORE INTO term(type)
+INSERT INTO term(type, title, effective_date, content)
 VALUES
-    ('SERVICE'),
-    ('PRIVACY'),
-    ('AGE_14'),
-    ('MARKETING');
+    ('SERVICE', '서비스 이용 약관', '2026-05-30', '[{"type":"h2","content":"제1조 (목적)"},{"type":"paragraph","content":"본 약관은 오늘두(이하 \\\"회사\\\")가 제공하는 습관 형성 챌린지 서비스 이용에 관한 조건 및 절차, 이용자와 회사의 권리·의무 및 책임사항을 규정함을 목적으로 합니다."},{"type":"linebreak","content":""},{"type":"h2","content":"제2조 (용어의 정의)"},{"type":"paragraph","content":"\\\"챌린지\\\"는 회원이 설정한 목표 활동을 인증하는 프로그램을 말하며, \\\"파티\\\"는 3명 이상의 회원이 그룹으로 참여하는 챌린지를 의미합니다."},{"type":"linebreak","content":""},{"type":"h2","content":"제3조 (도전금 및 정산)"},{"type":"paragraph","content":"회원은 챌린지 참여 시 도전금을 예치하며, 챌린지 완료 조건 충족 시 예치금 환급과 성과 보너스가 지급됩니다."},{"type":"linebreak","content":""},{"type":"h2","content":"제4조 (인증 및 판정)"},{"type":"paragraph","content":"회원의 인증 사진은 AI 기반 이미지 인식 시스템을 통해 챌린지 조건 부합 여부를 검증하며, 판정 결과는 최종적입니다."},{"type":"linebreak","content":""},{"type":"h2","content":"제5조 (계정 관리)"},{"type":"paragraph","content":"회원은 본인의 계정 정보를 안전하게 관리할 책임이 있으며, 도용 등이 의심되는 경우 즉시 회사에 통지해야 합니다."}]'),
+    ('PRIVACY', '개인정보 처리방침', '2026-05-30', '[{"type":"h2","content":"1. 수집하는 개인정보 항목"},{"type":"paragraph","content":"필수: 이메일, 닉네임, 프로필 이미지, 챌린지 인증 사진 (자동수집: 서비스 이용기록, 접속 로그, IP 주소, 기기 정보)"},{"type":"linebreak","content":""},{"type":"h2","content":"2. 개인정보 수집 및 이용 목적"},{"type":"paragraph","content":"회원 관리, 서비스 제공, 챌린지 인증 판정, 정산 처리, 고객 문의 대응, 마케팅 및 광고에 활용 (동의 시)"},{"type":"linebreak","content":""},{"type":"h2","content":"3. 개인정보 보유 및 이용기간"},{"type":"paragraph","content":"회원 탈퇴 시까지 보유하며, 관련 법령에 따라 일정 기간 보관이 필요한 정보는 해당 기간까지 별도 저장 후 파기합니다."},{"type":"linebreak","content":""},{"type":"h2","content":"4. 개인정보의 제3자 제공"},{"type":"paragraph","content":"회원의 동의 없이 개인정보를 외부에 제공하지 않으며, 예외의 경우는 관련 법령에 근거한 사항에 한합니다."},{"type":"linebreak","content":""},{"type":"h2","content":"5. 이용자의 권리"},{"type":"paragraph","content":"본인의 개인정보 조회·수정·삭제·처리정지를 언제든지 요청할 수 있으며, 마이페이지 또는 개인정보 담당자를 통해 가능합니다."}]'),
+    ('REFUND', '환급 정책', '2026-05-30', '[{"type":"h2","content":"1. 도전금 환급 원칙"},{"type":"paragraph","content":"챌린지 목표 달성 시 예치한 도전금 100%가 환급되며, 목표 미달 시 실패 회차 비율에 따라 일부 몰수됩니다."},{"type":"linebreak","content":""},{"type":"h2","content":"2. 성과 보너스 지급"},{"type":"paragraph","content":"파티 챌린지에서 전원 성공한 경우 실패자 몰수금(POT)이 성공자에게 균등 분배되며 성과 보너스로 지급됩니다."},{"type":"linebreak","content":""},{"type":"h2","content":"3. 환급 금액 계산"},{"type":"paragraph","content":"환급액 = 예치금 × 성공률 (예: 30일 중 27일 성공 시 90% 환급). 계산 결과는 정산 페이지에서 확인할 수 있습니다."},{"type":"linebreak","content":""},{"type":"h2","content":"4. 출금 및 이체"},{"type":"paragraph","content":"환급 완료된 포인트는 등록된 본인 명의 계좌로 이체 신청할 수 있으며, 영업일 기준 1~3일 소요됩니다."},{"type":"linebreak","content":""},{"type":"h2","content":"5. 환급 예외 사항"},{"type":"paragraph","content":"부정 인증, 약관 위반, 챌린지 규칙 위반 시 환급 대상에서 제외될 수 있습니다."}]')
+    AS new
+ON DUPLICATE KEY UPDATE
+                     title = new.title,
+                     effective_date = new.effective_date,
+                     content = new.content;
+
+INSERT INTO term(type, title, effective_date, content)
+VALUES
+    ('AGE_14', '만 14세 이상 확인', '2026-07-28', '[]'),
+    ('MARKETING', '마케팅 정보 수신 동의', '2026-07-28', '[]')
+    AS new
+ON DUPLICATE KEY UPDATE
+                     title = new.title,
+                     effective_date = new.effective_date,
+                     content = new.content;
 
 
 INSERT INTO challenge (

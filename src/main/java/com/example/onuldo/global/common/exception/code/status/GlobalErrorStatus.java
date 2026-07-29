@@ -68,7 +68,11 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
             "PARTY_NOT_READY_TO_START",
             "파티원이 2인 이상 모이고 전원 준비완료해야 시작할 수 있습니다."
     ),
-    _HOST_CANNOT_READY(HttpStatus.BAD_REQUEST, "HOST_CANNOT_READY", "방장은 준비완료 대상이 아닙니다.");
+    _HOST_CANNOT_READY(HttpStatus.BAD_REQUEST, "HOST_CANNOT_READY", "방장은 준비완료 대상이 아닙니다."),
+
+    // 약관 데이터 조회
+    _TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "TERM_NOT_FOUND", "약관을 찾을 수 없습니다."),
+    _INVALID_TERM_TYPE(HttpStatus.BAD_REQUEST, "INVALID_TERM_TYPE", "조회 가능한 약관 종류가 아닙니다.");
 
     private final HttpStatus httpStatus;
     private final boolean isSuccess = false;
