@@ -44,8 +44,13 @@ import java.util.stream.Collectors;
 public class AuthService {
 
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]+$");
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile(
+            "^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*\\p{Punct})[a-zA-Z0-9\\p{Punct}]+$"
+    );
     private static final int MIN_NICKNAME_LENGTH = 2;
     private static final int MAX_NICKNAME_LENGTH = 8;
+    private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final int MAX_PASSWORD_LENGTH = 20;
     private static final int DEFAULT_PROFILE_IMAGE_MIN_NUMBER = 1;
     private static final int DEFAULT_PROFILE_IMAGE_MAX_NUMBER_EXCLUSIVE = 13;
     private static final Set<TermType> REQUIRED_TERM_TYPES = Set.of(
@@ -70,6 +75,7 @@ public class AuthService {
 
         validateNickname(request.nickname());
         validateRequiredTerms(request.termAgreements());
+        validatePassword(request.password());
 
         User user = User.builder()
                 .email(request.email())
@@ -179,6 +185,20 @@ public class AuthService {
                 .accessToken(jwtTokenProvider.createAccessToken(user))
                 .refreshToken(jwtTokenProvider.createRefreshToken(user))
                 .build();
+    }
+
+    private void validatePassword(String password) {
+        if (password.length() < MIN_PASSWORD_LENGTH) {
+            throw new RestApiException(GlobalErrorStatus._PASSWORD_TOO_SHORT);
+        }
+
+        if (password.length() > MAX_PASSWORD_LENGTH) {
+            throw new RestApiException(GlobalErrorStatus._PASSWORD_TOO_LONG);
+        }
+
+        if (!PASSWORD_PATTERN.matcher(password).matches()) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_PASSWORD);
+        }
     }
 
     private void validateNickname(String nickname) {
