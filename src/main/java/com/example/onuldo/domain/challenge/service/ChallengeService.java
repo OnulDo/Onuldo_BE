@@ -1,28 +1,51 @@
 package com.example.onuldo.domain.challenge.service;
 
 import com.example.onuldo.domain.challenge.dto.response.ChallengeResDto;
+import com.example.onuldo.domain.challenge.dto.response.ChallengeVerificationResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
+import com.example.onuldo.domain.challenge.entity.Participation;
+import com.example.onuldo.domain.challenge.entity.Verification;
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
+import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
+import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
+import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
+import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.domain.challenge.dto.request.ChallengeVerificationReqDto;
+import com.example.onuldo.global.aws.service.RekognitionService;
+import com.example.onuldo.global.aws.service.S3FileService;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ChallengeService {
+    private static final int MAX_PAGE_SIZE = 50;
 
     private final ChallengeRepository challengeRepository;
+    private final ParticipationRepository participationRepository;
+    private final VerificationRepository verificationRepository;
+    private final RekognitionService rekognitionService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private final S3FileService s3FileService;
 
     public CursorPageResponse<ChallengeResDto> getChallenges(
             String cursor,
@@ -65,6 +88,57 @@ public class ChallengeService {
         return toChallengeResDto(challenge);
     }
 
+    @Transactional
+    public ChallengeVerificationResDto verifyChallenge(Long userId, Long challengeId, ChallengeVerificationReqDto request) {
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+
+        Participation participation = participationRepository
+                .findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+
+        if (verificationRepository.existsByPhotoUrl(s3FileService.getFileUrl(request.fileId()).url())) {
+            throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
+        }
+
+        List<String> detectedLabelNames = rekognitionService.detectLabelNamesByFileId(request.fileId());
+
+        boolean matchedChallengeLabel = hasMatchingLabel(challenge.getVerificationLabelList(), detectedLabelNames);
+        VerificationReviewStatus review = matchedChallengeLabel
+                ? VerificationReviewStatus.AUTO_PASS
+                : VerificationReviewStatus.AUTO_FAIL;
+
+        BigDecimal dayScore = matchedChallengeLabel ? BigDecimal.valueOf(100) : BigDecimal.ZERO;
+        String rekognitionResult = toJson(detectedLabelNames);
+        LocalDate today = LocalDate.now();
+
+        Verification verification;
+        try {
+            verification = verificationRepository.saveAndFlush(Verification.builder()
+                    .participation(participation)
+                    .verificationDate(today)
+                    .photoUrl(s3FileService.getFileUrl(request.fileId()).url())
+                    .rekognitionResult(rekognitionResult)
+                    .review(review)
+                    .dayScore(dayScore)
+                    .verifiedAt(LocalDateTime.now())
+                    .build());
+        } catch (DataIntegrityViolationException e) {
+            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY, "오늘은 이미 인증했습니다.");
+        }
+
+        return ChallengeVerificationResDto.builder()
+                .verificationId(verification.getId())
+                .challengeId(challenge.getId())
+                .participationId(participation.getId())
+                .fileId(request.fileId())
+                .verificationDate(verification.getVerificationDate())
+                .verifiedAt(verification.getVerifiedAt())
+                .review(verification.getReview())
+                .build();
+    }
+
     private ChallengeResDto toChallengeResDto(Challenge challenge) {
         return ChallengeResDto.builder()
                 .id(challenge.getId())
@@ -93,4 +167,46 @@ public class ChallengeService {
         return s.trim();
     }
 
+    private int getResolvedSize(int size) {
+        if (size <= 0) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 크기는 1 이상이어야 합니다.");
+        }
+
+        return Math.min(size, MAX_PAGE_SIZE);
+    }
+
+    private void validatePage(int page) {
+        if (page < 0) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.");
+        }
+    }
+
+    private boolean hasMatchingLabel(List<String> challengeLabels, List<String> detectedLabels) {
+        if(challengeLabels == null || challengeLabels.isEmpty()) {
+            return false;
+        }
+        if (detectedLabels == null || detectedLabels.isEmpty()) {
+            return false;
+        }
+
+        return challengeLabels.stream()
+                .filter(label -> label != null && !label.isBlank())
+                .map(String::trim)
+                .map(String::toUpperCase)
+                .anyMatch(normalizedChallengeLabel ->
+                        detectedLabels.stream()
+                                .filter(label -> label != null && !label.isBlank())
+                                .map(String::trim)
+                                .map(String::toUpperCase)
+                                .anyMatch(normalizedChallengeLabel::equals)
+                );
+    }
+
+    private String toJson(List<String> detectedLabelNames) {
+        try {
+            return objectMapper.writeValueAsString(detectedLabelNames);
+        } catch (JsonProcessingException e) {
+            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "인증 결과 저장 중 JSON 변환에 실패했습니다.");
+        }
+    }
 }

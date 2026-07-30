@@ -1,7 +1,6 @@
 package com.example.onuldo.domain.challenge.dto.response;
 
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
-import com.example.onuldo.global.dto.response.ContentBlockResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -9,10 +8,9 @@ import lombok.Builder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 
 @Builder
-public record UserChallengeResDto(
+public record DailyChallengeResDto(
         @Schema(example = "1")
         Long participationId,
         @Schema(example = "ONGOING")
@@ -25,14 +23,10 @@ public record UserChallengeResDto(
         String challengeName,
         @Schema(example = "하루 30분 걷기")
         String challengeExplainContent,
-        @Schema(example = "[{\"type\":\"h2\",\"content\":\"이 챌린지는?\"}]")
-        List<ContentBlockResDto> challengeDescription,
         @Schema(example = "https://cdn.onuldo.com/challenges/1.png")
         String challengeCaptionImgUrl,
         @Schema(example = "걸음 수를 인증해주세요.")
         String challengeVerifyMethodContent,
-        @Schema(example = "https://cdn.onuldo.com/challenges/1-example.png")
-        String challengeVerificationExamplePhotoUrl,
         @Schema(example = "120")
         Integer participantCount,
         @Schema(example = "FITNESS")
@@ -48,6 +42,8 @@ public record UserChallengeResDto(
         @Schema(example = "2026-07-27")
         LocalDate startDate,
         @Schema(example = "2026-08-24")
-        LocalDate endDate
+        LocalDate endDate,
+        @Schema(example = "true")
+        Boolean verifiedOnDate
 ) {
 }

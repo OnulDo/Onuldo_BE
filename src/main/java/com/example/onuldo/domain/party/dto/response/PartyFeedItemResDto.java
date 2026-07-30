@@ -21,26 +21,4 @@ public record PartyFeedItemResDto(
         String verificationPhotoUrl,
         @Schema(example = "2026-07-23T08:10:00", nullable = true)
         LocalDateTime verifiedAt
-) {
-    public static PartyFeedItemResDto verified(User user, Verification verification) {
-        return PartyFeedItemResDto.builder()
-                .userId(user.getId())
-                .nickname(user.getNickname())
-                .profileImageUrl(user.getProfileImageUrl())
-                .isVerifiedToday(true)
-                .verificationPhotoUrl(verification.getPhotoUrl())
-                .verifiedAt(verification.getVerifiedAt())
-                .build();
-    }
-
-    public static PartyFeedItemResDto notVerified(User user) {
-        return PartyFeedItemResDto.builder()
-                .userId(user.getId())
-                .nickname(user.getNickname())
-                .profileImageUrl(user.getProfileImageUrl())
-                .isVerifiedToday(false)
-                .verificationPhotoUrl(null)
-                .verifiedAt(null)
-                .build();
-    }
-}
+) { }

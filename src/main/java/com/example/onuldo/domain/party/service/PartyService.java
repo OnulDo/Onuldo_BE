@@ -388,8 +388,8 @@ public class PartyService {
                 .map(member -> {
                     Verification verification = verificationByUserId.get(member.getUser().getId());
                     return verification != null
-                            ? PartyFeedItemResDto.verified(member.getUser(), verification)
-                            : PartyFeedItemResDto.notVerified(member.getUser());
+                            ? generateVerifiedFeedItem(member.getUser(), verification)
+                            : generateNotVerifiedFeedItem(member.getUser());
                 })
                 .toList();
 
@@ -427,5 +427,27 @@ public class PartyService {
             sb.append(INVITE_CODE_CHARS.charAt(RANDOM.nextInt(INVITE_CODE_CHARS.length())));
         }
         return sb.toString();
+    }
+
+    private PartyFeedItemResDto generateVerifiedFeedItem(User user, Verification verification) {
+        return PartyFeedItemResDto.builder()
+                .userId(user.getId())
+                .nickname(user.getNickname())
+                .profileImageUrl(user.getProfileImageUrl())
+                .isVerifiedToday(true)
+                .verificationPhotoUrl(verification.getPhotoUrl())
+                .verifiedAt(verification.getVerifiedAt())
+                .build();
+    }
+
+    private PartyFeedItemResDto generateNotVerifiedFeedItem(User user) {
+        return PartyFeedItemResDto.builder()
+                .userId(user.getId())
+                .nickname(user.getNickname())
+                .profileImageUrl(user.getProfileImageUrl())
+                .isVerifiedToday(false)
+                .verificationPhotoUrl(null)
+                .verifiedAt(null)
+                .build();
     }
 }

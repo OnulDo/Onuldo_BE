@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/users/me")
@@ -33,5 +35,15 @@ public class UserChallengeController implements UserChallengeControllerDoc {
             int size
     ) {
         return BaseResponse.onSuccess(participationService.getUserChallenges(userId, status, cursor, size));
+    }
+
+    @GetMapping("/challenges/daily")
+    public BaseResponse<DailyChallengeListResDto> getDailyChallenges(
+            @AuthUser
+            Long userId,
+            @RequestParam(required = true)
+            LocalDate date
+    ) {
+        return BaseResponse.onSuccess(participationService.getDailyChallenges(userId, date));
     }
 }

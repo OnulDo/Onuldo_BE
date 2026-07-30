@@ -2,6 +2,9 @@ package com.example.onuldo.domain.challenge.service;
 
 import com.example.onuldo.domain.challenge.dto.request.ParticipationReqDto;
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyChallengeResDto;
+import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
@@ -10,6 +13,7 @@ import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
+import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
@@ -26,7 +30,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -112,6 +118,28 @@ public class ParticipationService {
 
     }
 
+    public DailyChallengeListResDto getDailyChallenges(Long userId, LocalDate date) {
+        List<Participation> participations = participationRepository
+                .findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
+                        userId,
+                        ParticipationStatus.ONGOING,
+                        date,
+                        date
+                );
+
+        Set<Long> verifiedChallengeIds = new HashSet<>(verificationRepository
+                .findVerifiedChallengeIdsByUserIdAndVerificationDate(userId, date));
+
+        return DailyChallengeListResDto.builder()
+                .challenges(participations.stream()
+                        .map(participation -> toDailyChallengeResDto(
+                                participation,
+                                verifiedChallengeIds.contains(participation.getChallenge().getId())
+                        ))
+                        .toList())
+                .build();
+    }
+
     private void validateDepositOption(Challenge challenge, Integer depositAmount) {
         if (challenge.getDepositOptionList() == null || !challenge.getDepositOptionList().contains(depositAmount)) {
             throw new RestApiException(GlobalErrorStatus._INVALID_DEPOSIT_OPTION);
@@ -188,6 +216,30 @@ public class ParticipationService {
                 .durationWeeks(participation.getDurationWeeks())
                 .startDate(participation.getStartDate())
                 .endDate(participation.getEndDate())
+                .build();
+    }
+
+    private DailyChallengeResDto toDailyChallengeResDto(Participation participation, boolean verifiedOnDate) {
+        Challenge challenge = participation.getChallenge();
+
+        return DailyChallengeResDto.builder()
+                .participationId(participation.getId())
+                .participationStatus(participation.getStatus())
+                .participationType(participation.getParticipationType())
+                .challengeId(challenge.getId())
+                .challengeName(challenge.getName())
+                .challengeExplainContent(challenge.getExplainContent())
+                .challengeCaptionImgUrl(challenge.getCaptionImgUrl())
+                .challengeVerifyMethodContent(challenge.getVerifyMethodContent())
+                .participantCount(challenge.getParticipantCount())
+                .category(challenge.getCategory())
+                .timeStart(challenge.getTimeStart())
+                .timeEnd(challenge.getTimeEnd())
+                .depositAmount(participation.getDepositAmount())
+                .durationWeeks(participation.getDurationWeeks())
+                .startDate(participation.getStartDate())
+                .endDate(participation.getEndDate())
+                .verifiedOnDate(verifiedOnDate)
                 .build();
     }
 }
