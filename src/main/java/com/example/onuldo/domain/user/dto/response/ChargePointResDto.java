@@ -5,9 +5,9 @@ import lombok.Builder;
 
 @Builder
 public record ChargePointResDto (
-    @Schema(example = "10000")
+    @Schema(example = "1000")
     Integer amount,
-    @Schema(example = "10000")
+    @Schema(example = "20000")
     Long balanceAfter
 ){
 
