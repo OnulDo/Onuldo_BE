@@ -124,7 +124,7 @@ public class PointService {
     ) {
         int resolvedSize = CursorConstants.resolveSize(size);
 
-        Long lastId = cursor == null ? null : CursorKeyCodec.decodeAsLongs(cursor, 1)[0];
+        Long lastId = CursorKeyCodec.isBlank(cursor) ? null : CursorKeyCodec.decodeAsLongs(cursor, 1)[0];
 
         List<PointTransaction> transactions = pointTransactionRepository.findByUserIdWithCursor(
                 userId, type, lastId, CursorPageable.of(resolvedSize)

@@ -100,7 +100,7 @@ public class ParticipationService {
     ) {
         int resolvedSize = CursorConstants.resolveSize(size);
 
-        Long lastId = cursor == null ? null : CursorKeyCodec.decodeAsLongs(cursor, 1)[0];
+        Long lastId = CursorKeyCodec.isBlank(cursor) ? null : CursorKeyCodec.decodeAsLongs(cursor, 1)[0];
 
         List<Participation> participations = status == null
                 ? participationRepository.findAllByUser_IdOrderByIdDesc(userId, lastId, CursorPageable.of(resolvedSize))

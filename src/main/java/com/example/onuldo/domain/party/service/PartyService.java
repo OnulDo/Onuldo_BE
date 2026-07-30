@@ -152,7 +152,7 @@ public class PartyService {
 
         LocalDateTime lastCreatedAt = null;
         Long lastId = null;
-        if (cursor != null) {
+        if (!CursorKeyCodec.isBlank(cursor)) {
             long[] parts = CursorKeyCodec.decodeAsLongs(cursor, 2);
             lastCreatedAt = Instant.ofEpochMilli(parts[0]).atZone(CursorConstants.ZONE_ID).toLocalDateTime();
             lastId = parts[1];

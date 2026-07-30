@@ -16,6 +16,10 @@ public class CursorKeyCodec {
 
     }
 
+    public static boolean isBlank(String cursor) {
+        return cursor == null || cursor.isBlank();
+    }
+
     public static String encode(Object... parts) {
         String raw = Arrays.stream(parts)
                 .map(String::valueOf)
