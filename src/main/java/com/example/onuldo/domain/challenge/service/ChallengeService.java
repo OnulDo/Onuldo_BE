@@ -57,9 +57,9 @@ public class ChallengeService {
         Integer lastParticipantCount = null;
         Long lastId = null;
         if (cursor != null) {
-            String[] parts = CursorKeyCodec.decode(cursor);
-            lastParticipantCount = Integer.parseInt(parts[0]);
-            lastId = Long.parseLong(parts[1]);
+            long[] parts = CursorKeyCodec.decodeAsLongs(cursor, 2);
+            lastParticipantCount = Math.toIntExact(parts[0]);
+            lastId = parts[1];
         }
 
         List<Challenge> challenges = challengeRepository.findChallenges(

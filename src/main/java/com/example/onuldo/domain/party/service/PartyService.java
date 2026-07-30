@@ -153,9 +153,9 @@ public class PartyService {
         LocalDateTime lastCreatedAt = null;
         Long lastId = null;
         if (cursor != null) {
-            String[] parts = CursorKeyCodec.decode(cursor);
-            lastCreatedAt = new Timestamp(Long.parseLong(parts[0])).toLocalDateTime();
-            lastId = Long.parseLong(parts[1]);
+            long[] parts = CursorKeyCodec.decodeAsLongs(cursor, 2);
+            lastCreatedAt = new Timestamp(parts[0]).toLocalDateTime();
+            lastId = parts[1];
         }
 
         List<Object[]> rows = partyRepository.findMyPartiesExcludingWaiting(

@@ -100,11 +100,8 @@ public class ParticipationService {
     ) {
         int resolvedSize = CursorConstants.resolveSize(size);
 
-        Long lastId = null;
-        if (cursor != null) {
-            String[] parts = CursorKeyCodec.decode(cursor);
-            lastId = Long.parseLong(parts[0]);
-        }
+        Long lastId = cursor == null ? null : CursorKeyCodec.decodeAsLongs(cursor, 1)[0];
+
         List<Participation> participations = status == null
                 ? participationRepository.findAllByUser_IdOrderByIdDesc(userId, lastId, CursorPageable.of(resolvedSize))
                 : participationRepository.findAllByUser_IdAndStatusOrderByIdDesc(userId, status, lastId, CursorPageable.of(resolvedSize));
