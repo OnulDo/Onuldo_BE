@@ -63,8 +63,6 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             @Param("lastId") Long lastId,
             Pageable pageable
     );
-    List<Participation> findAllByUser_IdAndStatusOrderByIdDesc(Long userId, ParticipationStatus status);
-
     List<Participation> findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
             Long userId,
             ParticipationStatus status,

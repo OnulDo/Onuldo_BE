@@ -4,7 +4,6 @@ import com.example.onuldo.domain.challenge.dto.request.ParticipationReqDto;
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyChallengeResDto;
-import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
@@ -43,6 +42,7 @@ public class ParticipationService {
     private final ChallengeRepository challengeRepository;
     private final ParticipationRepository participationRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final VerificationRepository verificationRepository;
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,

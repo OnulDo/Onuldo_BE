@@ -20,9 +20,18 @@ public interface ChallengeControllerDoc {
 
     @Operation(
             summary = "챌린지 목록 조회",
-            description = "커서 기반 페이지네이션으로 활성 챌린지 목록을 조회합니다. "
-                    + "참여자 수가 많은 순으로 정렬되며, cursor를 넘기지 않으면 첫 페이지를 반환합니다. "
-                    + "category와 keyword(검색어)로 필터링할 수 있습니다."
+            description = """
+                    커서 기반 페이지네이션으로 활성 챌린지 목록을 조회합니다.
+                    참여자 수가 많은 순으로 정렬되며, cursor를 넘기지 않으면 첫 페이지를 반환합니다.
+                    category와 keyword(검색어)로 필터링할 수 있습니다.
+
+                    챌린지 상세 설명 json의 type 값은 다음으로 구성됩니다.
+                    - h2
+                    - h3
+                    - paragraph
+                    - linebreak
+                    - blockquote
+                    """
     )
     BaseResponse<CursorPageResponse<ChallengeResDto>> getChallenges(
             @Parameter(description = "이전 응답의 nextCursor 값. 첫 페이지는 비워둠")

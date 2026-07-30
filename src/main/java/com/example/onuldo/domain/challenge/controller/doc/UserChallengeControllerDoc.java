@@ -19,15 +19,17 @@ public interface UserChallengeControllerDoc {
     @Operation(
             summary = "내 챌린지 참여 목록 조회",
             description = """
-                    커서 기반 페이지네이션으로 챌린지 참여 정보를 조회합니다. 
+                    커서 기반 페이지네이션으로 챌린지 참여 정보를 조회합니다.
                     참여 id가 최신순으로 정렬되며, cursor를 넘기지 않으면 첫 페이지를 반환합니다. 
                     status가 없으면 모든 상태를 조회합니다.
+                    
                     참여중인 챌린지의 상세 설명 json의 type 값은 다음으로 구성됩니다.
-                            - h2
-                            - h3
-                            - paragraph
-                            - linebreak
-                            - blockquote"""
+                    - h2
+                    - h3
+                    - paragraph
+                    - linebreak
+                    - blockquote
+                    """
     )
     BaseResponse<CursorPageResponse<UserChallengeResDto>> getUserChallenges(
             @AuthUser

@@ -37,7 +37,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ChallengeService {
-    private static final int MAX_PAGE_SIZE = 50;
 
     private final ChallengeRepository challengeRepository;
     private final ParticipationRepository participationRepository;
@@ -165,20 +164,6 @@ public class ChallengeService {
             return null;
         }
         return s.trim();
-    }
-
-    private int getResolvedSize(int size) {
-        if (size <= 0) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 크기는 1 이상이어야 합니다.");
-        }
-
-        return Math.min(size, MAX_PAGE_SIZE);
-    }
-
-    private void validatePage(int page) {
-        if (page < 0) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.");
-        }
     }
 
     private boolean hasMatchingLabel(List<String> challengeLabels, List<String> detectedLabels) {
