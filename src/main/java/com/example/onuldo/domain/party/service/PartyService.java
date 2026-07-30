@@ -41,7 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -154,7 +154,7 @@ public class PartyService {
         Long lastId = null;
         if (cursor != null) {
             long[] parts = CursorKeyCodec.decodeAsLongs(cursor, 2);
-            lastCreatedAt = new Timestamp(parts[0]).toLocalDateTime();
+            lastCreatedAt = Instant.ofEpochMilli(parts[0]).atZone(CursorConstants.ZONE_ID).toLocalDateTime();
             lastId = parts[1];
         }
 
@@ -167,7 +167,7 @@ public class PartyService {
                 resolvedSize,
                 row -> (PartyListResDto) row[0],
                 row -> CursorKeyCodec.encode(
-                        Timestamp.valueOf((LocalDateTime) row[1]).getTime(),
+                        ((LocalDateTime) row[1]).atZone(CursorConstants.ZONE_ID).toInstant().toEpochMilli(),
                         ((PartyListResDto) row[0]).partyId()
                 )
         );
