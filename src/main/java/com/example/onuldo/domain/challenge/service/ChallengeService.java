@@ -121,6 +121,9 @@ public class ChallengeService {
             throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY, "오늘은 이미 인증했습니다.");
         }
 
+        // 인증 마지막 날인지 확인, 정산 Trigger 실행
+        triggerSettlementIfLastDay(participation, today);
+
         return ChallengeVerificationResDto.builder()
                 .verificationId(verification.getId())
                 .challengeId(challenge.getId())
@@ -130,6 +133,16 @@ public class ChallengeService {
                 .verifiedAt(verification.getVerifiedAt())
                 .review(verification.getReview())
                 .build();
+    }
+
+    private void triggerSettlementIfLastDay(Participation participation, LocalDate verificationDate) {
+        if (!verificationDate.equals(participation.getEndDate())) {
+            return;
+        }
+
+
+        // TODO: 마지막 날 인증 완료 시점에 정산 생성/실행 로직을 연결한다.
+        //       이 위치는 챌린지 종료일 인증이 실제로 저장된 직후다.
     }
 
     private ChallengeResDto toChallengeResDto(Challenge challenge) {
