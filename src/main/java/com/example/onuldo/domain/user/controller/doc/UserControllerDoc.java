@@ -160,7 +160,7 @@ public interface UserControllerDoc {
             @RequestParam(required = false)
             String cursor,
 
-            @Parameter(description = "조회할 개수. 기본값 10, 최소 1", example = "10")
+            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
             @RequestParam(defaultValue = "10")
             int size
     );

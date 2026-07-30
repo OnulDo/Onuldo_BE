@@ -34,12 +34,15 @@ public interface UserChallengeControllerDoc {
     BaseResponse<CursorPageResponse<UserChallengeResDto>> getUserChallenges(
             @AuthUser
             Long userId,
+
             @RequestParam(required = false)
             ParticipationStatus status,
-            @Parameter(description = "이전 응답의 nextCursor 값. 첫 페이지는 비워둠")
+
+            @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력")
             @RequestParam(required = false)
             String cursor,
-            @Parameter(description = "페이지 크기. 기본값 10", example = "10")
+
+            @Parameter(description = "조회할 개수 기본값 10", example = "10")
             @RequestParam(defaultValue = "10")
             int size
     );
@@ -57,6 +60,7 @@ public interface UserChallengeControllerDoc {
             @Parameter(hidden = true)
             @AuthUser
             Long userId,
+
             @Parameter(description = "조회할 날짜", example = "2026-07-29")
             @RequestParam(required = true)
             LocalDate date

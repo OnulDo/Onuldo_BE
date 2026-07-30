@@ -47,7 +47,7 @@ public interface PartyControllerDoc {
             @Parameter(description = "이전 응답의 nextCursor 값. 첫 페이지는 비워둠")
             @RequestParam(required = false)
             String cursor,
-            @Parameter(description = "페이지 크기. 기본값 10", example = "10")
+            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
             @RequestParam(defaultValue = "10")
             int size
     );

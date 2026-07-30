@@ -34,15 +34,18 @@ public interface ChallengeControllerDoc {
                     """
     )
     BaseResponse<CursorPageResponse<ChallengeResDto>> getChallenges(
-            @Parameter(description = "이전 응답의 nextCursor 값. 첫 페이지는 비워둠")
+            @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력")
             @RequestParam(required = false)
             String cursor,
-            @Parameter(description = "페이지 크기. 기본값 10", example = "10")
+
+            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
             @RequestParam(defaultValue = "10")
             int size,
+
             @Parameter(description = "카테고리 필터", example = "FITNESS")
             @RequestParam(required = false)
             ChallengeCategory category,
+
             @Parameter(description = "검색어", example = "run")
             @RequestParam(required = false)
             String keyword
@@ -64,9 +67,11 @@ public interface ChallengeControllerDoc {
     BaseResponse<ChallengeVerificationResDto> verifyChallenge(
             @AuthUser
             Long userId,
+
             @Parameter(description = "챌린지 ID", example = "1")
             @PathVariable
             Long challengeId,
+
             @Valid
             @RequestBody
             ChallengeVerificationReqDto request
