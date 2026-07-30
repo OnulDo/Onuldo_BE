@@ -1,52 +1,60 @@
 package com.example.onuldo.domain.challenge.service;
 
-import com.example.onuldo.domain.challenge.dto.response.ChallengePageResDto;
 import com.example.onuldo.domain.challenge.dto.response.ChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorKeyCodec;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ChallengeService {
 
-    private static final int MAX_PAGE_SIZE = 50;
-
     private final ChallengeRepository challengeRepository;
 
-    public ChallengePageResDto getChallenges(
-            int page,
+    public CursorPageResponse<ChallengeResDto> getChallenges(
+            String cursor,
             int size,
             ChallengeCategory category,
             String keyword
     ) {
-        validatePage(page);
-        int resolvedSize = getResolvedSize(size);
+        int resolvedSize = CursorConstants.resolveSize(size);
 
-        Page<Challenge> challengePage = challengeRepository.findChallenges(
+        Integer lastParticipantCount = null;
+        Long lastId = null;
+        if (cursor != null) {
+            String[] parts = CursorKeyCodec.decode(cursor);
+            lastParticipantCount = Integer.parseInt(parts[0]);
+            lastId = Long.parseLong(parts[1]);
+        }
+
+        List<Challenge> challenges = challengeRepository.findChallenges(
                 ChallengeStatus.ACTIVE,
                 category,
                 normalizeKeyword(keyword),
-                PageRequest.of(page, resolvedSize)
+                lastParticipantCount,
+                lastId,
+                CursorPageable.of(resolvedSize)
         );
 
-        return ChallengePageResDto.builder()
-                .challenges(challengePage.getContent().stream().map(this::toChallengeResDto).toList())
-                .page(challengePage.getNumber())
-                .size(challengePage.getSize())
-                .totalElements(challengePage.getTotalElements())
-                .totalPages(challengePage.getTotalPages())
-                .hasNext(challengePage.hasNext())
-                .build();
+        return CursorPageResponse.of(
+                challenges,
+                resolvedSize,
+                this::toChallengeResDto,
+                c -> CursorKeyCodec.encode(c.getParticipantCount(), c.getId())
+        );
     }
 
     public ChallengeResDto getChallenge(Long challengeId) {
@@ -85,17 +93,4 @@ public class ChallengeService {
         return s.trim();
     }
 
-    private int getResolvedSize(int size) {
-        if (size <= 0) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 크기는 1 이상이어야 합니다.");
-        }
-
-        return Math.min(size, MAX_PAGE_SIZE);
-    }
-
-    private void validatePage(int page) {
-        if (page < 0) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.");
-        }
-    }
 }

@@ -30,6 +30,10 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorKeyCodec;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -142,8 +147,30 @@ public class PartyService {
     }
 
     @Transactional(readOnly = true)
-    public List<PartyListResDto> getMyParties(Long userId) {
-        return partyRepository.findMyPartiesExcludingWaiting(userId);
+    public CursorPageResponse<PartyListResDto> getMyParties(Long userId, String cursor, int size) {
+        int resolvedSize = CursorConstants.resolveSize(size);
+
+        LocalDateTime lastCreatedAt = null;
+        Long lastId = null;
+        if (cursor != null) {
+            String[] parts = CursorKeyCodec.decode(cursor);
+            lastCreatedAt = new Timestamp(Long.parseLong(parts[0])).toLocalDateTime();
+            lastId = Long.parseLong(parts[1]);
+        }
+
+        List<Object[]> rows = partyRepository.findMyPartiesExcludingWaiting(
+                userId, lastCreatedAt, lastId, CursorPageable.of(resolvedSize)
+        );
+
+        return CursorPageResponse.of(
+                rows,
+                resolvedSize,
+                row -> (PartyListResDto) row[0],
+                row -> CursorKeyCodec.encode(
+                        Timestamp.valueOf((LocalDateTime) row[1]).getTime(),
+                        ((PartyListResDto) row[0]).partyId()
+                )
+        );
     }
 
     @Transactional(readOnly = true)

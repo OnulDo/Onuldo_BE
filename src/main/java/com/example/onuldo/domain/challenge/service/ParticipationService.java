@@ -2,7 +2,6 @@ package com.example.onuldo.domain.challenge.service;
 
 import com.example.onuldo.domain.challenge.dto.request.ParticipationReqDto;
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
-import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
@@ -16,6 +15,10 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorKeyCodec;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import jakarta.transaction.Transactional;
@@ -83,16 +86,30 @@ public class ParticipationService {
                 .build();
     }
 
-    public UserChallengeListResDto getUserChallenges(Long userId, ParticipationStatus status) {
-        List<Participation> participations = status == null
-                ? participationRepository.findAllByUser_IdOrderByIdDesc(userId)
-                : participationRepository.findAllByUser_IdAndStatusOrderByIdDesc(userId, status);
+    public CursorPageResponse<UserChallengeResDto> getUserChallenges(
+            Long userId,
+            ParticipationStatus status,
+            String cursor,
+            int size
+    ) {
+        int resolvedSize = CursorConstants.resolveSize(size);
 
-        return UserChallengeListResDto.builder()
-                .challenges(participations.stream()
-                        .map(this::toUserChallengeResDto)
-                        .toList())
-                .build();
+        Long lastId = null;
+        if (cursor != null) {
+            String[] parts = CursorKeyCodec.decode(cursor);
+            lastId = Long.parseLong(parts[0]);
+        }
+        List<Participation> participations = status == null
+                ? participationRepository.findAllByUser_IdOrderByIdDesc(userId, lastId, CursorPageable.of(resolvedSize))
+                : participationRepository.findAllByUser_IdAndStatusOrderByIdDesc(userId, status, lastId, CursorPageable.of(resolvedSize));
+
+        return CursorPageResponse.of(
+                participations,
+                resolvedSize,
+                this::toUserChallengeResDto,
+                p -> CursorKeyCodec.encode(p.getId())
+        );
+
     }
 
     private void validateDepositOption(Challenge challenge, Integer depositAmount) {
