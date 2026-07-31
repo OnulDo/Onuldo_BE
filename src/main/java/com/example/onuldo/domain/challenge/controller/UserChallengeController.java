@@ -25,7 +25,7 @@ public class UserChallengeController implements UserChallengeControllerDoc {
     private final ParticipationService participationService;
 
     @GetMapping("/challenges")
-    public BaseResponse<CursorPageResponse<UserChallengeResDto>> getUserChallenges(
+    public CursorPageResponse<UserChallengeResDto> getUserChallenges(
             @AuthUser
             Long userId,
             @RequestParam(required = false)
@@ -35,7 +35,7 @@ public class UserChallengeController implements UserChallengeControllerDoc {
             @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
             int size
     ) {
-        return BaseResponse.onSuccess(participationService.getUserChallenges(userId, status, cursor, size));
+        return participationService.getUserChallenges(userId, status, cursor, size);
     }
 
     @GetMapping("/challenges/daily")

@@ -148,7 +148,7 @@ public interface UserControllerDoc {
             responseCode = "200",
             content = @Content(mediaType = "application/json")
     )
-    BaseResponse<CursorPageResponse<PointTransactionResDto>> getPointTransactions(
+    CursorPageResponse<PointTransactionResDto> getPointTransactions(
             @AuthUser
             Long userId,
 

@@ -33,7 +33,7 @@ public interface ChallengeControllerDoc {
                     - blockquote
                     """
     )
-    BaseResponse<CursorPageResponse<ChallengeResDto>> getChallenges(
+    CursorPageResponse<ChallengeResDto> getChallenges(
             @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력")
             @RequestParam(required = false)
             String cursor,

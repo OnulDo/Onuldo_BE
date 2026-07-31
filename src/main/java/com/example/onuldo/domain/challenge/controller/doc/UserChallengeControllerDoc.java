@@ -31,7 +31,7 @@ public interface UserChallengeControllerDoc {
                     - blockquote
                     """
     )
-    BaseResponse<CursorPageResponse<UserChallengeResDto>> getUserChallenges(
+    CursorPageResponse<UserChallengeResDto> getUserChallenges(
             @AuthUser
             Long userId,
 

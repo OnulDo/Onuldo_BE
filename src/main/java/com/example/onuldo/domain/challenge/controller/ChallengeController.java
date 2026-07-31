@@ -28,7 +28,7 @@ public class ChallengeController implements ChallengeControllerDoc {
     private final ChallengeService challengeService;
 
     @GetMapping
-    public BaseResponse<CursorPageResponse<ChallengeResDto>> getChallenges(
+    public CursorPageResponse<ChallengeResDto> getChallenges(
             @RequestParam(required = false)
             String cursor,
             @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
@@ -38,7 +38,7 @@ public class ChallengeController implements ChallengeControllerDoc {
             @RequestParam(required = false)
             String keyword
     ) {
-        return BaseResponse.onSuccess(challengeService.getChallenges(cursor, size, category, keyword));
+        return challengeService.getChallenges(cursor, size, category, keyword);
     }
 
     @GetMapping("/{challengeId}")

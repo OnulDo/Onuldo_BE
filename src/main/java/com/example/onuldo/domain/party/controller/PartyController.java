@@ -42,7 +42,7 @@ public class PartyController implements PartyControllerDoc {
     }
 
     @GetMapping
-    public BaseResponse<CursorPageResponse<PartyListResDto>> getMyParties(
+    public CursorPageResponse<PartyListResDto> getMyParties(
             @AuthUser
             Long userId,
             @RequestParam(required = false)
@@ -50,7 +50,7 @@ public class PartyController implements PartyControllerDoc {
             @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
             int size
     ) {
-        return BaseResponse.onSuccess(partyService.getMyParties(userId, cursor, size));
+        return partyService.getMyParties(userId, cursor, size);
     }
 
     @GetMapping("/{partyId}/waiting-room")

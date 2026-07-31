@@ -103,7 +103,7 @@ public class UserController implements UserControllerDoc {
     }
 
     @GetMapping("/wallet/transactions")
-    public BaseResponse<CursorPageResponse<PointTransactionResDto>> getPointTransactions(
+    public CursorPageResponse<PointTransactionResDto> getPointTransactions(
             @AuthUser
             Long userId,
 
@@ -116,6 +116,6 @@ public class UserController implements UserControllerDoc {
             @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
             int size
     ) {
-        return BaseResponse.onSuccess(pointService.getPointTransactions(userId, type, cursor, size));
+        return pointService.getPointTransactions(userId, type, cursor, size);
     }
 }

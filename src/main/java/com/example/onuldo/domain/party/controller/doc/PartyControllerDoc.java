@@ -42,7 +42,7 @@ public interface PartyControllerDoc {
                     + "모집 중(WAITING)인 파티는 목록에서 제외되며, 진행 중/종료된 파티만 반환합니다."
     )
     @ApiResponse(responseCode = "200")
-    BaseResponse<CursorPageResponse<PartyListResDto>> getMyParties(
+    CursorPageResponse<PartyListResDto> getMyParties(
             @AuthUser Long userId,
             @Parameter(description = "이전 응답의 nextCursor 값. 첫 페이지는 비워둠")
             @RequestParam(required = false)
