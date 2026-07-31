@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
@@ -25,6 +26,29 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("partyId") Long partyId,
             @Param("date") LocalDate date
     );
+
+    boolean existsByParticipation_IdAndVerificationDate(Long participationId, LocalDate verificationDate);
+
+    @Query("""
+            SELECT DISTINCT p.challenge.id
+            FROM Verification v
+            JOIN v.participation p
+            WHERE p.user.id = :userId
+            AND v.verificationDate = :date
+            """)
+    List<Long> findVerifiedChallengeIdsByUserIdAndVerificationDate(
+            @Param("userId") Long userId,
+            @Param("date") LocalDate date
+    );
+
+    boolean existsByPhotoUrl(String photoUrl);
+
+    Optional<Verification> findTopByParticipation_IdAndVerificationDateOrderByIdDesc(
+            Long participationId,
+            LocalDate verificationDate
+    );
+
+    List<Verification> findAllByParticipation_IdIn(Collection<Long> participationIds);
 
     List<Verification> findAllByParticipation_IdIn(Collection<Long> participationIds);
 }

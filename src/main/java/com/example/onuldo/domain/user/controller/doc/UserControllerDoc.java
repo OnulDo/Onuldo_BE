@@ -6,11 +6,12 @@ import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
-import com.example.onuldo.domain.user.dto.response.PointTransactionScrollResDto;
+import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,7 +19,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -84,10 +84,7 @@ public interface UserControllerDoc {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
     )
-    @ApiResponse(
-            responseCode = "200",
-            content = @Content(mediaType = "application/json")
-    )
+    @ApiResponse(responseCode = "200")
     BaseResponse<ChargePointResDto> chargePoint(
             @AuthUser
             Long userId,
@@ -104,10 +101,7 @@ public interface UserControllerDoc {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
     )
-    @ApiResponse(
-            responseCode = "200",
-            content = @Content(mediaType = "application/json")
-    )
+    @ApiResponse(responseCode = "200")
     BaseResponse<ChargePointResDto> grantSignupBonus(
             @AuthUser
             Long userId,
@@ -121,10 +115,7 @@ public interface UserControllerDoc {
             summary = "포인트 지갑 요약 조회",
             description = "잔액, 예치 중인 포인트, 누적 예치액, 누적 환급액, 누적 차감액, 평균 환급률을 조회합니다."
     )
-    @ApiResponse(
-            responseCode = "200",
-            content = @Content(mediaType = "application/json")
-    )
+    @ApiResponse(responseCode = "200")
     BaseResponse<PointWalletSummaryResDto> getPointWalletSummary(
             @AuthUser
             Long userId
@@ -144,11 +135,8 @@ public interface UserControllerDoc {
                     type) RERUND일 때만 depositAmount(예치금), adjustmentAmount(조정금-보너스지급/차감) 값 반환
                     """
     )
-    @ApiResponse(
-            responseCode = "200",
-            content = @Content(mediaType = "application/json")
-    )
-    BaseResponse<PointTransactionScrollResDto> getPointTransactions(
+    @ApiResponse(responseCode = "200")
+    CursorPageResponse<PointTransactionResDto> getPointTransactions(
             @AuthUser
             Long userId,
 
@@ -156,12 +144,11 @@ public interface UserControllerDoc {
             @RequestParam(required = false)
             PointTransactionType type,
 
-            @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력", example = "100")
+            @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력")
             @RequestParam(required = false)
-            Long cursor,
+            String cursor,
 
-            @Parameter(description = "조회할 개수. 기본값 10, 최소 1", example = "10")
-            @Min(1)
+            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
             @RequestParam(defaultValue = "10")
             int size
     );

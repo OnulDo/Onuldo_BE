@@ -5,7 +5,7 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-public record UserChallengeListResDto(
-        List<UserChallengeResDto> challenges
+public record DailyChallengeListResDto(
+        List<DailyChallengeResDto> challenges
 ) {
 }

@@ -30,6 +30,10 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorKeyCodec;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -142,8 +147,34 @@ public class PartyService {
     }
 
     @Transactional(readOnly = true)
-    public List<PartyListResDto> getMyParties(Long userId) {
-        return partyRepository.findMyPartiesExcludingWaiting(userId);
+    public CursorPageResponse<PartyListResDto> getMyParties(Long userId, String cursor, int size) {
+        int resolvedSize = CursorConstants.resolveSize(size);
+
+        LocalDateTime lastCreatedAt = null;
+        Long lastId = null;
+        if (!CursorKeyCodec.isBlank(cursor)) {
+            String[] parts = CursorKeyCodec.decodeParts(cursor, 2);
+            try {
+                lastCreatedAt = LocalDateTime.parse(parts[0]);
+                lastId = Long.parseLong(parts[1]);
+            } catch (DateTimeParseException | NumberFormatException e) {
+                throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+            }
+        }
+
+        List<Object[]> rows = partyRepository.findMyPartiesExcludingWaiting(
+                userId, lastCreatedAt, lastId, CursorPageable.of(resolvedSize)
+        );
+
+        return CursorPageResponse.of(
+                rows,
+                resolvedSize,
+                row -> (PartyListResDto) row[0],
+                row -> CursorKeyCodec.encode(
+                        ((LocalDateTime) row[1]).toString(),
+                        ((PartyListResDto) row[0]).partyId()
+                )
+        );
     }
 
     @Transactional(readOnly = true)
@@ -361,8 +392,8 @@ public class PartyService {
                 .map(member -> {
                     Verification verification = verificationByUserId.get(member.getUser().getId());
                     return verification != null
-                            ? PartyFeedItemResDto.verified(member.getUser(), verification)
-                            : PartyFeedItemResDto.notVerified(member.getUser());
+                            ? generateVerifiedFeedItem(member.getUser(), verification)
+                            : generateNotVerifiedFeedItem(member.getUser());
                 })
                 .toList();
 
@@ -400,5 +431,27 @@ public class PartyService {
             sb.append(INVITE_CODE_CHARS.charAt(RANDOM.nextInt(INVITE_CODE_CHARS.length())));
         }
         return sb.toString();
+    }
+
+    private PartyFeedItemResDto generateVerifiedFeedItem(User user, Verification verification) {
+        return PartyFeedItemResDto.builder()
+                .userId(user.getId())
+                .nickname(user.getNickname())
+                .profileImageUrl(user.getProfileImageUrl())
+                .isVerifiedToday(true)
+                .verificationPhotoUrl(verification.getPhotoUrl())
+                .verifiedAt(verification.getVerifiedAt())
+                .build();
+    }
+
+    private PartyFeedItemResDto generateNotVerifiedFeedItem(User user) {
+        return PartyFeedItemResDto.builder()
+                .userId(user.getId())
+                .nickname(user.getNickname())
+                .profileImageUrl(user.getProfileImageUrl())
+                .isVerifiedToday(false)
+                .verificationPhotoUrl(null)
+                .verifiedAt(null)
+                .build();
     }
 }

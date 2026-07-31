@@ -8,15 +8,16 @@ import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작, 진행 피드 관련 API")
 public interface PartyControllerDoc {
@@ -36,12 +37,19 @@ public interface PartyControllerDoc {
 
     @Operation(
             summary = "나의 파티 목록 조회",
-            description = "로그인한 사용자가 속한 파티 목록을 조회합니다. "
+            description = "커서 기반 페이지네이션으로 로그인한 사용자가 속한 파티 목록을 조회합니다. "
+                    + "생성일 최신순으로 정렬되며, cursor를 넘기지 않으면 첫 페이지를 반환합니다. "
                     + "모집 중(WAITING)인 파티는 목록에서 제외되며, 진행 중/종료된 파티만 반환합니다."
     )
     @ApiResponse(responseCode = "200")
-    BaseResponse<List<PartyListResDto>> getMyParties(
-            @AuthUser Long userId
+    CursorPageResponse<PartyListResDto> getMyParties(
+            @AuthUser Long userId,
+            @Parameter(description = "이전 응답의 nextCursor 값. 첫 페이지는 비워둠")
+            @RequestParam(required = false)
+            String cursor,
+            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
+            @RequestParam(defaultValue = "10")
+            int size
     );
 
     @Operation(

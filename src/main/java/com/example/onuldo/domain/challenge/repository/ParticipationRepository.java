@@ -2,12 +2,16 @@ package com.example.onuldo.domain.challenge.repository;
 
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.Collection;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface ParticipationRepository extends JpaRepository<Participation, Long> {
 
@@ -35,7 +39,37 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     );
 
 
-    List<Participation> findAllByUser_IdOrderByIdDesc(Long userId);
+    @Query("""
+        SELECT p FROM Participation p
+        WHERE p.user.id = :userId
+        AND (:lastId IS NULL OR p.id < :lastId)
+        ORDER BY p.id DESC
+    """)
+    List<Participation> findAllByUser_IdOrderByIdDesc(
+            @Param("userId") Long userId,
+            @Param("lastId") Long lastId,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT p FROM Participation p
+        WHERE p.user.id = :userId
+        AND p.status = :status
+        AND (:lastId IS NULL OR p.id < :lastId)
+        ORDER BY p.id DESC
+    """)
+    List<Participation> findAllByUser_IdAndStatusOrderByIdDesc(
+            @Param("userId") Long userId,
+            @Param("status") ParticipationStatus status,
+            @Param("lastId") Long lastId,
+            Pageable pageable
+    );
+    List<Participation> findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
+            Long userId,
+            ParticipationStatus status,
+            LocalDate startDate,
+            LocalDate endDate
+    );
 
     List<Participation> findAllByUser_IdAndStatusOrderByIdDesc(Long userId, ParticipationStatus status);
 
@@ -64,4 +98,11 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             @Param("userId") Long userId,
             @Param("statuses") Collection<ParticipationStatus> statuses
     );
+    Optional<Participation> findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(
+            Long userId,
+            Long challengeId,
+            ParticipationStatus status
+    );
+
+    List<Participation> findAllByIdIn(Collection<Long> ids);
 }

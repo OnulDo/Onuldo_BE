@@ -5,7 +5,8 @@ import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeRecord
 import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeRecordSummaryResDto;
 import com.example.onuldo.domain.challenge.dto.response.OngoingChallengeRecordResDto;
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
-import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
@@ -17,6 +18,7 @@ import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
+import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.user.entity.PointTransaction;
@@ -24,6 +26,10 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorKeyCodec;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import jakarta.transaction.Transactional;
@@ -35,10 +41,12 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +66,7 @@ public class ParticipationService {
     private final VerificationRepository verificationRepository;
     private final SettlementRepository settlementRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final VerificationRepository verificationRepository;
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,
@@ -107,14 +116,47 @@ public class ParticipationService {
                 .build();
     }
 
-    public UserChallengeListResDto getUserChallenges(Long userId, ParticipationStatus status) {
-        List<Participation> participations = status == null
-                ? participationRepository.findAllByUser_IdOrderByIdDesc(userId)
-                : participationRepository.findAllByUser_IdAndStatusOrderByIdDesc(userId, status);
+    public CursorPageResponse<UserChallengeResDto> getUserChallenges(
+            Long userId,
+            ParticipationStatus status,
+            String cursor,
+            int size
+    ) {
+        int resolvedSize = CursorConstants.resolveSize(size);
 
-        return UserChallengeListResDto.builder()
+        Long lastId = CursorKeyCodec.isBlank(cursor) ? null : CursorKeyCodec.decodeAsLongs(cursor, 1)[0];
+
+        List<Participation> participations = status == null
+                ? participationRepository.findAllByUser_IdOrderByIdDesc(userId, lastId, CursorPageable.of(resolvedSize))
+                : participationRepository.findAllByUser_IdAndStatusOrderByIdDesc(userId, status, lastId, CursorPageable.of(resolvedSize));
+
+        return CursorPageResponse.of(
+                participations,
+                resolvedSize,
+                this::toUserChallengeResDto,
+                p -> CursorKeyCodec.encode(p.getId())
+        );
+
+    }
+
+    public DailyChallengeListResDto getDailyChallenges(Long userId, LocalDate date) {
+        List<Participation> participations = participationRepository
+                .findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
+                        userId,
+                        ParticipationStatus.ONGOING,
+                        date,
+                        date
+                );
+
+        Set<Long> verifiedChallengeIds = new HashSet<>(verificationRepository
+                .findVerifiedChallengeIdsByUserIdAndVerificationDate(userId, date));
+
+        return DailyChallengeListResDto.builder()
                 .challenges(participations.stream()
-                        .map(this::toUserChallengeResDto)
+                        .map(participation -> toDailyChallengeResDto(
+                                participation,
+                                verifiedChallengeIds.contains(participation.getChallenge().getId())
+                        ))
                         .toList())
                 .build();
     }
@@ -382,6 +424,30 @@ public class ParticipationService {
                 .durationWeeks(participation.getDurationWeeks())
                 .startDate(participation.getStartDate())
                 .endDate(participation.getEndDate())
+                .build();
+    }
+
+    private DailyChallengeResDto toDailyChallengeResDto(Participation participation, boolean verifiedOnDate) {
+        Challenge challenge = participation.getChallenge();
+
+        return DailyChallengeResDto.builder()
+                .participationId(participation.getId())
+                .participationStatus(participation.getStatus())
+                .participationType(participation.getParticipationType())
+                .challengeId(challenge.getId())
+                .challengeName(challenge.getName())
+                .challengeExplainContent(challenge.getExplainContent())
+                .challengeCaptionImgUrl(challenge.getCaptionImgUrl())
+                .challengeVerifyMethodContent(challenge.getVerifyMethodContent())
+                .participantCount(challenge.getParticipantCount())
+                .category(challenge.getCategory())
+                .timeStart(challenge.getTimeStart())
+                .timeEnd(challenge.getTimeEnd())
+                .depositAmount(participation.getDepositAmount())
+                .durationWeeks(participation.getDurationWeeks())
+                .startDate(participation.getStartDate())
+                .endDate(participation.getEndDate())
+                .verifiedOnDate(verifiedOnDate)
                 .build();
     }
 }
