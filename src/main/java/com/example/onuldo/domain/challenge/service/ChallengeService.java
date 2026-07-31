@@ -58,7 +58,7 @@ public class ChallengeService {
         Long lastId = null;
         if (!CursorKeyCodec.isBlank(cursor)) {
             long[] parts = CursorKeyCodec.decodeAsLongs(cursor, 2);
-            lastParticipantCount = Math.toIntExact(parts[0]);
+            lastParticipantCount = CursorKeyCodec.toIntCursorValue(parts[0]);
             lastId = parts[1];
         }
 

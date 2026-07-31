@@ -38,11 +38,16 @@ public class CursorKeyCodec {
         }
     }
 
-    public static long[] decodeAsLongs(String cursor, int expectedPartCount) {
+    public static String[] decodeParts(String cursor, int expectedPartCount) {
         String[] parts = decode(cursor);
         if (parts.length != expectedPartCount) {
             throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
         }
+        return parts;
+    }
+
+    public static long[] decodeAsLongs(String cursor, int expectedPartCount) {
+        String[] parts = decodeParts(cursor, expectedPartCount);
 
         try {
             long[] values = new long[expectedPartCount];
@@ -51,6 +56,14 @@ public class CursorKeyCodec {
             }
             return values;
         } catch (NumberFormatException e) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+        }
+    }
+
+    public static int toIntCursorValue(long value) {
+        try {
+            return Math.toIntExact(value);
+        } catch (ArithmeticException e) {
             throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
         }
     }

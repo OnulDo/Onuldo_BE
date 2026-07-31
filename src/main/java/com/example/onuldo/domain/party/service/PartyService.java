@@ -41,9 +41,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -153,9 +153,13 @@ public class PartyService {
         LocalDateTime lastCreatedAt = null;
         Long lastId = null;
         if (!CursorKeyCodec.isBlank(cursor)) {
-            long[] parts = CursorKeyCodec.decodeAsLongs(cursor, 2);
-            lastCreatedAt = Instant.ofEpochMilli(parts[0]).atZone(CursorConstants.ZONE_ID).toLocalDateTime();
-            lastId = parts[1];
+            String[] parts = CursorKeyCodec.decodeParts(cursor, 2);
+            try {
+                lastCreatedAt = LocalDateTime.parse(parts[0]);
+                lastId = Long.parseLong(parts[1]);
+            } catch (DateTimeParseException | NumberFormatException e) {
+                throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+            }
         }
 
         List<Object[]> rows = partyRepository.findMyPartiesExcludingWaiting(
@@ -167,7 +171,7 @@ public class PartyService {
                 resolvedSize,
                 row -> (PartyListResDto) row[0],
                 row -> CursorKeyCodec.encode(
-                        ((LocalDateTime) row[1]).atZone(CursorConstants.ZONE_ID).toInstant().toEpochMilli(),
+                        ((LocalDateTime) row[1]).toString(),
                         ((PartyListResDto) row[0]).partyId()
                 )
         );
