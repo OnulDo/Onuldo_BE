@@ -6,11 +6,12 @@ import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
-import com.example.onuldo.domain.user.dto.response.PointTransactionScrollResDto;
+import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,7 +19,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -136,7 +136,7 @@ public interface UserControllerDoc {
                     """
     )
     @ApiResponse(responseCode = "200")
-    BaseResponse<PointTransactionScrollResDto> getPointTransactions(
+    CursorPageResponse<PointTransactionResDto> getPointTransactions(
             @AuthUser
             Long userId,
 
@@ -144,12 +144,11 @@ public interface UserControllerDoc {
             @RequestParam(required = false)
             PointTransactionType type,
 
-            @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력", example = "100")
+            @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력")
             @RequestParam(required = false)
-            Long cursor,
+            String cursor,
 
-            @Parameter(description = "조회할 개수. 기본값 10, 최소 1", example = "10")
-            @Min(1)
+            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
             @RequestParam(defaultValue = "10")
             int size
     );

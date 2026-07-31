@@ -5,17 +5,19 @@ import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
-import com.example.onuldo.domain.user.dto.response.PointTransactionScrollResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorKeyCodec;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -114,27 +116,26 @@ public class PointService {
     }
 
     @Transactional(readOnly = true)
-    public PointTransactionScrollResDto getPointTransactions(
+    public CursorPageResponse<PointTransactionResDto> getPointTransactions(
             Long userId,
             PointTransactionType type,
-            Long cursor,
+            String cursor,
             int size
     ) {
-        validateTransactionPageSize(size);
+        int resolvedSize = CursorConstants.resolveSize(size);
+
+        Long lastId = CursorKeyCodec.isBlank(cursor) ? null : CursorKeyCodec.decodeAsLongs(cursor, 1)[0];
 
         List<PointTransaction> transactions = pointTransactionRepository.findByUserIdWithCursor(
-                userId, type, cursor, PageRequest.of(0, size + 1)
+                userId, type, lastId, CursorPageable.of(resolvedSize)
         );
 
-        boolean hasNext = transactions.size() > size;
-        List<PointTransaction> content = hasNext ? transactions.subList(0, size) : transactions;
-        Long nextCursor = hasNext ? content.getLast().getId() : null;
-
-        return PointTransactionScrollResDto.builder()
-                .pointTransactions(content.stream().map(this::toPointTransactionResDto).toList())
-                .nextCursor(nextCursor)
-                .hasNext(hasNext)
-                .build();
+        return CursorPageResponse.of(
+                transactions,
+                resolvedSize,
+                this::toPointTransactionResDto,
+                t -> CursorKeyCodec.encode(t.getId())
+        );
     }
 
     private int calculateAverageReturnRate(long totalDeposit, long totalRefund) {
@@ -150,12 +151,6 @@ public class PointService {
             return averageReturnRate.intValueExact();
         } catch (ArithmeticException e) {
             throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "평균 환급률이 허용 범위를 초과했습니다.");
-        }
-    }
-
-    private void validateTransactionPageSize(int size) {
-        if (size <= 0) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "페이지 크기는 1 이상이어야 합니다.");
         }
     }
 
