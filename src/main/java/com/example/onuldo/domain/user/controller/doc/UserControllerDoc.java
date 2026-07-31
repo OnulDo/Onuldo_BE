@@ -84,10 +84,7 @@ public interface UserControllerDoc {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
     )
-    @ApiResponse(
-            responseCode = "200",
-            content = @Content(mediaType = "application/json")
-    )
+    @ApiResponse(responseCode = "200")
     BaseResponse<ChargePointResDto> chargePoint(
             @AuthUser
             Long userId,
@@ -104,10 +101,7 @@ public interface UserControllerDoc {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
     )
-    @ApiResponse(
-            responseCode = "200",
-            content = @Content(mediaType = "application/json")
-    )
+    @ApiResponse(responseCode = "200")
     BaseResponse<ChargePointResDto> grantSignupBonus(
             @AuthUser
             Long userId,
@@ -121,10 +115,7 @@ public interface UserControllerDoc {
             summary = "포인트 지갑 요약 조회",
             description = "잔액, 예치 중인 포인트, 누적 예치액, 누적 환급액, 누적 차감액, 평균 환급률을 조회합니다."
     )
-    @ApiResponse(
-            responseCode = "200",
-            content = @Content(mediaType = "application/json")
-    )
+    @ApiResponse(responseCode = "200")
     BaseResponse<PointWalletSummaryResDto> getPointWalletSummary(
             @AuthUser
             Long userId
@@ -144,10 +135,7 @@ public interface UserControllerDoc {
                     type) RERUND일 때만 depositAmount(예치금), adjustmentAmount(조정금-보너스지급/차감) 값 반환
                     """
     )
-    @ApiResponse(
-            responseCode = "200",
-            content = @Content(mediaType = "application/json")
-    )
+    @ApiResponse(responseCode = "200")
     CursorPageResponse<PointTransactionResDto> getPointTransactions(
             @AuthUser
             Long userId,
