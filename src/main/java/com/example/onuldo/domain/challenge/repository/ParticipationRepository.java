@@ -55,4 +55,6 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     );
 
     List<Participation> findAllByIdIn(Collection<Long> ids);
+
+    long countByParty_IdAndStatus(Long partyId, ParticipationStatus status);
 }

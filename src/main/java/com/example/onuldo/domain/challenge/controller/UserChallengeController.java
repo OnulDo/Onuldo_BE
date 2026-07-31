@@ -2,6 +2,7 @@ package com.example.onuldo.domain.challenge.controller;
 
 import com.example.onuldo.domain.challenge.controller.doc.UserChallengeControllerDoc;
 import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.service.ParticipationService;
@@ -40,5 +41,13 @@ public class UserChallengeController implements UserChallengeControllerDoc {
             LocalDate date
     ) {
         return BaseResponse.onSuccess(participationService.getDailyChallenges(userId, date));
+    }
+
+    @GetMapping("/challenges/daily/completed")
+    public BaseResponse<DailyCompletedChallengeListResDto> getDailyCompletedChallenges(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess(participationService.getDailyCompletedChallenges(userId));
     }
 }

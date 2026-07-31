@@ -49,4 +49,22 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     );
 
     List<Verification> findAllByParticipation_IdIn(Collection<Long> participationIds);
+
+    @Query("""
+        SELECT v
+        FROM Verification v
+        JOIN FETCH v.participation p
+        WHERE p.user.id = :userId
+            AND v.verificationDate = :date
+            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.AUTO_PASS
+    """)
+    List<Verification> findVerifiedVerificationsByUserIdAndVerificationDate(
+            @Param("userId")
+            Long userId,
+            @Param("date")
+            LocalDate date
+    );
+
+    List<Verification> findAllByParticipation_IdOrderByVerificationDateDesc(Long participationId);
+
 }

@@ -1,19 +1,18 @@
 package com.example.onuldo.domain.challenge.service;
 
 import com.example.onuldo.domain.challenge.dto.request.ParticipationReqDto;
-import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
-import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
-import com.example.onuldo.domain.challenge.dto.response.DailyChallengeResDto;
-import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
-import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
+import com.example.onuldo.domain.challenge.dto.response.*;
 import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
+import com.example.onuldo.domain.challenge.entity.Verification;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
+import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
@@ -26,9 +25,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -120,6 +123,67 @@ public class ParticipationService {
                                 verifiedChallengeIds.contains(participation.getChallenge().getId())
                         ))
                         .toList())
+                .build();
+    }
+
+    public DailyCompletedChallengeListResDto getDailyCompletedChallenges(Long userId) {
+        LocalDate today = LocalDate.now();
+
+        List<Participation> participations = participationRepository
+                .findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
+                        userId,
+                        ParticipationStatus.ONGOING,
+                        today,
+                        today
+                );
+
+        Map<Long, LocalDateTime> verifiedAtByParticipationId = verificationRepository
+                .findVerifiedVerificationsByUserIdAndVerificationDate(userId, today)
+                .stream()
+                .collect(Collectors.toMap(
+                        v -> v.getParticipation().getId(),
+                        Verification::getVerifiedAt
+                ));
+
+        List<Participation> completed = participations.stream()
+                .filter(participation -> verifiedAtByParticipationId.containsKey(participation.getId()))
+                .toList();
+
+        Comparator<Participation> byVerifiedAt = Comparator
+                .comparing((Participation p) -> verifiedAtByParticipationId.get(p.getId()));
+
+        List<CompletedPartyResDto> parties = completed.stream()
+                .filter(participation -> participation.getParticipationType() == ParticipationType.PARTY)
+                .sorted(byVerifiedAt)
+                .map(participation -> toCompletedPartyResDto(
+                        participation, today, verifiedAtByParticipationId.get(participation.getId())
+                ))
+                .toList();
+
+        Map<Long, Integer> streakByParticipationId = completed.stream()
+                .filter(participation -> participation.getParticipationType() == ParticipationType.PERSONAL)
+                .collect(Collectors.toMap(
+                        Participation::getId,
+                        participation -> calculateStreak(participation.getId())
+                ));
+
+        Comparator<Participation> byStreakThenVerifiedAt = Comparator
+                .comparing((Participation p) -> streakByParticipationId.get(p.getId()), Comparator.reverseOrder())
+                .thenComparing(byVerifiedAt);
+
+        List<CompletedChallengeResDto> challenges = completed.stream()
+                .filter(participation -> participation.getParticipationType() == ParticipationType.PERSONAL)
+                .sorted(byStreakThenVerifiedAt)
+                .map(participation -> toCompletedChallengeResDto(
+                        participation,
+                        verifiedAtByParticipationId.get(participation.getId()),
+                        streakByParticipationId.get(participation.getId())
+                ))
+                .toList();
+
+        return DailyCompletedChallengeListResDto.builder()
+                .parties(parties)
+                .challenges(challenges)
                 .build();
     }
 
@@ -224,5 +288,58 @@ public class ParticipationService {
                 .endDate(participation.getEndDate())
                 .verifiedOnDate(verifiedOnDate)
                 .build();
+    }
+
+    private CompletedPartyResDto toCompletedPartyResDto(Participation participation, LocalDate date, LocalDateTime verifiedAt) {
+        Party party = participation.getParty();
+        Challenge challenge = participation.getChallenge();
+
+        int totalMemberCount = (int) participationRepository
+                .countByParty_IdAndStatus(party.getId(), ParticipationStatus.ONGOING);
+        int verifiedMemberCount = verificationRepository
+                .findTodayAutoPassVerificationsByPartyId(party.getId(), date)
+                .size();
+
+        return CompletedPartyResDto.builder()
+                .partyId(party.getId())
+                .partyName(party.getName())
+                .challengeId(challenge.getId())
+                .verifiedAt(verifiedAt)
+                .totalMemberCount(totalMemberCount)
+                .verifiedMemberCount(verifiedMemberCount)
+                .build();
+    }
+
+    private CompletedChallengeResDto toCompletedChallengeResDto(
+            Participation participation, LocalDateTime verifiedAt, int streakDays
+    ) {
+        Challenge challenge = participation.getChallenge();
+
+        return CompletedChallengeResDto.builder()
+                .participationId(participation.getId())
+                .challengeId(challenge.getId())
+                .challengeName(challenge.getName())
+                .verifiedAt(verifiedAt)
+                .streakDays(streakDays)
+                .build();
+    }
+
+    private int calculateStreak(Long participationId) {
+        List<Verification> history = verificationRepository
+                .findAllByParticipation_IdOrderByVerificationDateDesc(participationId);
+
+        int streak = 0;
+        LocalDate expected = LocalDate.now();
+        for (Verification verification : history) {
+            if (verification.getReview() != VerificationReviewStatus.AUTO_PASS) {
+                break;
+            }
+            if (!verification.getVerificationDate().equals(expected)) {
+                break;
+            }
+            streak++;
+            expected = expected.minusDays(1);
+        }
+        return streak;
     }
 }
