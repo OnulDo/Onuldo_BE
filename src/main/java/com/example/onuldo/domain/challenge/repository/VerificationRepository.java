@@ -20,7 +20,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             JOIN FETCH p.user u
             WHERE p.party.id = :partyId
             AND v.verificationDate = :date
-            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.AUTO_PASS
+            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
             """)
     List<Verification> findTodayAutoPassVerificationsByPartyId(
             @Param("partyId") Long partyId,
@@ -43,7 +43,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("date") LocalDate date
     );
 
-    boolean existsByPhotoUrl(String photoUrl);
+    boolean existsByPhotoUrl(String fileId);
 
     Optional<Verification> findTopByParticipation_IdAndVerificationDateOrderByIdDesc(
             Long participationId,

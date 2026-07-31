@@ -24,6 +24,7 @@ import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.time.TimeService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ public class ParticipationService {
     private final ParticipationRepository participationRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final VerificationRepository verificationRepository;
+    private final TimeService timeService;
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,
@@ -60,7 +62,7 @@ public class ParticipationService {
         validateAlreadyParticipating(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
 
-        LocalDate startDate = LocalDate.now();
+        LocalDate startDate = timeService.todayKst();
         LocalDate endDate = startDate.plusWeeks(request.durationWeeks());
         Integer durationDays = request.durationWeeks() * 7;
 

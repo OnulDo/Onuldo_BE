@@ -12,6 +12,7 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +35,7 @@ public class SettlementService {
     private final SettlementRepository settlementRepository;
     private final UserRepository userRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final TimeService timeService;
 
     @Transactional
     public void settleIfLastDay(Participation participation, LocalDate verificationDate) {
@@ -65,7 +66,7 @@ public class SettlementService {
                 .participation(lockedParticipation)
                 .depositAmount(lockedParticipation.getDepositAmount())
                 .status(SettlementStatus.COMPLETED)
-                .processedAt(LocalDateTime.now())
+                .processedAt(timeService.nowKst())
                 .build();
 
         if (success) {
@@ -82,7 +83,7 @@ public class SettlementService {
                     .bonusAmount(bonusAmount)
                     .partyShareAmount(0)
                     .status(SettlementStatus.COMPLETED)
-                    .processedAt(LocalDateTime.now())
+                    .processedAt(timeService.nowKst())
                     .build();
 
             User user = userRepository.findByIdForUpdate(lockedParticipation.getUser().getId())
@@ -106,5 +107,32 @@ public class SettlementService {
         }
 
         settlementRepository.save(settlement);
+    }
+
+    @Transactional
+    public void settleAsFailedWithoutVerification(Long participationId) {
+        if (settlementRepository.existsByParticipation_Id(participationId)) {
+            return;
+        }
+
+        Participation lockedParticipation = participationRepository.findByIdForUpdate(participationId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+
+        if (settlementRepository.existsByParticipation_Id(lockedParticipation.getId())) {
+            return;
+        }
+
+        lockedParticipation.setStatus(ParticipationStatus.FAIL);
+        participationRepository.save(lockedParticipation);
+
+        settlementRepository.save(Settlement.builder()
+                .participation(lockedParticipation)
+                .depositAmount(lockedParticipation.getDepositAmount())
+                .refundAmount(0)
+                .bonusAmount(0)
+                .partyShareAmount(0)
+                .status(SettlementStatus.COMPLETED)
+                .processedAt(timeService.nowKst())
+                .build());
     }
 }

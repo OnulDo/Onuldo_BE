@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +77,33 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             Long userId,
             Long challengeId,
             ParticipationStatus status
+    );
+
+    @Query("""
+        SELECT p
+        FROM Participation p
+        JOIN FETCH p.challenge c
+        WHERE p.status = :status
+          AND p.endDate <= :endDate
+          AND c.timeEnd IS NOT NULL
+          AND c.timeEnd <= :currentTime
+          AND NOT EXISTS (
+                SELECT 1
+                FROM Verification v
+                WHERE v.participation = p
+                  AND v.verificationDate = :endDate
+                  AND v.review = 'PASS'
+          )
+          AND NOT EXISTS (
+                SELECT 1
+                FROM Settlement s
+                WHERE s.participation = p
+          )
+    """)
+    List<Participation> findFailedSettlementTargets(
+            @Param("status") ParticipationStatus status,
+            @Param("endDate") LocalDate endDate,
+            @Param("currentTime") LocalTime currentTime
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
