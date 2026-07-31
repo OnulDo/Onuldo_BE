@@ -172,10 +172,10 @@ public class ParticipationService {
 
         Map<Long, Long> totalMemberCountByPartyId = partyIds.isEmpty()
                 ? Map.of()
-                : toCountMap(participationRepository.countByPartyIdsAndStatus(partyIds, ParticipationStatus.ONGOING));
+                : toCountMap(participationRepository.findParticipationCountsByPartyIdInAndStatus(partyIds, ParticipationStatus.ONGOING));
         Map<Long, Long> verifiedMemberCountByPartyId = partyIds.isEmpty()
                 ? Map.of()
-                : toCountMap(verificationRepository.countTodayAutoPassVerificationsByPartyIds(partyIds, today));
+                : toCountMap(verificationRepository.findAutoPassVerificationCountsByPartyIdInAndVerificationDate(partyIds, today));
 
         List<CompletedPartyResDto> parties = completedParties.stream()
                 .sorted(byVerifiedAt)

@@ -75,7 +75,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
         AND p.status = com.example.onuldo.domain.challenge.enums.ParticipationStatus.ONGOING
         GROUP BY p.party.id
     """)
-    List<Object[]> countTodayAutoPassVerificationsByPartyIds(
+    List<Object[]> findAutoPassVerificationCountsByPartyIdInAndVerificationDate(
             @Param("partyIds") Collection<Long> partyIds,
             @Param("date") LocalDate date
     );

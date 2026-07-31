@@ -63,7 +63,7 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
         AND p.status = :status
         GROUP BY p.party.id
     """)
-    List<Object[]> countByPartyIdsAndStatus(
+    List<Object[]> findParticipationCountsByPartyIdInAndStatus(
             @Param("partyIds") Collection<Long> partyIds,
             @Param("status") ParticipationStatus status
     );
