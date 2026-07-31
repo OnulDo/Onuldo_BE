@@ -29,6 +29,8 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
 
     boolean existsByParticipation_IdAndVerificationDate(Long participationId, LocalDate verificationDate);
 
+    long countByParticipation_Id(Long participationId);
+
     @Query("""
             SELECT DISTINCT p.challenge.id
             FROM Verification v

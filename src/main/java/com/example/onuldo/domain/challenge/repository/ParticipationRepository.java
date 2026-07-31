@@ -2,7 +2,9 @@ package com.example.onuldo.domain.challenge.repository;
 
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -53,6 +55,10 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             Long challengeId,
             ParticipationStatus status
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Participation p WHERE p.id = :id")
+    Optional<Participation> findByIdForUpdate(@Param("id") Long id);
 
     List<Participation> findAllByIdIn(Collection<Long> ids);
 }
