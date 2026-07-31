@@ -66,7 +66,6 @@ public class ParticipationService {
     private final VerificationRepository verificationRepository;
     private final SettlementRepository settlementRepository;
     private final PointTransactionRepository pointTransactionRepository;
-    private final VerificationRepository verificationRepository;
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,

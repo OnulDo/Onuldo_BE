@@ -2,7 +2,6 @@ package com.example.onuldo.domain.challenge.controller.doc;
 
 import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeRecordSummaryResDto;
 import com.example.onuldo.domain.challenge.dto.response.OngoingChallengeRecordResDto;
-import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;

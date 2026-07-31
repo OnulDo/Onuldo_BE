@@ -49,6 +49,4 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     );
 
     List<Verification> findAllByParticipation_IdIn(Collection<Long> participationIds);
-
-    List<Verification> findAllByParticipation_IdIn(Collection<Long> participationIds);
 }
