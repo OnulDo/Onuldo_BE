@@ -1,7 +1,14 @@
 package com.example.onuldo.domain.challenge.service;
 
 import com.example.onuldo.domain.challenge.dto.request.ParticipationReqDto;
-import com.example.onuldo.domain.challenge.dto.response.*;
+import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeResDto;
+import com.example.onuldo.domain.challenge.dto.response.CompletedPartyResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyChallengeResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
+import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Verification;
@@ -26,7 +33,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -152,27 +161,45 @@ public class ParticipationService {
         Comparator<Participation> byVerifiedAt = Comparator
                 .comparing((Participation p) -> verifiedAtByParticipationId.get(p.getId()));
 
-        List<CompletedPartyResDto> parties = completed.stream()
+        List<Participation> completedParties = completed.stream()
                 .filter(participation -> participation.getParticipationType() == ParticipationType.PARTY)
+                .toList();
+
+        List<Long> partyIds = completedParties.stream()
+                .map(participation -> participation.getParty().getId())
+                .distinct()
+                .toList();
+
+        Map<Long, Long> totalMemberCountByPartyId = partyIds.isEmpty()
+                ? Map.of()
+                : toCountMap(participationRepository.countByPartyIdsAndStatus(partyIds, ParticipationStatus.ONGOING));
+        Map<Long, Long> verifiedMemberCountByPartyId = partyIds.isEmpty()
+                ? Map.of()
+                : toCountMap(verificationRepository.countTodayAutoPassVerificationsByPartyIds(partyIds, today));
+
+        List<CompletedPartyResDto> parties = completedParties.stream()
                 .sorted(byVerifiedAt)
                 .map(participation -> toCompletedPartyResDto(
-                        participation, today, verifiedAtByParticipationId.get(participation.getId())
+                        participation,
+                        verifiedAtByParticipationId.get(participation.getId()),
+                        totalMemberCountByPartyId,
+                        verifiedMemberCountByPartyId
                 ))
                 .toList();
 
-        Map<Long, Integer> streakByParticipationId = completed.stream()
+        List<Participation> completedChallenges = completed.stream()
                 .filter(participation -> participation.getParticipationType() == ParticipationType.PERSONAL)
-                .collect(Collectors.toMap(
-                        Participation::getId,
-                        participation -> calculateStreak(participation.getId())
-                ));
+                .toList();
+
+        Map<Long, Integer> streakByParticipationId = calculateStreaks(
+                completedChallenges.stream().map(Participation::getId).toList()
+        );
 
         Comparator<Participation> byStreakThenVerifiedAt = Comparator
                 .comparing((Participation p) -> streakByParticipationId.get(p.getId()), Comparator.reverseOrder())
                 .thenComparing(byVerifiedAt);
 
-        List<CompletedChallengeResDto> challenges = completed.stream()
-                .filter(participation -> participation.getParticipationType() == ParticipationType.PERSONAL)
+        List<CompletedChallengeResDto> challenges = completedChallenges.stream()
                 .sorted(byStreakThenVerifiedAt)
                 .map(participation -> toCompletedChallengeResDto(
                         participation,
@@ -185,6 +212,13 @@ public class ParticipationService {
                 .parties(parties)
                 .challenges(challenges)
                 .build();
+    }
+
+    private Map<Long, Long> toCountMap(List<Object[]> rows) {
+        return rows.stream().collect(Collectors.toMap(
+                row -> (Long) row[0],
+                row -> (Long) row[1]
+        ));
     }
 
     private void validateDepositOption(Challenge challenge, Integer depositAmount) {
@@ -290,15 +324,17 @@ public class ParticipationService {
                 .build();
     }
 
-    private CompletedPartyResDto toCompletedPartyResDto(Participation participation, LocalDate date, LocalDateTime verifiedAt) {
+    private CompletedPartyResDto toCompletedPartyResDto(
+            Participation participation,
+            LocalDateTime verifiedAt,
+            Map<Long, Long> totalMemberCountByPartyId,
+            Map<Long, Long> verifiedMemberCountByPartyId
+    ) {
         Party party = participation.getParty();
         Challenge challenge = participation.getChallenge();
 
-        int totalMemberCount = (int) participationRepository
-                .countByParty_IdAndStatus(party.getId(), ParticipationStatus.ONGOING);
-        int verifiedMemberCount = verificationRepository
-                .findTodayAutoPassVerificationsByPartyId(party.getId(), date)
-                .size();
+        int totalMemberCount = totalMemberCountByPartyId.getOrDefault(party.getId(), 0L).intValue();
+        int verifiedMemberCount = verifiedMemberCountByPartyId.getOrDefault(party.getId(), 0L).intValue();
 
         return CompletedPartyResDto.builder()
                 .partyId(party.getId())
@@ -324,22 +360,38 @@ public class ParticipationService {
                 .build();
     }
 
-    private int calculateStreak(Long participationId) {
-        List<Verification> history = verificationRepository
-                .findAllByParticipation_IdOrderByVerificationDateDesc(participationId);
-
-        int streak = 0;
-        LocalDate expected = LocalDate.now();
-        for (Verification verification : history) {
-            if (verification.getReview() != VerificationReviewStatus.AUTO_PASS) {
-                break;
-            }
-            if (!verification.getVerificationDate().equals(expected)) {
-                break;
-            }
-            streak++;
-            expected = expected.minusDays(1);
+    private Map<Long, Integer> calculateStreaks(Collection<Long> participationIds) {
+        if (participationIds.isEmpty()) {
+            return Map.of();
         }
-        return streak;
+
+        Map<Long, List<Verification>> historyByParticipationId = verificationRepository
+                .findAllByParticipation_IdIn(participationIds)
+                .stream()
+                .collect(Collectors.groupingBy(verification -> verification.getParticipation().getId()));
+
+        Map<Long, Integer> streakByParticipationId = new HashMap<>();
+        for (Long participationId : participationIds) {
+            List<Verification> history = historyByParticipationId
+                    .getOrDefault(participationId, List.of())
+                    .stream()
+                    .sorted(Comparator.comparing(Verification::getVerificationDate).reversed())
+                    .toList();
+
+            int streak = 0;
+            LocalDate expected = LocalDate.now();
+            for (Verification verification : history) {
+                if (verification.getReview() != VerificationReviewStatus.AUTO_PASS) {
+                    break;
+                }
+                if (!verification.getVerificationDate().equals(expected)) {
+                    break;
+                }
+                streak++;
+                expected = expected.minusDays(1);
+            }
+            streakByParticipationId.put(participationId, streak);
+        }
+        return streakByParticipationId;
     }
 }

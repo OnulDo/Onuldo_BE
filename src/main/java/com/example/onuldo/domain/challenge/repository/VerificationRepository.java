@@ -65,6 +65,19 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             LocalDate date
     );
 
-    List<Verification> findAllByParticipation_IdOrderByVerificationDateDesc(Long participationId);
+    @Query("""
+        SELECT p.party.id, COUNT(v)
+        FROM Verification v
+        JOIN v.participation p
+        WHERE p.party.id IN :partyIds
+        AND v.verificationDate = :date
+        AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.AUTO_PASS
+        AND p.status = com.example.onuldo.domain.challenge.enums.ParticipationStatus.ONGOING
+        GROUP BY p.party.id
+    """)
+    List<Object[]> countTodayAutoPassVerificationsByPartyIds(
+            @Param("partyIds") Collection<Long> partyIds,
+            @Param("date") LocalDate date
+    );
 
 }
