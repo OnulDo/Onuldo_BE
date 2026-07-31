@@ -133,7 +133,7 @@ public class AuthService {
 
     @Transactional
     public OAuthResDto oauthLogin(OAuthLoginReqDto request) {
-        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.accessToken());
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
 
         Optional<User> existingUser = userRepository.findByEmail(info.email());
         if (existingUser.isEmpty()) {
@@ -159,7 +159,7 @@ public class AuthService {
 
     @Transactional
     public AuthResDto oauthSignup(OAuthSignupReqDto request) {
-        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.accessToken());
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
 
         if (userRepository.existsByEmail(info.email())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);

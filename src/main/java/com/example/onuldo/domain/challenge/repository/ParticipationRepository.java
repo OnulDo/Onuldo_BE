@@ -3,6 +3,7 @@ package com.example.onuldo.domain.challenge.repository;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -39,10 +40,31 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     );
 
 
-    List<Participation> findAllByUser_IdOrderByIdDesc(Long userId);
+    @Query("""
+        SELECT p FROM Participation p
+        WHERE p.user.id = :userId
+        AND (:lastId IS NULL OR p.id < :lastId)
+        ORDER BY p.id DESC
+    """)
+    List<Participation> findAllByUser_IdOrderByIdDesc(
+            @Param("userId") Long userId,
+            @Param("lastId") Long lastId,
+            Pageable pageable
+    );
 
-    List<Participation> findAllByUser_IdAndStatusOrderByIdDesc(Long userId, ParticipationStatus status);
-
+    @Query("""
+        SELECT p FROM Participation p
+        WHERE p.user.id = :userId
+        AND p.status = :status
+        AND (:lastId IS NULL OR p.id < :lastId)
+        ORDER BY p.id DESC
+    """)
+    List<Participation> findAllByUser_IdAndStatusOrderByIdDesc(
+            @Param("userId") Long userId,
+            @Param("status") ParticipationStatus status,
+            @Param("lastId") Long lastId,
+            Pageable pageable
+    );
     List<Participation> findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
             Long userId,
             ParticipationStatus status,

@@ -7,5 +7,5 @@ public interface OAuthApiClient {
 
     SocialProvider supports();
 
-    OAuthUserInfo fetchUserInfo(String accessToken);
+    OAuthUserInfo fetchUserInfo(String socialAccessToken);
 }

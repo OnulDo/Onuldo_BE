@@ -2,10 +2,12 @@ package com.example.onuldo.domain.party.repository;
 
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.entity.Party;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,11 +37,22 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
             0.0D,
             CAST(0 AS integer),
             CAST((SELECT COUNT(pm2) FROM PartyMember pm2 WHERE pm2.party.id = p.id) AS integer)
-        )
+        ), p.createdAt
         FROM Party p
         JOIN PartyMember pm ON pm.party.id = p.id
         WHERE pm.user.id = :userId
         AND p.status <> com.example.onuldo.domain.party.enums.PartyStatus.WAITING
-        ORDER BY p.createdAt DESC
+        AND (
+            :lastCreatedAt IS NULL
+            OR p.createdAt < :lastCreatedAt
+            OR (p.createdAt = :lastCreatedAt AND p.id < :lastId)
+        )
+        ORDER BY p.createdAt DESC, p.id DESC
         """)
-    List<PartyListResDto> findMyPartiesExcludingWaiting(@Param("userId") Long userId);}
+    List<Object[]> findMyPartiesExcludingWaiting(
+            @Param("userId") Long userId,
+            @Param("lastCreatedAt") LocalDateTime lastCreatedAt,
+            @Param("lastId") Long lastId,
+            Pageable pageable
+    );
+}
