@@ -25,11 +25,11 @@ public class NaverApiClient implements OAuthApiClient {
     }
 
     @Override
-    public OAuthUserInfo fetchUserInfo(String accessToken) {
+    public OAuthUserInfo fetchUserInfo(String socialAccessToken) {
         try {
             NaverUserInfoResDto response = restClient.get()
                     .uri(USER_INFO_URI)
-                    .header("Authorization", "Bearer " + accessToken)
+                    .header("Authorization", "Bearer " + socialAccessToken)
                     .retrieve()
                     .body(NaverUserInfoResDto.class);
 
