@@ -275,7 +275,6 @@ public class ParticipationService {
                 .isVerifiedToday(isVerifiedToday)
                 .daysUntilEnd(calculateDaysUntilEnd(participation.getEndDate()))
                 .achievementRate(achievementRate)
-                .expectedRefundAmount(calculateExpectedRefundAmount(participation))
                 .depositAmount(participation.getDepositAmount())
                 .type(participation.getParticipationType())
                 .build();
@@ -398,11 +397,6 @@ public class ParticipationService {
     private int calculateDaysUntilEnd(LocalDate endDate) {
         long remainingDays = ChronoUnit.DAYS.between(LocalDate.now(), endDate);
         return Math.toIntExact(Math.max(0, remainingDays));
-    }
-
-    private int calculateExpectedRefundAmount(Participation participation) {
-        // TODO: 정산 정책 확정 후 예상 환급금 계산식으로 교체한다.
-        return participation.getDepositAmount();
     }
 
     private UserChallengeResDto toUserChallengeResDto(Participation participation) {

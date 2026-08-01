@@ -19,8 +19,6 @@ public record OngoingChallengeRecordResDto(
         @Schema(example = "72")
         Integer achievementRate,
         @Schema(example = "30000")
-        Integer expectedRefundAmount,
-        @Schema(example = "30000")
         Integer depositAmount,
         @Schema(example = "PERSONAL")
         ParticipationType type
