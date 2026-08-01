@@ -55,9 +55,11 @@ public class UserChallengeController implements UserChallengeControllerDoc {
     @GetMapping("/challenges/records/ongoing")
     public BaseResponse<List<OngoingChallengeRecordResDto>> getOngoingChallengeRecords(
             @AuthUser
-            Long userId
+            Long userId,
+            @RequestParam(required = true)
+            LocalDate date
     ) {
-        return BaseResponse.onSuccess(participationService.getOngoingChallengeRecords(userId));
+        return BaseResponse.onSuccess(participationService.getOngoingChallengeRecords(userId, date));
     }
 
     @GetMapping("/challenges/records/completed")

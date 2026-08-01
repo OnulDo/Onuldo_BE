@@ -20,7 +20,6 @@ import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
-import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
@@ -160,7 +159,7 @@ public class ParticipationService {
                 .build();
     }
 
-    public List<OngoingChallengeRecordResDto> getOngoingChallengeRecords(Long userId) {
+    public List<OngoingChallengeRecordResDto> getOngoingChallengeRecords(Long userId, LocalDate date) {
         List<Participation> ongoingParticipations =
                 participationRepository.findAllWithChallengeByUserIdAndStatusOrderByIdDesc(
                         userId,
@@ -172,7 +171,8 @@ public class ParticipationService {
         return ongoingParticipations.stream()
                 .map(participation -> toOngoingChallengeRecordResDto(
                         participation,
-                        achievementRateByParticipationId.getOrDefault(participation.getId(), 0)
+                        achievementRateByParticipationId.getOrDefault(participation.getId(), 0),
+                        date
                 ))
                 .toList();
     }
@@ -259,16 +259,20 @@ public class ParticipationService {
 
     private OngoingChallengeRecordResDto toOngoingChallengeRecordResDto(
             Participation participation,
-            Integer achievementRate
+            Integer achievementRate,
+            LocalDate date
     ) {
         Challenge challenge = participation.getChallenge();
+        boolean isVerifiedToday = verificationRepository.existsByParticipation_IdAndVerificationDate(
+                participation.getId(),
+                date
+        );
 
         return OngoingChallengeRecordResDto.builder()
                 .participationId(participation.getId())
                 .challengeId(challenge.getId())
                 .challengeTitle(challenge.getName())
-                // TODO: 인증 API 구현 후 당일 인증 여부 계산 로직으로 교체한다.
-                .isVerifiedToday(false)
+                .isVerifiedToday(isVerifiedToday)
                 .daysUntilEnd(calculateDaysUntilEnd(participation.getEndDate()))
                 .achievementRate(achievementRate)
                 .expectedRefundAmount(calculateExpectedRefundAmount(participation))

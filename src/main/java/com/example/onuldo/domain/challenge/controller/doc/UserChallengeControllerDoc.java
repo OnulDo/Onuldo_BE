@@ -76,7 +76,10 @@ public interface UserChallengeControllerDoc {
     )
     BaseResponse<List<OngoingChallengeRecordResDto>> getOngoingChallengeRecords(
             @AuthUser
-            Long userId
+            Long userId,
+            @Parameter(description = "조회할 날짜", example = "2026-07-29")
+            @RequestParam(required = true)
+            LocalDate date
     );
 
     @Operation(
