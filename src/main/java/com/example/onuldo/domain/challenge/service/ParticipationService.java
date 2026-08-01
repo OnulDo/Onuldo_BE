@@ -167,12 +167,14 @@ public class ParticipationService {
                 );
 
         Map<Long, Integer> achievementRateByParticipationId = calculateAchievementRates(ongoingParticipations);
+        Set<Long> verifiedParticipationIds = getVerifiedParticipationIds(ongoingParticipations, date);
 
         return ongoingParticipations.stream()
                 .map(participation -> toOngoingChallengeRecordResDto(
                         participation,
                         achievementRateByParticipationId.getOrDefault(participation.getId(), 0),
-                        date
+                        date,
+                        verifiedParticipationIds
                 ))
                 .toList();
     }
@@ -260,20 +262,18 @@ public class ParticipationService {
     private OngoingChallengeRecordResDto toOngoingChallengeRecordResDto(
             Participation participation,
             Integer achievementRate,
-            LocalDate date
+            LocalDate date,
+            Set<Long> verifiedParticipationIds
     ) {
         Challenge challenge = participation.getChallenge();
-        boolean isVerifiedToday = verificationRepository.existsByParticipation_IdAndVerificationDate(
-                participation.getId(),
-                date
-        );
+        boolean isVerifiedToday = verifiedParticipationIds.contains(participation.getId());
 
         return OngoingChallengeRecordResDto.builder()
                 .participationId(participation.getId())
                 .challengeId(challenge.getId())
                 .challengeTitle(challenge.getName())
                 .isVerifiedToday(isVerifiedToday)
-                .daysUntilEnd(calculateDaysUntilEnd(participation.getEndDate()))
+                .daysUntilEnd(calculateDaysUntilEnd(date, participation.getEndDate()))
                 .achievementRate(achievementRate)
                 .depositAmount(participation.getDepositAmount())
                 .type(participation.getParticipationType())
@@ -365,9 +365,11 @@ public class ParticipationService {
                 .map(Participation::getId)
                 .toList();
 
-        return settlementRepository.findAllByParticipation_IdIn(participationIds).stream()
+        return settlementRepository.findAllByParticipation_IdInOrderByIdDesc(participationIds).stream()
                 .collect(Collectors.toMap(
                         settlement -> settlement.getParticipation().getId(),
+                        // 정렬을 id DESC로 고정했으므로 같은 참여의 정산이 여러 건이면
+                        // 마지막 원소가 가장 최근 정산이며, 그 값을 최종 환급액으로 사용한다.
                         Settlement::getRefundAmount,
                         (first, second) -> second
                 ));
@@ -394,9 +396,23 @@ public class ParticipationService {
                 .intValue();
     }
 
-    private int calculateDaysUntilEnd(LocalDate endDate) {
-        long remainingDays = ChronoUnit.DAYS.between(LocalDate.now(), endDate);
+    private int calculateDaysUntilEnd(LocalDate date, LocalDate endDate) {
+        long remainingDays = ChronoUnit.DAYS.between(date, endDate);
         return Math.toIntExact(Math.max(0, remainingDays));
+    }
+
+    private Set<Long> getVerifiedParticipationIds(List<Participation> participations, LocalDate date) {
+        if (participations.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<Long> participationIds = participations.stream()
+                .map(Participation::getId)
+                .collect(Collectors.toSet());
+
+        return verificationRepository.findAllByParticipation_IdInAndVerificationDate(participationIds, date).stream()
+                .map(verification -> verification.getParticipation().getId())
+                .collect(Collectors.toSet());
     }
 
     private UserChallengeResDto toUserChallengeResDto(Participation participation) {
