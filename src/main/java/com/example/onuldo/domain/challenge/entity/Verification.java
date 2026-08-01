@@ -32,12 +32,8 @@ import java.time.LocalDateTime;
         name = "verification",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_verification_participation_date",
-                        columnNames = {"participation_id", "verification_date"}
-                ),
-                @UniqueConstraint(
-                        name = "uk_verification_file_id",
-                        columnNames = {"file_id"}
+                        name = "uk_verification_photo_url",
+                        columnNames = {"photo_url"}
                 )
         }
 )

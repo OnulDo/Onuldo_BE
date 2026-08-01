@@ -9,4 +9,6 @@ import java.util.List;
 public interface SettlementRepository extends JpaRepository<Settlement, Long> {
 
     List<Settlement> findAllByParticipation_IdInOrderByIdDesc(Collection<Long> participationIds);
+
+    boolean existsByParticipation_Id(Long participationId);
 }
