@@ -91,11 +91,9 @@ public class SettlementService {
 
     private void settleFailure(Participation participation, BigDecimal rValue) {
         int refundAmount = calculateFailureRefundAmount(participation.getDepositAmount(), rValue);
+        int penaltyAmount = participation.getDepositAmount() - refundAmount;
 
-        //TODO- 실패 시 환급 처리 고민
-        if (refundAmount > 0) {
-            refundPoint(participation, refundAmount, 0);
-        }
+        refundPoint(participation, refundAmount, -penaltyAmount);
 
         Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, 0);
 
