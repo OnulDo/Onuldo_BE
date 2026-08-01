@@ -74,6 +74,10 @@ public class Participation {
     @Column(nullable = false, length = 20)
     private ParticipationStatus status = ParticipationStatus.ONGOING;
 
+    public void changeStatus(ParticipationStatus status) {
+        this.status = status;
+    }
+
     @PrePersist
     @PreUpdate
     private void validateParticipationType() {

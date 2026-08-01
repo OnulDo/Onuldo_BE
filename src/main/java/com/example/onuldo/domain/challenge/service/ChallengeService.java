@@ -14,6 +14,7 @@ import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
+import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.challenge.dto.request.ChallengeVerificationReqDto;
@@ -30,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -41,6 +41,8 @@ public class ChallengeService {
     private final ChallengeRepository challengeRepository;
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
+    private final SettlementService settlementService;
+    private final TimeService timeService;
     private final RekognitionService rekognitionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -105,12 +107,12 @@ public class ChallengeService {
 
         boolean matchedChallengeLabel = hasMatchingLabel(challenge.getVerificationLabelList(), detectedLabelNames);
         VerificationReviewStatus review = matchedChallengeLabel
-                ? VerificationReviewStatus.AUTO_PASS
+                ? VerificationReviewStatus.PASS
                 : VerificationReviewStatus.AUTO_FAIL;
 
         BigDecimal dayScore = matchedChallengeLabel ? BigDecimal.valueOf(100) : BigDecimal.ZERO;
         String rekognitionResult = toJson(detectedLabelNames);
-        LocalDate today = LocalDate.now();
+        LocalDate today = timeService.todayKst();
 
         Verification verification;
         try {
@@ -121,10 +123,15 @@ public class ChallengeService {
                     .rekognitionResult(rekognitionResult)
                     .review(review)
                     .dayScore(dayScore)
-                    .verifiedAt(LocalDateTime.now())
+                    .verifiedAt(timeService.nowKst())
                     .build());
         } catch (DataIntegrityViolationException e) {
             throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY, "오늘은 이미 인증했습니다.");
+        }
+
+        // 인증 성공 시 정산 트리거 호출
+        if (verification.getReview() == VerificationReviewStatus.PASS) {
+            triggerSettlementIfLastDay(participation, today);
         }
 
         return ChallengeVerificationResDto.builder()
@@ -136,6 +143,14 @@ public class ChallengeService {
                 .verifiedAt(verification.getVerifiedAt())
                 .review(verification.getReview())
                 .build();
+    }
+
+    private void triggerSettlementIfLastDay(Participation participation, LocalDate verificationDate) {
+        if (!verificationDate.equals(participation.getEndDate())) {
+            return;
+        }
+
+        settlementService.settleParticipatedChallenge(participation.getId());
     }
 
     private ChallengeResDto toChallengeResDto(Challenge challenge) {

@@ -20,6 +20,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.example.onuldo.global.common.time.TimeService;
 
 @Getter
 @Builder
@@ -55,7 +56,7 @@ public class PartyMember {
 
     @Builder.Default
     @Column(name = "joined_at", nullable = false)
-    private LocalDateTime joinedAt = LocalDateTime.now();
+    private LocalDateTime joinedAt = TimeService.nowKstStatic();
 
     // PAR-05: 파티원은 대기방에서 [준비완료]로 상태 전환
     public void ready() {

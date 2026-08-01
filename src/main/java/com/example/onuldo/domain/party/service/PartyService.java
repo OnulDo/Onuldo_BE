@@ -36,6 +36,7 @@ import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,6 +81,7 @@ public class PartyService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final TimeService timeService;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
         // PAR-03: 파티 이름 규칙 검증 (2~20자 한글·영문·숫자·공백)
@@ -104,7 +106,7 @@ public class PartyService {
         }
 
         String inviteCode = generateUniqueInviteCode();
-        LocalDateTime inviteExpiresAt = LocalDateTime.now().plusDays(request.durationDays());
+        LocalDateTime inviteExpiresAt = timeService.nowKst().plusDays(request.durationDays());
 
         Party party = Party.builder()
                 .name(request.name())
@@ -207,7 +209,7 @@ public class PartyService {
             throw new RestApiException(GlobalErrorStatus._PARTY_FULL);
         }
 
-        if (party.getInviteExpiresAt() != null && party.getInviteExpiresAt().isBefore(LocalDateTime.now())) {
+        if (party.getInviteExpiresAt() != null && party.getInviteExpiresAt().isBefore(timeService.nowKst())) {
             throw new RestApiException(GlobalErrorStatus._INVITE_CODE_EXPIRED);
         }
 
@@ -317,7 +319,7 @@ public class PartyService {
         }
 
         // PAR-05: 시작 시 상태 전환 + 초대코드 만료 (시작 후 초대코드 만료·파티원 추가 불가)
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = timeService.nowKst();
         party.updateStatus(PartyStatus.ONGOING);
         party.updateStartTriggeredAt(now);
         party.updateInviteExpiresAt(now);
@@ -329,7 +331,7 @@ public class PartyService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
         Challenge challenge = partyChallenge.getChallenge();
 
-        LocalDate startDate = LocalDate.now();
+        LocalDate startDate = timeService.todayKst();
         LocalDate endDate = startDate.plusDays(party.getDurationDays());
         int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
 
@@ -379,7 +381,7 @@ public class PartyService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
         List<Verification> todayVerifications =
-                verificationRepository.findTodayAutoPassVerificationsByPartyId(partyId, LocalDate.now());
+                verificationRepository.findTodayAutoPassVerificationsByPartyId(partyId, timeService.todayKst());
 
         // 파티원 1인당 하루 1회 인증이 원칙이므로 userId 기준으로 매핑
         Map<Long, Verification> verificationByUserId = todayVerifications.stream()
