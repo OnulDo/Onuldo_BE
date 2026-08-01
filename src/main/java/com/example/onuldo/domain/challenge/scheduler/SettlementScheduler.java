@@ -37,7 +37,7 @@ public class SettlementScheduler {
                 .toList();
 
         for (Long participationId : targetParticipationIds) {
-            settlementService.settleAsFailedWithoutVerification(participationId);
+            settlementService.settleParticipatedChallenge(participationId);
         }
 
         log.info("patchFailedSettlement finished. targetCount={}", targetParticipationIds.size());

@@ -4,6 +4,7 @@ import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Settlement;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.SettlementStatus;
+import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
@@ -21,14 +22,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
 public class SettlementService {
-
-    private static final BigDecimal FAILURE_THRESHOLD = BigDecimal.valueOf(0.25);
-    private static final BigDecimal BONUS_RATE = BigDecimal.valueOf(0.05);
+    private static final BigDecimal SUCCESS_THRESHOLD = BigDecimal.valueOf(0.85);
+    private static final BigDecimal FAILURE_REFUND_BASE = SUCCESS_THRESHOLD;
+    private static final BigDecimal FAILURE_REFUND_EXPONENT = BigDecimal.ONE;
+    private static final BigDecimal BONUS_RATE = BigDecimal.valueOf(0.025);
 
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
@@ -37,80 +38,15 @@ public class SettlementService {
     private final PointTransactionRepository pointTransactionRepository;
     private final TimeService timeService;
 
+    /** 챌린지 정산 처리. <br>
+     * 정산 호출 로직이 두개로 분산되어 (챌린지 성공 시, 인증 실패 챌린지 조회 스케줄러)<br>
+     * 내부에 날짜에 따른 검증 로직을 구현하지 않음. <br><br>
+     *
+     * 따라서 호출 시 바로 정산 처리 됨으로 주의하여 호출
+     * */
     @Transactional
-    public void settleIfLastDay(Participation participation, LocalDate verificationDate) {
-        if (!verificationDate.equals(participation.getEndDate())) {
-            return;
-        }
-
-        if (settlementRepository.existsByParticipation_Id(participation.getId())) {
-            return;
-        }
-
-        Participation lockedParticipation = participationRepository.findByIdForUpdate(participation.getId())
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
-
-        long totalDays = lockedParticipation.getDurationWeeks() * 7L;
-        long verifiedDays = verificationRepository.countByParticipation_Id(lockedParticipation.getId());
-        long missingDays = totalDays - verifiedDays;
-
-        BigDecimal missingRatio = BigDecimal.valueOf(missingDays)
-                .divide(BigDecimal.valueOf(totalDays), 4, RoundingMode.HALF_UP);
-
-        boolean success = missingRatio.compareTo(FAILURE_THRESHOLD) < 0;
-
-        lockedParticipation.setStatus(success ? ParticipationStatus.SUCCESS : ParticipationStatus.FAIL);
-        participationRepository.save(lockedParticipation);
-
-        Settlement settlement = Settlement.builder()
-                .participation(lockedParticipation)
-                .depositAmount(lockedParticipation.getDepositAmount())
-                .status(SettlementStatus.COMPLETED)
-                .processedAt(timeService.nowKst())
-                .build();
-
-        if (success) {
-            int bonusAmount = BigDecimal.valueOf(lockedParticipation.getDepositAmount())
-                    .multiply(BONUS_RATE)
-                    .setScale(0, RoundingMode.HALF_UP)
-                    .intValue();
-            int refundAmount = lockedParticipation.getDepositAmount() + bonusAmount;
-
-            settlement = Settlement.builder()
-                    .participation(lockedParticipation)
-                    .depositAmount(lockedParticipation.getDepositAmount())
-                    .refundAmount(refundAmount)
-                    .bonusAmount(bonusAmount)
-                    .partyShareAmount(0)
-                    .status(SettlementStatus.COMPLETED)
-                    .processedAt(timeService.nowKst())
-                    .build();
-
-            User user = userRepository.findByIdForUpdate(lockedParticipation.getUser().getId())
-                    .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
-
-            long balanceAfter = user.getPointBalance() + refundAmount;
-            user.setPointBalance(balanceAfter);
-            userRepository.save(user);
-
-            pointTransactionRepository.save(PointTransaction.builder()
-                    .user(user)
-                    .type(PointTransactionType.REFUND)
-                    .amount(refundAmount)
-                    .depositAmount(lockedParticipation.getDepositAmount())
-                    .adjustmentAmount(bonusAmount)
-                    .balanceAfter(balanceAfter)
-                    .description(lockedParticipation.getChallenge().getName())
-                    .refType("SETTLEMENT")
-                    .refId(lockedParticipation.getId())
-                    .build());
-        }
-
-        settlementRepository.save(settlement);
-    }
-
-    @Transactional
-    public void settleAsFailedWithoutVerification(Long participationId) {
+    public void settleParticipatedChallenge(Long participationId) {
+        // 이미 정산된 Participation의 경우 리턴
         if (settlementRepository.existsByParticipation_Id(participationId)) {
             return;
         }
@@ -118,21 +54,123 @@ public class SettlementService {
         Participation lockedParticipation = participationRepository.findByIdForUpdate(participationId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
-        if (settlementRepository.existsByParticipation_Id(lockedParticipation.getId())) {
-            return;
+        long totalDays = lockedParticipation.getDurationWeeks() * 7L;
+        long passDays = verificationRepository.countByParticipation_IdAndReview(
+                lockedParticipation.getId(),
+                VerificationReviewStatus.PASS
+        );
+
+        // 면제 한도
+        long exemptionDays = totalDays / 7;
+
+        // rValue = min(1, (PASS 수 + 면제 한도) / totalDays
+        BigDecimal rValue = BigDecimal.valueOf(passDays + exemptionDays)
+                .divide(BigDecimal.valueOf(totalDays), 4, RoundingMode.HALF_UP)
+                .min(BigDecimal.ONE);
+
+        boolean success = rValue.compareTo(SUCCESS_THRESHOLD) >= 0;
+
+        lockedParticipation.setStatus(success ? ParticipationStatus.SUCCESS : ParticipationStatus.FAIL);
+
+        if (success) {
+            settleSuccess(lockedParticipation, rValue);
+        } else {
+            settleFailure(lockedParticipation, rValue);
+        }
+    }
+
+    private void settleSuccess(Participation participation, BigDecimal rValue) {
+        int bonusAmount = calculateBonusAmount(participation.getDepositAmount());
+        int refundAmount = participation.getDepositAmount() + bonusAmount;
+
+        refundPoint(participation, refundAmount, bonusAmount);
+
+        Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, bonusAmount);
+        settlementRepository.save(resultSettlement);
+    }
+
+    private void settleFailure(Participation participation, BigDecimal rValue) {
+        int refundAmount = calculateFailureRefundAmount(participation.getDepositAmount(), rValue);
+
+        //TODO- 실패 시 환급 처리 고민
+        if (refundAmount > 0) {
+            refundPoint(participation, refundAmount, 0);
         }
 
-        lockedParticipation.setStatus(ParticipationStatus.FAIL);
-        participationRepository.save(lockedParticipation);
+        Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, 0);
 
-        settlementRepository.save(Settlement.builder()
-                .participation(lockedParticipation)
-                .depositAmount(lockedParticipation.getDepositAmount())
-                .refundAmount(0)
-                .bonusAmount(0)
+        settlementRepository.save(resultSettlement);
+    }
+
+    private Settlement createSettlement(
+            Participation participation,
+            BigDecimal rValue,
+            int refundAmount,
+            int bonusAmount
+    ) {
+        return Settlement.builder()
+                .participation(participation)
+                .depositAmount(participation.getDepositAmount())
+                .rValue(rValue)
+                .refundAmount(refundAmount)
+                .bonusAmount(bonusAmount)
                 .partyShareAmount(0)
                 .status(SettlementStatus.COMPLETED)
                 .processedAt(timeService.nowKst())
-                .build());
+                .build();
+    }
+
+    private void refundPoint(
+            Participation participation,
+            int refundAmount,
+            int adjustmentAmount
+    ) {
+        User user = userRepository.findByIdForUpdate(participation.getUser().getId())
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+        long balanceAfter = user.getPointBalance() + refundAmount;
+
+        user.setPointBalance(balanceAfter);
+
+        pointTransactionRepository.save(
+            PointTransaction.builder()
+                .user(user)
+                .type(PointTransactionType.REFUND)
+                .amount(refundAmount)
+                .depositAmount(participation.getDepositAmount())
+                .adjustmentAmount(adjustmentAmount)
+                .balanceAfter(balanceAfter)
+                .description(participation.getChallenge().getName())
+                .refType("SETTLEMENT")
+                .refId(participation.getId())
+                .build()
+        );
+    }
+
+    private int calculateBonusAmount(int depositAmount) {
+        return BigDecimal.valueOf(depositAmount)
+                .multiply(BONUS_RATE)
+                .setScale(0, RoundingMode.HALF_UP)
+                .intValue();
+    }
+
+    private int calculateFailureRefundAmount(
+            int depositAmount,
+            BigDecimal rValue
+    ) {
+        BigDecimal normalizedRate = rValue.divide(
+                FAILURE_REFUND_BASE,
+                4,
+                RoundingMode.HALF_UP
+        );
+
+        BigDecimal poweredRate = normalizedRate.pow(
+                FAILURE_REFUND_EXPONENT.intValueExact()
+        );
+
+        return BigDecimal.valueOf(depositAmount)
+                .multiply(poweredRate)
+                .setScale(0, RoundingMode.HALF_UP)
+                .intValue();
     }
 }
