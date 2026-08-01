@@ -6,10 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
-import java.math.BigDecimal;
-import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
@@ -28,23 +25,9 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("date") LocalDate date
     );
 
-    boolean existsByParticipation_IdAndVerificationDate(Long participationId, LocalDate verificationDate);
-
-    long countByParticipation_Id(Long participationId);
-
     long countByParticipation_IdAndReview(
             Long participationId,
             com.example.onuldo.domain.challenge.enums.VerificationReviewStatus review
-    );
-
-    @Query("""
-            SELECT COALESCE(SUM(v.dayScore), 0)
-            FROM Verification v
-            WHERE v.participation.id = :participationId
-            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
-            """)
-    BigDecimal sumPassDayScoreByParticipationId(
-            @Param("participationId") Long participationId
     );
 
     @Query("""
@@ -60,11 +43,4 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     );
 
     boolean existsByPhotoUrl(String fileId);
-
-    Optional<Verification> findTopByParticipation_IdAndVerificationDateOrderByIdDesc(
-            Long participationId,
-            LocalDate verificationDate
-    );
-
-    List<Verification> findAllByParticipation_IdIn(Collection<Long> participationIds);
 }
