@@ -4,6 +4,7 @@ import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.service.SettlementService;
+import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +38,13 @@ public class SettlementScheduler {
                 .toList();
 
         for (Long participationId : targetParticipationIds) {
-            settlementService.settleParticipatedChallenge(participationId);
+            try {
+                settlementService.settleParticipatedChallenge(participationId);
+            } catch (RestApiException e) {
+                log.warn("Failed to settle participation. participationId={}, message={}", participationId, e.getMessage(), e);
+            } catch (Exception e) {
+                log.error("Unexpected error while settling participation. participationId={}", participationId, e);
+            }
         }
 
         log.info("patchFailedSettlement finished. targetCount={}", targetParticipationIds.size());

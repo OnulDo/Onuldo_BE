@@ -46,13 +46,13 @@ public class SettlementService {
      * */
     @Transactional
     public void settleParticipatedChallenge(Long participationId) {
-        // 이미 정산된 Participation의 경우 리턴
+        Participation lockedParticipation = participationRepository.findByIdForUpdate(participationId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+
+        // 락 획득 후 다시 확인해서 동시성 중복 정산을 방지한다.
         if (settlementRepository.existsByParticipation_Id(participationId)) {
             return;
         }
-
-        Participation lockedParticipation = participationRepository.findByIdForUpdate(participationId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
         long totalDays = lockedParticipation.getDurationWeeks() * 7L;
         long passDays = verificationRepository.countByParticipation_IdAndReview(
@@ -70,7 +70,7 @@ public class SettlementService {
 
         boolean success = rValue.compareTo(SUCCESS_THRESHOLD) >= 0;
 
-        lockedParticipation.setStatus(success ? ParticipationStatus.SUCCESS : ParticipationStatus.FAIL);
+        lockedParticipation.changeStatus(success ? ParticipationStatus.SUCCESS : ParticipationStatus.FAIL);
 
         if (success) {
             settleSuccess(lockedParticipation, rValue);

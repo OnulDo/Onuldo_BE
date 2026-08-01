@@ -24,7 +24,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDate;
 
@@ -73,8 +72,11 @@ public class Participation {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Setter
     private ParticipationStatus status = ParticipationStatus.ONGOING;
+
+    public void changeStatus(ParticipationStatus status) {
+        this.status = status;
+    }
 
     @PrePersist
     @PreUpdate

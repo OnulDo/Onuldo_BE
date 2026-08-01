@@ -92,7 +92,7 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
                 FROM Verification v
                 WHERE v.participation = p
                   AND v.verificationDate = :endDate
-                  AND v.review = 'PASS'
+                  AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
           )
           AND NOT EXISTS (
                 SELECT 1

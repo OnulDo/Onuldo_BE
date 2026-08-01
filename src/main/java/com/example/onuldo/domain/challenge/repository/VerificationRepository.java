@@ -43,7 +43,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             WHERE v.participation.id = :participationId
             AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
             """)
-    BigDecimal sumDayScoreByParticipation_IdAndReview(
+    BigDecimal sumPassDayScoreByParticipationId(
             @Param("participationId") Long participationId
     );
 
