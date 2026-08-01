@@ -351,7 +351,7 @@ public class ParticipationService {
             return verification.getDayScore();
         }
 
-        if (verification.getReview() == VerificationReviewStatus.AUTO_PASS) {
+        if (verification.getReview() == VerificationReviewStatus.PASS) {
             return BigDecimal.valueOf(PERCENT_MULTIPLIER);
         }
 
