@@ -31,7 +31,7 @@ public class SettlementScheduler {
 
         List<Long> targetParticipationIds = participationRepository.findFailedSettlementTargets(
                 ParticipationStatus.ONGOING,
-                timeService.todayKst(),
+                nowKst.toLocalDate(),
                 nowKst.toLocalTime()
         ).stream()
                 .map(Participation::getId)

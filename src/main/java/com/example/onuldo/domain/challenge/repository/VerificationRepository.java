@@ -13,7 +13,7 @@ import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
-    // 파티 진행 피드: 오늘 AUTO_PASS(자동 통과)된 인증만 "인증 완료"로 집계
+    // 파티 진행 피드: 오늘 PASS 처리된 인증만 "인증 완료"로 집계
     @Query("""
             SELECT v
             FROM Verification v

@@ -21,7 +21,7 @@ public record ChallengeVerificationResDto(
         LocalDate verificationDate,
         @Schema(example = "2026-07-28T09:30:00")
         LocalDateTime verifiedAt,
-        @Schema(example = "AUTO_PASS")
+        @Schema(example = "PASS")
         VerificationReviewStatus review
 ) {
 }
