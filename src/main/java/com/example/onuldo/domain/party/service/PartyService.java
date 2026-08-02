@@ -264,7 +264,7 @@ public class PartyService {
 
     // PAR-05: 파티 시작 (방장만 가능, 2인 이상 + 전원 준비완료 시 활성화, 전원 도전금 일괄 예치)
     public PartyStartResDto startParty(Long partyId, Long userId) {
-        Party party = partyRepository.findById(partyId)
+        Party party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
 
         if (!party.getHostUser().getId().equals(userId)) {

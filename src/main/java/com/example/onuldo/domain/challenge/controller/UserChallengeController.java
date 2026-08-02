@@ -2,6 +2,7 @@ package com.example.onuldo.domain.challenge.controller;
 
 import com.example.onuldo.domain.challenge.controller.doc.UserChallengeControllerDoc;
 import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.service.ParticipationService;
@@ -14,8 +15,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
@@ -41,10 +40,16 @@ public class UserChallengeController implements UserChallengeControllerDoc {
     @GetMapping("/challenges/daily")
     public BaseResponse<DailyChallengeListResDto> getDailyChallenges(
             @AuthUser
-            Long userId,
-            @RequestParam(required = true)
-            LocalDate date
+            Long userId
     ) {
-        return BaseResponse.onSuccess(participationService.getDailyChallenges(userId, date));
+        return BaseResponse.onSuccess(participationService.getDailyChallenges(userId));
+    }
+
+    @GetMapping("/challenges/daily/completed")
+    public BaseResponse<DailyCompletedChallengeListResDto> getDailyCompletedChallenges(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess(participationService.getDailyCompletedChallenges(userId));
     }
 }

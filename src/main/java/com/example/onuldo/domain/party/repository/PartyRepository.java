@@ -2,8 +2,10 @@ package com.example.onuldo.domain.party.repository;
 
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.entity.Party;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +18,10 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
     Optional<Party> findByInviteCode(String inviteCode);
 
     boolean existsByInviteCode(String inviteCode);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Party p WHERE p.id = :id")
+    Optional<Party> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * 나의 파티 목록 조회 (PAR-07: WAITING 상태 파티는 목록에서 제외)
