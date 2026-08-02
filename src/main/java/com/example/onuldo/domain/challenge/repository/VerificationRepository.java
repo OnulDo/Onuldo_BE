@@ -8,7 +8,6 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
@@ -44,15 +43,6 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("date") LocalDate date
     );
 
-    boolean existsByPhotoUrl(String fileId);
-
-    Optional<Verification> findTopByParticipation_IdAndVerificationDateOrderByIdDesc(
-            Long participationId,
-            LocalDate verificationDate
-    );
-
-    List<Verification> findAllByParticipation_IdIn(Collection<Long> participationIds);
-
     @Query("""
         SELECT v
         FROM Verification v
@@ -83,4 +73,12 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("date") LocalDate date
     );
 
+    boolean existsByPhotoUrl(String photoUrl);
+
+    List<Verification> findAllByParticipation_IdIn(Collection<Long> participationIds);
+
+    List<Verification> findAllByParticipation_IdInAndVerificationDate(
+            Collection<Long> participationIds,
+            LocalDate verificationDate
+    );
 }

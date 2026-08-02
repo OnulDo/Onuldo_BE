@@ -55,8 +55,8 @@ public class ParticipationService {
     private final UserRepository userRepository;
     private final ChallengeRepository challengeRepository;
     private final ParticipationRepository participationRepository;
-    private final PointTransactionRepository pointTransactionRepository;
     private final VerificationRepository verificationRepository;
+    private final PointTransactionRepository pointTransactionRepository;
     private final TimeService timeService;
 
     public ParticipationResDto participatePersonalChallenge(

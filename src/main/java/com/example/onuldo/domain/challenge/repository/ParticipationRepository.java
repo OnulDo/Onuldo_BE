@@ -9,9 +9,9 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.Collection;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -73,6 +73,31 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             LocalDate endDate
     );
 
+    @Query("""
+            SELECT p
+            FROM Participation p
+            JOIN FETCH p.challenge
+            WHERE p.user.id = :userId
+            AND p.status = :status
+            ORDER BY p.id DESC
+            """)
+    List<Participation> findAllWithChallengeByUserIdAndStatusOrderByIdDesc(
+            @Param("userId") Long userId,
+            @Param("status") ParticipationStatus status
+    );
+
+    @Query("""
+            SELECT p
+            FROM Participation p
+            JOIN FETCH p.challenge
+            WHERE p.user.id = :userId
+            AND p.status IN :statuses
+            ORDER BY p.endDate DESC, p.id DESC
+            """)
+    List<Participation> findAllWithChallengeByUserIdAndStatusInOrderByEndDateDesc(
+            @Param("userId") Long userId,
+            @Param("statuses") Collection<ParticipationStatus> statuses
+    );
     Optional<Participation> findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(
             Long userId,
             Long challengeId,

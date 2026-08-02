@@ -1,11 +1,14 @@
 package com.example.onuldo.domain.challenge.controller;
 
 import com.example.onuldo.domain.challenge.controller.doc.UserChallengeControllerDoc;
+import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeRecordSummaryResDto;
+import com.example.onuldo.domain.challenge.dto.response.OngoingChallengeRecordResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.service.ParticipationService;
+import com.example.onuldo.domain.challenge.service.ParticipationRecordService;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
@@ -16,12 +19,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/users/me")
 public class UserChallengeController implements UserChallengeControllerDoc {
 
     private final ParticipationService participationService;
+    private final ParticipationRecordService participationRecordService;
 
     @GetMapping("/challenges")
     public CursorPageResponse<UserChallengeResDto> getUserChallenges(
@@ -51,5 +57,21 @@ public class UserChallengeController implements UserChallengeControllerDoc {
             Long userId
     ) {
         return BaseResponse.onSuccess(participationService.getDailyCompletedChallenges(userId));
+    }
+
+    @GetMapping("/challenges/records/ongoing")
+    public BaseResponse<List<OngoingChallengeRecordResDto>> getOngoingChallengeRecords(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess(participationRecordService.getOngoingChallengeRecords(userId));
+    }
+
+    @GetMapping("/challenges/records/completed")
+    public BaseResponse<CompletedChallengeRecordSummaryResDto> getCompletedChallengeRecords(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess(participationRecordService.getCompletedChallengeRecords(userId));
     }
 }
