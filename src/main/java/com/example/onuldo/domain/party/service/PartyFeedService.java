@@ -52,11 +52,12 @@ public class PartyFeedService {
         List<Verification> todayVerifications =
                 verificationRepository.findTodayAutoPassVerificationsByPartyId(partyId, timeService.todayKst());
 
-        // 파티원 1인당 하루 1회 인증이 원칙이므로 userId 기준으로 매핑
+        // 파티원 1인당 하루 1회 인증이 원칙이므로 userId 기준으로 매핑 (중복 키 발생 시 첫 번째 인증 건 유지)
         Map<Long, Verification> verificationByUserId = todayVerifications.stream()
                 .collect(Collectors.toMap(
                         v -> v.getParticipation().getUser().getId(),
-                        v -> v
+                        v -> v,
+                        (first, second) -> first
                 ));
 
         List<PartyFeedItemResDto> members = partyMembers.stream()
