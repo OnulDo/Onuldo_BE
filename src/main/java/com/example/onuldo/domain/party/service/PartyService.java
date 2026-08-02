@@ -264,8 +264,6 @@ public class PartyService {
 
     // PAR-05: 파티 시작 (방장만 가능, 2인 이상 + 전원 준비완료 시 활성화, 전원 도전금 일괄 예치)
     public PartyStartResDto startParty(Long partyId, Long userId) {
-        // PAR-05: 파티 상태 체크 후 갱신이 원자적으로 이뤄지도록 파티 row에 비관적 락을 건다.
-        // (락 없이 findById만 쓰면 동시 시작 요청이 둘 다 WAITING 통과 → Participation이 파티원마다 중복 생성됨)
         Party party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
 
