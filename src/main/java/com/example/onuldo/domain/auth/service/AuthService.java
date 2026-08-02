@@ -24,6 +24,7 @@ import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.global.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -69,6 +70,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final OAuthService oAuthService;
+    private final TimeService timeService;
 
     @Transactional
     public AuthResDto signup(EmailSignupReqDto request) {
@@ -102,7 +104,7 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = timeService.nowKst();
         if (isLocked(user, now)) {
             throw new RestApiException(GlobalErrorStatus._LOGIN_LOCKED);
         }
@@ -118,7 +120,7 @@ public class AuthService {
 
         user.setLoginFailCount(0);
         user.setLockedUntil(null);
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(timeService.nowKst());
         userRepository.save(user);
         return createAuthResponse(user);
     }
@@ -133,7 +135,7 @@ public class AuthService {
 
     @Transactional
     public OAuthResDto oauthLogin(OAuthLoginReqDto request) {
-        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.accessToken());
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
 
         Optional<User> existingUser = userRepository.findByEmail(info.email());
         if (existingUser.isEmpty()) {
@@ -147,7 +149,7 @@ public class AuthService {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
         }
 
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(timeService.nowKst());
         userRepository.save(user);
 
         return OAuthResDto.builder()
@@ -159,7 +161,7 @@ public class AuthService {
 
     @Transactional
     public AuthResDto oauthSignup(OAuthSignupReqDto request) {
-        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.accessToken());
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
 
         if (userRepository.existsByEmail(info.email())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
@@ -177,7 +179,7 @@ public class AuthService {
                 .emailVerified(true)
                 .pointBalance(0L)
                 .status(UserStatus.ACTIVE)
-                .lastLoginAt(LocalDateTime.now())
+                .lastLoginAt(timeService.nowKst())
                 .build());
 
         saveTermAgreements(user, request.termAgreements());

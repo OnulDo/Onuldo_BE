@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.example.onuldo.global.common.time.TimeService;
 
 @Getter
 @Builder
@@ -56,5 +57,5 @@ public class Penalty {
 
     @Builder.Default
     @Column(name = "applied_at", nullable = false)
-    private LocalDateTime appliedAt = LocalDateTime.now();
+    private LocalDateTime appliedAt = TimeService.nowKstStatic();
 }

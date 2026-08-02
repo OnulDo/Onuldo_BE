@@ -7,18 +7,18 @@ import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
-import com.example.onuldo.domain.user.dto.response.PointTransactionScrollResDto;
+import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.service.PointService;
 import com.example.onuldo.domain.user.service.UserService;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,14 +27,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/users/me")
 public class UserController implements UserControllerDoc {
-
-    private static final String DEFAULT_TRANSACTION_PAGE_SIZE = "10";
-    private static final int MIN_TRANSACTION_PAGE_SIZE = 1;
 
     private final PointService pointService;
     private final UserService userService;
@@ -107,7 +103,7 @@ public class UserController implements UserControllerDoc {
     }
 
     @GetMapping("/wallet/transactions")
-    public BaseResponse<PointTransactionScrollResDto> getPointTransactions(
+    public CursorPageResponse<PointTransactionResDto> getPointTransactions(
             @AuthUser
             Long userId,
 
@@ -115,12 +111,11 @@ public class UserController implements UserControllerDoc {
             PointTransactionType type,
 
             @RequestParam(required = false)
-            Long cursor,
+            String cursor,
 
-            @Min(MIN_TRANSACTION_PAGE_SIZE)
-            @RequestParam(defaultValue = DEFAULT_TRANSACTION_PAGE_SIZE)
+            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
             int size
     ) {
-        return BaseResponse.onSuccess(pointService.getPointTransactions(userId, type, cursor, size));
+        return pointService.getPointTransactions(userId, type, cursor, size);
     }
 }

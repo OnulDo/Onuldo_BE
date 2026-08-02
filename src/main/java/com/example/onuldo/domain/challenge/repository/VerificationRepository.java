@@ -12,7 +12,7 @@ import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
-    // 파티 진행 피드: 오늘 AUTO_PASS(자동 통과)된 인증만 "인증 완료"로 집계
+    // 파티 진행 피드: 오늘 PASS 처리된 인증만 "인증 완료"로 집계
     @Query("""
             SELECT v
             FROM Verification v
@@ -20,14 +20,17 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             JOIN FETCH p.user u
             WHERE p.party.id = :partyId
             AND v.verificationDate = :date
-            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.AUTO_PASS
+            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
             """)
     List<Verification> findTodayAutoPassVerificationsByPartyId(
             @Param("partyId") Long partyId,
             @Param("date") LocalDate date
     );
 
-    boolean existsByParticipation_IdAndVerificationDate(Long participationId, LocalDate verificationDate);
+    long countByParticipation_IdAndReview(
+            Long participationId,
+            com.example.onuldo.domain.challenge.enums.VerificationReviewStatus review
+    );
 
     @Query("""
             SELECT DISTINCT p.challenge.id
@@ -41,7 +44,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("date") LocalDate date
     );
 
-    boolean existsByPhotoUrl(String photoUrl);
+    boolean existsByPhotoUrl(String fileId);
 
     Optional<Verification> findTopByParticipation_IdAndVerificationDateOrderByIdDesc(
             Long participationId,
@@ -56,7 +59,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
         JOIN FETCH v.participation p
         WHERE p.user.id = :userId
             AND v.verificationDate = :date
-            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.AUTO_PASS
+            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
     """)
     List<Verification> findVerifiedVerificationsByUserIdAndVerificationDate(
             @Param("userId")
@@ -71,7 +74,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
         JOIN v.participation p
         WHERE p.party.id IN :partyIds
         AND v.verificationDate = :date
-        AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.AUTO_PASS
+        AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
         AND p.status = com.example.onuldo.domain.challenge.enums.ParticipationStatus.ONGOING
         GROUP BY p.party.id
     """)

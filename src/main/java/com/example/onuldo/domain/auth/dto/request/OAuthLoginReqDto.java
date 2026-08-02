@@ -11,7 +11,7 @@ public record OAuthLoginReqDto(
         SocialProvider provider,
 
         @Schema(example = "string")
-        @NotBlank(message = "accessToken은 필수입니다.")
-        String accessToken
+        @NotBlank(message = "socialAccessToken은 필수입니다.")
+        String socialAccessToken
 ) {
 }

@@ -10,6 +10,8 @@ import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.domain.party.service.PartyService;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +20,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -41,11 +42,15 @@ public class PartyController implements PartyControllerDoc {
     }
 
     @GetMapping
-    public BaseResponse<List<PartyListResDto>> getMyParties(
+    public CursorPageResponse<PartyListResDto> getMyParties(
             @AuthUser
-            Long userId
+            Long userId,
+            @RequestParam(required = false)
+            String cursor,
+            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
+            int size
     ) {
-        return BaseResponse.onSuccess(partyService.getMyParties(userId));
+        return partyService.getMyParties(userId, cursor, size);
     }
 
     @GetMapping("/{partyId}/waiting-room")

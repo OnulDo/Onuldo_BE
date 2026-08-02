@@ -22,11 +22,11 @@ public class OAuthService {
                 .collect(Collectors.toMap(OAuthApiClient::supports, Function.identity()));
     }
 
-    public OAuthUserInfo fetchUserInfo(SocialProvider provider, String accessToken) {
+    public OAuthUserInfo fetchUserInfo(SocialProvider provider, String socialAccessToken) {
         OAuthApiClient client = clients.get(provider);
         if (client == null) {
             throw new RestApiException(GlobalErrorStatus._BAD_REQUEST);
         }
-        return client.fetchUserInfo(accessToken);
+        return client.fetchUserInfo(socialAccessToken);
     }
 }

@@ -7,7 +7,6 @@ import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto
 import com.example.onuldo.domain.challenge.dto.response.DailyChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
-import com.example.onuldo.domain.challenge.dto.response.UserChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
@@ -26,8 +25,13 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorKeyCodec;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.time.TimeService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -51,8 +55,9 @@ public class ParticipationService {
     private final UserRepository userRepository;
     private final ChallengeRepository challengeRepository;
     private final ParticipationRepository participationRepository;
-    private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final VerificationRepository verificationRepository;
+    private final TimeService timeService;
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,
@@ -70,7 +75,7 @@ public class ParticipationService {
         validateAlreadyParticipating(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
 
-        LocalDate startDate = LocalDate.now();
+        LocalDate startDate = timeService.todayKst();
         LocalDate endDate = startDate.plusWeeks(request.durationWeeks());
         Integer durationDays = request.durationWeeks() * 7;
 
@@ -102,16 +107,27 @@ public class ParticipationService {
                 .build();
     }
 
-    public UserChallengeListResDto getUserChallenges(Long userId, ParticipationStatus status) {
-        List<Participation> participations = status == null
-                ? participationRepository.findAllByUser_IdOrderByIdDesc(userId)
-                : participationRepository.findAllByUser_IdAndStatusOrderByIdDesc(userId, status);
+    public CursorPageResponse<UserChallengeResDto> getUserChallenges(
+            Long userId,
+            ParticipationStatus status,
+            String cursor,
+            int size
+    ) {
+        int resolvedSize = CursorConstants.resolveSize(size);
 
-        return UserChallengeListResDto.builder()
-                .challenges(participations.stream()
-                        .map(this::toUserChallengeResDto)
-                        .toList())
-                .build();
+        Long lastId = CursorKeyCodec.isBlank(cursor) ? null : CursorKeyCodec.decodeAsLongs(cursor, 1)[0];
+
+        List<Participation> participations = status == null
+                ? participationRepository.findAllByUser_IdOrderByIdDesc(userId, lastId, CursorPageable.of(resolvedSize))
+                : participationRepository.findAllByUser_IdAndStatusOrderByIdDesc(userId, status, lastId, CursorPageable.of(resolvedSize));
+
+        return CursorPageResponse.of(
+                participations,
+                resolvedSize,
+                this::toUserChallengeResDto,
+                p -> CursorKeyCodec.encode(p.getId())
+        );
+
     }
 
     public DailyChallengeListResDto getDailyChallenges(Long userId, LocalDate date) {
@@ -378,7 +394,7 @@ public class ParticipationService {
             int streak = 0;
             LocalDate expected = LocalDate.now();
             for (Verification verification : history) {
-                if (verification.getReview() != VerificationReviewStatus.AUTO_PASS) {
+                if (verification.getReview() != VerificationReviewStatus.PASS) {
                     break;
                 }
                 if (!verification.getVerificationDate().equals(expected)) {
