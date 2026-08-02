@@ -76,9 +76,10 @@ public class PartyLifecycleService {
             throw new RestApiException(GlobalErrorStatus._PARTY_NOT_READY_TO_START);
         }
 
-        String challengeName = partyChallengeRepository.findByParty_Id(partyId)
-                .map(partyChallenge -> partyChallenge.getChallenge().getName())
-                .orElse(party.getName());
+        PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(partyId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+        Challenge challenge = partyChallenge.getChallenge();
+        String challengeName = challenge.getName();
 
         // PAR-05: 시작 시 파티원 전원 도전금 일괄 예치
         // (부족한 파티원이 있으면 예외 발생 → @Transactional에 의해 그 전에 차감된 파티원분까지 전부 롤백됨)
@@ -115,12 +116,6 @@ public class PartyLifecycleService {
         party.updateStartTriggeredAt(now);
         party.updateInviteExpiresAt(now);
         partyRepository.save(party);
-
-        // PAR-05: 시작 시 챌린지 진행 시작 — 파티원별 Participation(참여 기록) 생성
-        // (인증/진행 피드 조회가 이 Participation을 기준으로 동작하므로 시작 시점에 반드시 생성되어야 함)
-        PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(partyId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
-        Challenge challenge = partyChallenge.getChallenge();
 
         LocalDate startDate = timeService.todayKst();
         LocalDate endDate = startDate.plusDays(party.getDurationDays());
