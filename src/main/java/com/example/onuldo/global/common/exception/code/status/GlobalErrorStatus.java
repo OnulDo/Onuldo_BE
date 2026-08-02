@@ -72,7 +72,15 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
 
     // 약관 데이터 조회
     _TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "TERM_NOT_FOUND", "약관을 찾을 수 없습니다."),
-    _INVALID_TERM_TYPE(HttpStatus.BAD_REQUEST, "INVALID_TERM_TYPE", "조회 가능한 약관 종류가 아닙니다.");
+    _INVALID_TERM_TYPE(HttpStatus.BAD_REQUEST, "INVALID_TERM_TYPE", "조회 가능한 약관 종류가 아닙니다."),
+
+    // OAuth 관련 에러
+    _INVALID_SOCIAL_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_SOCIAL_TOKEN", "유효하지 않거나 만료된 소셜 액세스 토큰입니다."),
+    _OAUTH_PROVIDER_ERROR(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "OAUTH_PROVIDER_ERROR",
+            "소셜 로그인 서버와 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+    );
 
     private final HttpStatus httpStatus;
     private final boolean isSuccess = false;
