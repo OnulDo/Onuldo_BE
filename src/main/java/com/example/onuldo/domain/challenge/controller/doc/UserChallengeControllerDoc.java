@@ -67,25 +67,21 @@ public interface UserChallengeControllerDoc {
     );
 
     @Operation(
-            summary = "지정한 날짜에 완료한 챌린지 목록 조회",
+            summary = "오늘 완료한 챌린지 목록 조회",
             description = """
-    지정한 날짜에 진행 중이던 챌린지 중 인증까지 완료된 항목을 파티(`parties`)/개인 챌린지(`challenges`)로 나눠 조회합니다.
+    오늘 진행 중이던 챌린지 중 인증까지 완료된 항목을 파티(`parties`)/개인 챌린지(`challenges`)로 나눠 조회합니다.
 
-    각 항목의 `verifiedAt`은 지정한 날짜에 실제로 인증을 완료한 시각입니다(챌린지의 인증 마감 시각이 아님).
+    각 항목의 `verifiedAt`은 오늘 실제로 인증을 완료한 시각입니다(챌린지의 인증 마감 시각이 아님).
 
     정렬 기준
     - parties: 인증 시각(verifiedAt) 빠른 순
     - challenges: 인증 시각(verifiedAt) 빠른 순
 
-    파티 항목은 총 참여 인원/지정한 날짜 인증 완료 인원을, 개인 챌린지 항목은 지정한 날짜 기준 연속 성공 일수(streakDays)를 포함합니다.
+    파티 항목은 총 참여 인원/오늘 인증 완료 인원을, 개인 챌린지 항목은 연속 성공 일수(streakDays)를 포함합니다.
     """
     )
     BaseResponse<DailyCompletedChallengeListResDto> getDailyCompletedChallenges(
             @AuthUser
-            Long userId,
-
-            @Parameter(description = "조회할 날짜", example = "2026-07-29")
-            @RequestParam(required = true)
-            LocalDate date
+            Long userId
     );
 }

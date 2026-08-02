@@ -152,7 +152,9 @@ public class ParticipationService {
                 .build();
     }
 
-    public DailyCompletedChallengeListResDto getDailyCompletedChallenges(Long userId, LocalDate date) {
+    public DailyCompletedChallengeListResDto getDailyCompletedChallenges(Long userId) {
+        LocalDate date = timeService.todayKst();
+
         List<Participation> participations = participationRepository
                 .findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
                         userId,

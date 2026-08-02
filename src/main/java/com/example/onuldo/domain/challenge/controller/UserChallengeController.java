@@ -52,10 +52,8 @@ public class UserChallengeController implements UserChallengeControllerDoc {
     @GetMapping("/challenges/daily/completed")
     public BaseResponse<DailyCompletedChallengeListResDto> getDailyCompletedChallenges(
             @AuthUser
-            Long userId,
-            @RequestParam(required = true)
-            LocalDate date
+            Long userId
     ) {
-        return BaseResponse.onSuccess(participationService.getDailyCompletedChallenges(userId, date));
+        return BaseResponse.onSuccess(participationService.getDailyCompletedChallenges(userId));
     }
 }
