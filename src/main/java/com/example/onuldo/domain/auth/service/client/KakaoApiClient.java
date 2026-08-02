@@ -36,10 +36,13 @@ public class KakaoApiClient implements OAuthApiClient {
             return response.toOAuthUserInfo();
         } catch (RestClientResponseException e) {
             log.warn("카카오 유저 정보 조회 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new RestApiException(GlobalErrorStatus._UNAUTHORIZED);
+            if (e.getStatusCode().is4xxClientError()) {
+                throw new RestApiException(GlobalErrorStatus._INVALID_SOCIAL_TOKEN);
+            }
+            throw new RestApiException(GlobalErrorStatus._OAUTH_PROVIDER_ERROR);
         } catch (RestClientException e) {
             log.error("카카오 유저 정보 API 호출 중 오류", e);
-            throw new RestApiException(GlobalErrorStatus._UNAUTHORIZED);
+            throw new RestApiException(GlobalErrorStatus._OAUTH_PROVIDER_ERROR);
         }
     }
 }
