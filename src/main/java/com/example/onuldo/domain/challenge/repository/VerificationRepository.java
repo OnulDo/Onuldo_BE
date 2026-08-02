@@ -69,7 +69,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     );
 
     @Query("""
-        SELECT new com.example.onuldo.domain.challenge.repository.PartyCountProjection(p.party.id, COUNT(v))
+        SELECT new com.example.onuldo.domain.challenge.repository.PartyCountProjection(p.party.id, COUNT(DISTINCT p.user.id))
         FROM Verification v
         JOIN v.participation p
         WHERE p.party.id IN :partyIds

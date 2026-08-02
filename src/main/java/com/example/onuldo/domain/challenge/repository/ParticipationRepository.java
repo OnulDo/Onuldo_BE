@@ -113,7 +113,7 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     List<Participation> findAllByIdIn(Collection<Long> ids);
 
     @Query("""
-        SELECT new com.example.onuldo.domain.challenge.repository.PartyCountProjection(p.party.id, COUNT(p))
+        SELECT new com.example.onuldo.domain.challenge.repository.PartyCountProjection(p.party.id, COUNT(DISTINCT p.user.id))
         FROM Participation p
         WHERE p.party.id IN :partyIds
         AND p.status = :status
