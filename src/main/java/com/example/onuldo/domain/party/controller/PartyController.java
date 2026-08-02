@@ -5,6 +5,7 @@ import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
+import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
@@ -72,6 +73,16 @@ public class PartyController implements PartyControllerDoc {
             PartyJoinReqDto request
     ) {
         return BaseResponse.onSuccess(partyService.joinParty(userId, request));
+    }
+
+    @PostMapping("/{partyId}/leave")
+    public BaseResponse<PartyLeaveResDto> leaveParty(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    ) {
+        return BaseResponse.onSuccess(partyService.leaveParty(partyId, userId));
     }
 
     // 준비완료 전환 API는 파티 API 목록(7개)에 명시되어 있지 않았으나 PAR-05, PAR-ERR-03 근거로 추가함 (BE 확인 필요)
