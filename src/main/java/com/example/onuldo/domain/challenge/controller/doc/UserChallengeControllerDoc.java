@@ -16,8 +16,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
-import java.time.LocalDate;
-
 @Tag(name = "Challenge")
 public interface UserChallengeControllerDoc {
 
@@ -83,9 +81,6 @@ public interface UserChallengeControllerDoc {
     BaseResponse<DailyCompletedChallengeListResDto> getDailyCompletedChallenges(
             @AuthUser
             Long userId
-            @Parameter(description = "조회할 날짜", example = "2026-07-29")
-            @RequestParam(required = true)
-            LocalDate date
     );
 
     @Operation(
@@ -94,10 +89,7 @@ public interface UserChallengeControllerDoc {
     )
     BaseResponse<List<OngoingChallengeRecordResDto>> getOngoingChallengeRecords(
             @AuthUser
-            Long userId,
-            @Parameter(description = "조회할 날짜", example = "2026-07-29")
-            @RequestParam(required = true)
-            LocalDate date
+            Long userId
     );
 
     @Operation(

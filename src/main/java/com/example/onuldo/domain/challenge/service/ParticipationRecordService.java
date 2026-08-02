@@ -11,6 +11,7 @@ import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -37,8 +38,11 @@ public class ParticipationRecordService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final SettlementRepository settlementRepository;
+    private final TimeService timeService;
 
-    public List<OngoingChallengeRecordResDto> getOngoingChallengeRecords(Long userId, LocalDate date) {
+    public List<OngoingChallengeRecordResDto> getOngoingChallengeRecords(Long userId) {
+        LocalDate date = timeService.todayKst();
+
         List<Participation> ongoingParticipations =
                 participationRepository.findAllWithChallengeByUserIdAndStatusOrderByIdDesc(
                         userId,

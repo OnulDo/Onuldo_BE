@@ -21,8 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-import java.time.LocalDate;
-
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/users/me")
@@ -64,11 +62,9 @@ public class UserChallengeController implements UserChallengeControllerDoc {
     @GetMapping("/challenges/records/ongoing")
     public BaseResponse<List<OngoingChallengeRecordResDto>> getOngoingChallengeRecords(
             @AuthUser
-            Long userId,
-            @RequestParam(required = true)
-            LocalDate date
+            Long userId
     ) {
-        return BaseResponse.onSuccess(participationRecordService.getOngoingChallengeRecords(userId, date));
+        return BaseResponse.onSuccess(participationRecordService.getOngoingChallengeRecords(userId));
     }
 
     @GetMapping("/challenges/records/completed")
