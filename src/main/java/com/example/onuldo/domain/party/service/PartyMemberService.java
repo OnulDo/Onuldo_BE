@@ -98,6 +98,7 @@ public class PartyMemberService {
 
         boolean wasHost = leavingMember.getRole() == PartyMemberRole.HOST;
         partyMemberRepository.delete(leavingMember);
+        partyMemberRepository.flush();
 
         if (!wasHost) {
             return PartyLeaveResDto.builder()
@@ -107,7 +108,9 @@ public class PartyMemberService {
                     .build();
         }
 
-        List<PartyMember> remainingMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
+        List<PartyMember> remainingMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId).stream()
+                .filter(member -> !member.getUser().getId().equals(userId))
+                .collect(java.util.stream.Collectors.toList());
         if (remainingMembers.isEmpty()) {
             party.updateStatus(PartyStatus.DISSOLVED);
             party.updateInviteExpiresAt(timeService.nowKst());
