@@ -12,6 +12,7 @@ import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedItemResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
+import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
@@ -231,6 +232,56 @@ public class PartyService {
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(party.getId());
         return PartyWaitingResDto.of(party, partyMembers, userId);
+    }
+
+    // PAR-07: 대기방 이탈(뒤로가기 포함) 시 자동 탈퇴 처리. 방장 이탈 시 가장 먼저 입장한 파티원에게 승계,
+    // 남은 파티원이 없으면 파티 해체 + 초대코드 즉시 만료. 진행 중/종료된 파티는 대기방 이탈 대상이 아니므로 제외.
+    public PartyLeaveResDto leaveParty(Long partyId, Long userId) {
+        Party party = partyRepository.findById(partyId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
+
+        if (party.getStatus() != PartyStatus.WAITING) {
+            throw new RestApiException(GlobalErrorStatus._PARTY_ALREADY_STARTED);
+        }
+
+        PartyMember leavingMember = partyMemberRepository.findById(new PartyMemberId(partyId, userId))
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._NOT_PARTY_MEMBER));
+
+        boolean wasHost = leavingMember.getRole() == PartyMemberRole.HOST;
+        partyMemberRepository.delete(leavingMember);
+
+        if (!wasHost) {
+            return PartyLeaveResDto.builder()
+                    .partyId(party.getId())
+                    .dissolved(false)
+                    .newHostUserId(null)
+                    .build();
+        }
+
+        List<PartyMember> remainingMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
+        if (remainingMembers.isEmpty()) {
+            party.updateStatus(PartyStatus.DISSOLVED);
+            party.updateInviteExpiresAt(timeService.nowKst());
+            partyRepository.save(party);
+
+            return PartyLeaveResDto.builder()
+                    .partyId(party.getId())
+                    .dissolved(true)
+                    .newHostUserId(null)
+                    .build();
+        }
+
+        PartyMember newHost = remainingMembers.get(0);
+        newHost.promoteToHost();
+        partyMemberRepository.save(newHost);
+        party.updateHostUser(newHost.getUser());
+        partyRepository.save(party);
+
+        return PartyLeaveResDto.builder()
+                .partyId(party.getId())
+                .dissolved(false)
+                .newHostUserId(newHost.getUser().getId())
+                .build();
     }
 
     // 준비완료 전환 API는 파티 API 목록(7개)에 명시되어 있지 않았으나 PAR-05, PAR-ERR-03 근거로 추가함 (BE 확인 필요)
