@@ -12,6 +12,7 @@ import com.example.onuldo.domain.party.entity.PartyChallengeId;
 import com.example.onuldo.domain.party.entity.PartyMember;
 import com.example.onuldo.domain.party.entity.PartyMemberId;
 import com.example.onuldo.domain.party.enums.PartyMemberRole;
+import com.example.onuldo.domain.party.enums.PartyStatus;
 import com.example.onuldo.domain.party.repository.PartyChallengeRepository;
 import com.example.onuldo.domain.party.repository.PartyMemberRepository;
 import com.example.onuldo.domain.party.repository.PartyRepository;
@@ -158,6 +159,10 @@ public class PartyService {
     public PartyWaitingResDto getPartyWaiting(Long partyId, Long userId) {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
+
+        if (party.getStatus() == PartyStatus.DISSOLVED) {
+            throw new RestApiException(GlobalErrorStatus._PARTY_DISSOLVED);
+        }
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
 

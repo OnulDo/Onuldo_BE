@@ -47,7 +47,7 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
         FROM Party p
         JOIN PartyMember pm ON pm.party.id = p.id
         WHERE pm.user.id = :userId
-        AND p.status <> com.example.onuldo.domain.party.enums.PartyStatus.WAITING
+        AND p.status NOT IN (com.example.onuldo.domain.party.enums.PartyStatus.WAITING, com.example.onuldo.domain.party.enums.PartyStatus.DISSOLVED)
         AND (
             :lastCreatedAt IS NULL
             OR p.createdAt < :lastCreatedAt
