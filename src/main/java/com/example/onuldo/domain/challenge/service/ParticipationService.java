@@ -76,7 +76,7 @@ public class ParticipationService {
         validatePointBalance(user, request.depositAmount());
 
         LocalDate startDate = timeService.todayKst();
-        LocalDate endDate = startDate.plusWeeks(request.durationWeeks());
+        LocalDate endDate = startDate.plusWeeks(request.durationWeeks()).minusDays(1);
         Integer durationDays = request.durationWeeks() * 7;
 
         long balanceAfter = user.getPointBalance() - request.depositAmount();

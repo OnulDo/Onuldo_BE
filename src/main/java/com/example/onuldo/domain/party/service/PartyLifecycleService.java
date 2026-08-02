@@ -118,7 +118,7 @@ public class PartyLifecycleService {
         partyRepository.save(party);
 
         LocalDate startDate = timeService.todayKst();
-        LocalDate endDate = startDate.plusDays(party.getDurationDays());
+        LocalDate endDate = startDate.plusDays(party.getDurationDays() - 1);
         int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
 
         for (PartyMember member : partyMembers) {
