@@ -4,6 +4,7 @@ import com.example.onuldo.domain.challenge.controller.doc.UserChallengeControlle
 import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeRecordSummaryResDto;
 import com.example.onuldo.domain.challenge.dto.response.OngoingChallengeRecordResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.service.ParticipationService;
@@ -47,11 +48,17 @@ public class UserChallengeController implements UserChallengeControllerDoc {
     @GetMapping("/challenges/daily")
     public BaseResponse<DailyChallengeListResDto> getDailyChallenges(
             @AuthUser
-            Long userId,
-            @RequestParam(required = true)
-            LocalDate date
+            Long userId
     ) {
-        return BaseResponse.onSuccess(participationService.getDailyChallenges(userId, date));
+        return BaseResponse.onSuccess(participationService.getDailyChallenges(userId));
+    }
+
+    @GetMapping("/challenges/daily/completed")
+    public BaseResponse<DailyCompletedChallengeListResDto> getDailyCompletedChallenges(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess(participationService.getDailyCompletedChallenges(userId));
     }
 
     @GetMapping("/challenges/records/ongoing")

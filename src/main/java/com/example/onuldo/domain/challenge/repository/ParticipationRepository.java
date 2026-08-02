@@ -134,4 +134,18 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Participation p WHERE p.id = :id")
     Optional<Participation> findByIdForUpdate(@Param("id") Long id);
+
+    List<Participation> findAllByIdIn(Collection<Long> ids);
+
+    @Query("""
+        SELECT new com.example.onuldo.domain.challenge.repository.PartyCountProjection(p.party.id, COUNT(DISTINCT p.user.id))
+        FROM Participation p
+        WHERE p.party.id IN :partyIds
+        AND p.status = :status
+        GROUP BY p.party.id
+    """)
+    List<PartyCountProjection> findParticipationCountsByPartyIdInAndStatus(
+            @Param("partyIds") Collection<Long> partyIds,
+            @Param("status") ParticipationStatus status
+    );
 }
