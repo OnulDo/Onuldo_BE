@@ -252,6 +252,7 @@ public class ParticipationRecordService {
                 .collect(Collectors.toSet());
 
         return verificationRepository.findAllByParticipation_IdIn(participationIds).stream()
+                .filter(verification -> verification.getReview() == VerificationReviewStatus.PASS)
                 .filter(verification -> !verification.getVerificationDate().isAfter(date))
                 .collect(Collectors.groupingBy(
                         verification -> verification.getParticipation().getId(),
@@ -269,6 +270,7 @@ public class ParticipationRecordService {
                 .collect(Collectors.toSet());
 
         return verificationRepository.findAllByParticipation_IdInAndVerificationDate(participationIds, date).stream()
+                .filter(verification -> verification.getReview() == VerificationReviewStatus.PASS)
                 .map(verification -> verification.getParticipation().getId())
                 .collect(Collectors.toSet());
     }
