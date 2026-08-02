@@ -13,13 +13,19 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.util.Locale;
+
 @Slf4j
 @Component
 public class KakaoApiClient implements OAuthApiClient {
 
     private static final String USER_INFO_URI = "https://kapi.kakao.com/v2/user/me";
-    // 카카오 API 공통 에러 코드 -401: 유효하지 않거나 만료된 토큰(AuthorizationException)
+
+    // 카카오 -401은 만료/위조된 액세스 토큰뿐 아니라 잘못된 app key, 토큰-앱 정보 불일치에도 동일하게 내려온다.
+    // msg에 "token"이 있고 "app"(앱 설정 관련)이 없을 때만 토큰 자체 문제로 간주한다.
     private static final int INVALID_TOKEN_ERROR_CODE = -401;
+    private static final String TOKEN_KEYWORD = "token";
+    private static final String APP_KEYWORD = "app";
 
     private final RestClient restClient = RestClient.create();
 
@@ -50,13 +56,17 @@ public class KakaoApiClient implements OAuthApiClient {
         }
     }
 
-    private boolean isInvalidTokenError(RestClientResponseException e) {
+    boolean isInvalidTokenError(RestClientResponseException e) {
         if (!e.getStatusCode().isSameCodeAs(HttpStatus.UNAUTHORIZED)) {
             return false;
         }
         try {
             KakaoErrorResDto error = e.getResponseBodyAs(KakaoErrorResDto.class);
-            return error != null && Integer.valueOf(INVALID_TOKEN_ERROR_CODE).equals(error.code());
+            if (error == null || !Integer.valueOf(INVALID_TOKEN_ERROR_CODE).equals(error.code()) || error.msg() == null) {
+                return false;
+            }
+            String msg = error.msg().toLowerCase(Locale.ROOT);
+            return msg.contains(TOKEN_KEYWORD) && !msg.contains(APP_KEYWORD);
         } catch (RestClientException parseException) {
             return false;
         }

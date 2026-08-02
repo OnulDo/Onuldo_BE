@@ -49,7 +49,7 @@ public class NaverApiClient implements OAuthApiClient {
         }
     }
 
-    private boolean isInvalidTokenError(RestClientResponseException e) {
+    boolean isInvalidTokenError(RestClientResponseException e) {
         if (!e.getStatusCode().isSameCodeAs(HttpStatus.UNAUTHORIZED)) {
             return false;
         }
