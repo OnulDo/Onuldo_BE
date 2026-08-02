@@ -88,7 +88,7 @@ public class PartyController implements PartyControllerDoc {
             @PathVariable
             Long partyId
     ) {
-        return BaseResponse.onSuccess(partyMemberService.leaveParty(partyId, userId));
+        return BaseResponse.onSuccess("파티 이탈에 성공했습니다.", partyMemberService.leaveParty(partyId, userId));
     }
 
     // 준비완료 전환 API는 파티 API 목록(7개)에 명시되어 있지 않았으나 PAR-05, PAR-ERR-03 근거로 추가함 (BE 확인 필요)
