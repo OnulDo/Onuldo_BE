@@ -130,7 +130,9 @@ public class ParticipationService {
 
     }
 
-    public DailyChallengeListResDto getDailyChallenges(Long userId, LocalDate date) {
+    public DailyChallengeListResDto getDailyChallenges(Long userId) {
+        LocalDate date = timeService.todayKst();
+
         List<Participation> participations = participationRepository
                 .findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
                         userId,
