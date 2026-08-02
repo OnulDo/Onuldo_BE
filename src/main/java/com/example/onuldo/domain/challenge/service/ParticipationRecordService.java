@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 @Service
@@ -66,13 +65,16 @@ public class ParticipationRecordService {
                         COMPLETED_STATUSES
                 );
 
-        Map<Long, Integer> achievementRateByParticipationId = calculateCompletedAchievementRates(completedParticipations);
+        Map<Long, Map<LocalDate, BigDecimal>> dayScoreByParticipationId = collectDayScores(completedParticipations);
         Map<Long, Integer> refundAmountByParticipationId = getRefundAmountByParticipationId(completedParticipations);
 
         List<CompletedChallengeRecordResDto> completedChallengeRecords = completedParticipations.stream()
                 .map(participation -> toCompletedChallengeRecordResDto(
                         participation,
-                        achievementRateByParticipationId.getOrDefault(participation.getId(), 0),
+                        calculateCompletedAchievementRate(
+                                participation,
+                                dayScoreByParticipationId.getOrDefault(participation.getId(), Map.of())
+                        ),
                         refundAmountByParticipationId.getOrDefault(participation.getId(), 0)
                 ))
                 .toList();
@@ -140,13 +142,6 @@ public class ParticipationRecordService {
                 .intValue();
     }
 
-    private Map<Long, Integer> calculateCompletedAchievementRates(List<Participation> participations) {
-        return calculateAchievementRates(
-                participations,
-                this::calculateCompletedAchievementRate
-        );
-    }
-
     private int calculateCompletedAchievementRate(
             Participation participation,
             Map<LocalDate, BigDecimal> dayScoreByDate
@@ -163,26 +158,6 @@ public class ParticipationRecordService {
                 .intValue();
 
         return Math.min(PERCENT_MULTIPLIER, Math.max(0, achievementRate));
-    }
-
-    private Map<Long, Integer> calculateAchievementRates(
-            List<Participation> participations,
-            BiFunction<Participation, Map<LocalDate, BigDecimal>, Integer> calculator
-    ) {
-        if (participations.isEmpty()) {
-            return Map.of();
-        }
-
-        Map<Long, Map<LocalDate, BigDecimal>> dayScoreByParticipationId = collectDayScores(participations);
-
-        return participations.stream()
-                .collect(Collectors.toMap(
-                        Participation::getId,
-                        participation -> calculator.apply(
-                                participation,
-                                dayScoreByParticipationId.getOrDefault(participation.getId(), Map.of())
-                        )
-                ));
     }
 
     private Map<Long, Map<LocalDate, BigDecimal>> collectDayScores(List<Participation> participations) {
