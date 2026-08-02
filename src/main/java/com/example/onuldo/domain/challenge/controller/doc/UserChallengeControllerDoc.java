@@ -58,7 +58,6 @@ public interface UserChallengeControllerDoc {
     """
     )
     BaseResponse<DailyChallengeListResDto> getDailyChallenges(
-            @Parameter(hidden = true)
             @AuthUser
             Long userId,
 
@@ -82,7 +81,6 @@ public interface UserChallengeControllerDoc {
     """
     )
     BaseResponse<DailyCompletedChallengeListResDto> getDailyCompletedChallenges(
-            @Parameter(hidden = true)
             @AuthUser
             Long userId
     );
