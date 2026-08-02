@@ -152,19 +152,17 @@ public class ParticipationService {
                 .build();
     }
 
-    public DailyCompletedChallengeListResDto getDailyCompletedChallenges(Long userId) {
-        LocalDate today = LocalDate.now();
-
+    public DailyCompletedChallengeListResDto getDailyCompletedChallenges(Long userId, LocalDate date) {
         List<Participation> participations = participationRepository
                 .findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
                         userId,
                         ParticipationStatus.ONGOING,
-                        today,
-                        today
+                        date,
+                        date
                 );
 
         Map<Long, LocalDateTime> verifiedAtByParticipationId = verificationRepository
-                .findVerifiedVerificationsByUserIdAndVerificationDate(userId, today)
+                .findVerifiedVerificationsByUserIdAndVerificationDate(userId, date)
                 .stream()
                 .collect(Collectors.toMap(
                         v -> v.getParticipation().getId(),
@@ -192,7 +190,7 @@ public class ParticipationService {
                 : toCountMap(participationRepository.findParticipationCountsByPartyIdInAndStatus(partyIds, ParticipationStatus.ONGOING));
         Map<Long, Long> verifiedMemberCountByPartyId = partyIds.isEmpty()
                 ? Map.of()
-                : toCountMap(verificationRepository.findAutoPassVerificationCountsByPartyIdInAndVerificationDate(partyIds, today));
+                : toCountMap(verificationRepository.findAutoPassVerificationCountsByPartyIdInAndVerificationDate(partyIds, date));
 
         List<CompletedPartyResDto> parties = completedParties.stream()
                 .sorted(byVerifiedAt)
@@ -209,7 +207,8 @@ public class ParticipationService {
                 .toList();
 
         Map<Long, Integer> streakByParticipationId = calculateStreaks(
-                completedChallenges.stream().map(Participation::getId).toList()
+                completedChallenges.stream().map(Participation::getId).toList(),
+                date
         );
 
         List<CompletedChallengeResDto> challenges = completedChallenges.stream()
@@ -373,7 +372,7 @@ public class ParticipationService {
                 .build();
     }
 
-    private Map<Long, Integer> calculateStreaks(Collection<Long> participationIds) {
+    private Map<Long, Integer> calculateStreaks(Collection<Long> participationIds, LocalDate date) {
         if (participationIds.isEmpty()) {
             return Map.of();
         }
@@ -392,7 +391,7 @@ public class ParticipationService {
                     .toList();
 
             int streak = 0;
-            LocalDate expected = LocalDate.now();
+            LocalDate expected = date;
             for (Verification verification : history) {
                 if (verification.getReview() != VerificationReviewStatus.PASS) {
                     break;
