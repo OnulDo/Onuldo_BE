@@ -2,7 +2,15 @@ package com.example.onuldo.domain.challenge.entity;
 
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
-import jakarta.persistence.*;
+import com.example.onuldo.global.dto.response.ContentBlockResDto;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,6 +30,9 @@ import java.util.List;
 @Table(name = "challenge")
 public class Challenge {
 
+    private static final List<Integer> DEFAULT_DURATION_OPTIONS = List.of(2, 4, 8, 12);
+    private static final List<Integer> DEFAULT_DEPOSIT_OPTIONS = List.of(10000, 20000, 30000, 50000);
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "challenge_id")
@@ -33,8 +44,9 @@ public class Challenge {
     @Column(name = "explain_content", nullable = false, length = 100)
     private String explainContent;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "description", nullable = false, columnDefinition = "TEXT")
-    private String description;
+    private List<ContentBlockResDto> description;
 
     @Column(name = "caption_img_url", nullable = false, length = 500)
     private String captionImgUrl;
@@ -62,13 +74,12 @@ public class Challenge {
     @Builder.Default
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "duration_option_list", columnDefinition = "json")
-    private List<Integer> durationOptionList = List.of(2, 4, 8, 12);
+    private List<Integer> durationOptionList = DEFAULT_DURATION_OPTIONS;
 
-    // 상금 리스트
     @Builder.Default
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "deposit_option_list", columnDefinition = "json")
-    private List<Integer> depositOptionList = List.of(10000, 20000, 30000, 50000);
+    private List<Integer> depositOptionList = DEFAULT_DEPOSIT_OPTIONS;
 
     // 성공 조건 리스트
     @JdbcTypeCode(SqlTypes.JSON)

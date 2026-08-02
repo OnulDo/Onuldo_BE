@@ -17,6 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.example.onuldo.global.common.time.TimeService;
 
 @Getter
 @Builder
@@ -43,5 +44,5 @@ public class DeviceLog {
 
     @Builder.Default
     @Column(name = "last_seen_at", nullable = false)
-    private LocalDateTime lastSeenAt = LocalDateTime.now();
+    private LocalDateTime lastSeenAt = TimeService.nowKstStatic();
 }

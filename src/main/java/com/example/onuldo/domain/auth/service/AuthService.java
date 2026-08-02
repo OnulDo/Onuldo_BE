@@ -4,8 +4,8 @@ import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
-import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
+import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.domain.auth.entity.Term;
@@ -16,12 +16,15 @@ import com.example.onuldo.domain.auth.repository.TermAgreementRepository;
 import com.example.onuldo.domain.auth.repository.TermRepository;
 import com.example.onuldo.domain.auth.service.client.dto.OAuthUserInfo;
 import com.example.onuldo.domain.auth.support.NicknameBannedWords;
+import com.example.onuldo.domain.user.entity.NotificationSetting;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.SocialProvider;
 import com.example.onuldo.domain.user.enums.UserStatus;
+import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.global.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,6 +47,15 @@ import java.util.stream.Collectors;
 public class AuthService {
 
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]+$");
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile(
+            "^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*\\p{Punct})[a-zA-Z0-9\\p{Punct}]+$"
+    );
+    private static final int MIN_NICKNAME_LENGTH = 2;
+    private static final int MAX_NICKNAME_LENGTH = 8;
+    private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final int MAX_PASSWORD_LENGTH = 20;
+    private static final int DEFAULT_PROFILE_IMAGE_MIN_NUMBER = 1;
+    private static final int DEFAULT_PROFILE_IMAGE_MAX_NUMBER_EXCLUSIVE = 13;
     private static final Set<TermType> REQUIRED_TERM_TYPES = Set.of(
             TermType.SERVICE,
             TermType.PRIVACY,
@@ -53,10 +65,12 @@ public class AuthService {
     private final UserRepository userRepository;
     private final TermRepository termRepository;
     private final TermAgreementRepository termAgreementRepository;
+    private final NotificationSettingRepository notificationSettingRepository;
     private final LoginFailureService loginFailureService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final OAuthService oAuthService;
+    private final TimeService timeService;
 
     @Transactional
     public AuthResDto signup(EmailSignupReqDto request) {
@@ -66,6 +80,7 @@ public class AuthService {
 
         validateNickname(request.nickname());
         validateRequiredTerms(request.termAgreements());
+        validatePassword(request.password());
 
         User user = User.builder()
                 .email(request.email())
@@ -80,6 +95,7 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
         saveTermAgreements(savedUser, request.termAgreements());
+        saveDefaultNotificationSetting(savedUser);
         return createAuthResponse(savedUser);
     }
 
@@ -88,7 +104,7 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = timeService.nowKst();
         if (isLocked(user, now)) {
             throw new RestApiException(GlobalErrorStatus._LOGIN_LOCKED);
         }
@@ -104,7 +120,7 @@ public class AuthService {
 
         user.setLoginFailCount(0);
         user.setLockedUntil(null);
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(timeService.nowKst());
         userRepository.save(user);
         return createAuthResponse(user);
     }
@@ -119,7 +135,7 @@ public class AuthService {
 
     @Transactional
     public OAuthResDto oauthLogin(OAuthLoginReqDto request) {
-        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.accessToken());
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
 
         Optional<User> existingUser = userRepository.findByEmail(info.email());
         if (existingUser.isEmpty()) {
@@ -133,7 +149,7 @@ public class AuthService {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
         }
 
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(timeService.nowKst());
         userRepository.save(user);
 
         return OAuthResDto.builder()
@@ -145,7 +161,7 @@ public class AuthService {
 
     @Transactional
     public AuthResDto oauthSignup(OAuthSignupReqDto request) {
-        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.accessToken());
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
 
         if (userRepository.existsByEmail(info.email())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
@@ -163,10 +179,11 @@ public class AuthService {
                 .emailVerified(true)
                 .pointBalance(0L)
                 .status(UserStatus.ACTIVE)
-                .lastLoginAt(LocalDateTime.now())
+                .lastLoginAt(timeService.nowKst())
                 .build());
 
         saveTermAgreements(user, request.termAgreements());
+        saveDefaultNotificationSetting(user);
         return createAuthResponse(user);
     }
 
@@ -177,12 +194,26 @@ public class AuthService {
                 .build();
     }
 
+    private void validatePassword(String password) {
+        if (password.length() < MIN_PASSWORD_LENGTH) {
+            throw new RestApiException(GlobalErrorStatus._PASSWORD_TOO_SHORT);
+        }
+
+        if (password.length() > MAX_PASSWORD_LENGTH) {
+            throw new RestApiException(GlobalErrorStatus._PASSWORD_TOO_LONG);
+        }
+
+        if (!PASSWORD_PATTERN.matcher(password).matches()) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_PASSWORD);
+        }
+    }
+
     private void validateNickname(String nickname) {
-        if (nickname.length() < 2) {
+        if (nickname.length() < MIN_NICKNAME_LENGTH) {
             throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_SHORT);
         }
 
-        if (nickname.length() > 8) {
+        if (nickname.length() > MAX_NICKNAME_LENGTH) {
             throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_LONG);
         }
 
@@ -214,6 +245,14 @@ public class AuthService {
                 throw new RestApiException(GlobalErrorStatus._TERMS_REQUIRED);
             }
         }
+    }
+
+    private void saveDefaultNotificationSetting(User user) {
+        notificationSettingRepository.save(
+                NotificationSetting.builder()
+                        .user(user)
+                        .build()
+        );
     }
 
     private void saveTermAgreements(User user, List<TermAgreementReqDto> termAgreements) {
@@ -256,10 +295,13 @@ public class AuthService {
             return profileImageUrl;
         }
 
-        // profileImageUrl이 null인 경우 기본 캐릭터 이미지 1~12중 랜덤 배정
-        int imageNumber = ThreadLocalRandom.current().nextInt(1, 13);
+        int imageNumber = ThreadLocalRandom.current().nextInt(
+                DEFAULT_PROFILE_IMAGE_MIN_NUMBER,
+                DEFAULT_PROFILE_IMAGE_MAX_NUMBER_EXCLUSIVE
+        );
         return "default_asset:" + imageNumber;
     }
+
     private boolean isLocked(User user, LocalDateTime now) {
         return user.getLockedUntil() != null && user.getLockedUntil().isAfter(now);
     }

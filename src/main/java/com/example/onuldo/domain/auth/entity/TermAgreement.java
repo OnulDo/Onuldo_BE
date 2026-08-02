@@ -16,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.example.onuldo.global.common.time.TimeService;
 
 @Getter
 @Builder
@@ -44,5 +45,5 @@ public class TermAgreement {
 
     @Builder.Default
     @Column(name = "agreed_at", nullable = false)
-    private LocalDateTime agreedAt = LocalDateTime.now();
+    private LocalDateTime agreedAt = TimeService.nowKstStatic();
 }

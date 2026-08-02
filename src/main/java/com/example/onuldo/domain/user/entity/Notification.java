@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.example.onuldo.global.common.time.TimeService;
 
 @Getter
 @Builder
@@ -59,5 +60,5 @@ public class Notification {
 
     @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt = TimeService.nowKstStatic();
 }

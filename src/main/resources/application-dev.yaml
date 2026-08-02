@@ -9,6 +9,10 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: true
+  servlet:
+    multipart:
+      max-file-size: 20MB      # 파일 하나당 최대 크기
+      max-request-size: 20MB
 
 jwt:
   token:
@@ -17,3 +21,16 @@ jwt:
     expiration:
       access: ${JWT_TOKEN_EXPIRATION_ACCESS:1800000}
       refresh: ${JWT_TOKEN_EXPIRATION_REFRESH:1209600000}
+
+aws:
+  region: ${AWS_REGION:ap-northeast-2}
+  credentials:
+    access-key-id: ${AWS_ACCESS_KEY_ID}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY}
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    public-base-url: ${AWS_S3_PUBLIC_BASE_URL}
+    upload-prefix: ${AWS_S3_UPLOAD_PREFIX:uploads}
+  rekognition:
+    max-labels: ${AWS_REKOGNITION_MAX_LABELS:30}
+    min-confidence: ${AWS_REKOGNITION_MIN_CONFIDENCE:40}

@@ -30,8 +30,13 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorKeyCodec;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -75,6 +81,7 @@ public class PartyService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final TimeService timeService;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
         // PAR-03: 파티 이름 규칙 검증 (2~20자 한글·영문·숫자·공백)
@@ -99,7 +106,7 @@ public class PartyService {
         }
 
         String inviteCode = generateUniqueInviteCode();
-        LocalDateTime inviteExpiresAt = LocalDateTime.now().plusDays(request.durationDays());
+        LocalDateTime inviteExpiresAt = timeService.nowKst().plusDays(request.durationDays());
 
         Party party = Party.builder()
                 .name(request.name())
@@ -142,8 +149,34 @@ public class PartyService {
     }
 
     @Transactional(readOnly = true)
-    public List<PartyListResDto> getMyParties(Long userId) {
-        return partyRepository.findMyPartiesExcludingWaiting(userId);
+    public CursorPageResponse<PartyListResDto> getMyParties(Long userId, String cursor, int size) {
+        int resolvedSize = CursorConstants.resolveSize(size);
+
+        LocalDateTime lastCreatedAt = null;
+        Long lastId = null;
+        if (!CursorKeyCodec.isBlank(cursor)) {
+            String[] parts = CursorKeyCodec.decodeParts(cursor, 2);
+            try {
+                lastCreatedAt = LocalDateTime.parse(parts[0]);
+                lastId = Long.parseLong(parts[1]);
+            } catch (DateTimeParseException | NumberFormatException e) {
+                throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+            }
+        }
+
+        List<Object[]> rows = partyRepository.findMyPartiesExcludingWaiting(
+                userId, lastCreatedAt, lastId, CursorPageable.of(resolvedSize)
+        );
+
+        return CursorPageResponse.of(
+                rows,
+                resolvedSize,
+                row -> (PartyListResDto) row[0],
+                row -> CursorKeyCodec.encode(
+                        ((LocalDateTime) row[1]).toString(),
+                        ((PartyListResDto) row[0]).partyId()
+                )
+        );
     }
 
     @Transactional(readOnly = true)
@@ -176,7 +209,7 @@ public class PartyService {
             throw new RestApiException(GlobalErrorStatus._PARTY_FULL);
         }
 
-        if (party.getInviteExpiresAt() != null && party.getInviteExpiresAt().isBefore(LocalDateTime.now())) {
+        if (party.getInviteExpiresAt() != null && party.getInviteExpiresAt().isBefore(timeService.nowKst())) {
             throw new RestApiException(GlobalErrorStatus._INVITE_CODE_EXPIRED);
         }
 
@@ -231,7 +264,7 @@ public class PartyService {
 
     // PAR-05: 파티 시작 (방장만 가능, 2인 이상 + 전원 준비완료 시 활성화, 전원 도전금 일괄 예치)
     public PartyStartResDto startParty(Long partyId, Long userId) {
-        Party party = partyRepository.findById(partyId)
+        Party party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
 
         if (!party.getHostUser().getId().equals(userId)) {
@@ -286,7 +319,7 @@ public class PartyService {
         }
 
         // PAR-05: 시작 시 상태 전환 + 초대코드 만료 (시작 후 초대코드 만료·파티원 추가 불가)
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = timeService.nowKst();
         party.updateStatus(PartyStatus.ONGOING);
         party.updateStartTriggeredAt(now);
         party.updateInviteExpiresAt(now);
@@ -298,7 +331,7 @@ public class PartyService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
         Challenge challenge = partyChallenge.getChallenge();
 
-        LocalDate startDate = LocalDate.now();
+        LocalDate startDate = timeService.todayKst();
         LocalDate endDate = startDate.plusDays(party.getDurationDays());
         int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
 
@@ -313,10 +346,21 @@ public class PartyService {
                     .startDate(startDate)
                     .endDate(endDate)
                     .build();
+            validateParticipationState(participation);
             participationRepository.save(participation);
         }
 
         return PartyStartResDto.of(party);
+    }
+
+    private void validateParticipationState(Participation participation) {
+        if (participation.getParticipationType() == ParticipationType.PERSONAL && participation.getParty() != null) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "개인 참여에는 party가 연결되면 안 됩니다.");
+        }
+
+        if (participation.getParticipationType() == ParticipationType.PARTY && participation.getParty() == null) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "party 참여에는 party가 필요합니다.");
+        }
     }
 
     // 파티 진행 피드: 팀 진행률(오늘 인증 완료 비율)과 파티원별 오늘 인증 현황 조회
@@ -337,7 +381,7 @@ public class PartyService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
         List<Verification> todayVerifications =
-                verificationRepository.findTodayAutoPassVerificationsByPartyId(partyId, LocalDate.now());
+                verificationRepository.findTodayAutoPassVerificationsByPartyId(partyId, timeService.todayKst());
 
         // 파티원 1인당 하루 1회 인증이 원칙이므로 userId 기준으로 매핑
         Map<Long, Verification> verificationByUserId = todayVerifications.stream()
@@ -350,8 +394,8 @@ public class PartyService {
                 .map(member -> {
                     Verification verification = verificationByUserId.get(member.getUser().getId());
                     return verification != null
-                            ? PartyFeedItemResDto.verified(member.getUser(), verification)
-                            : PartyFeedItemResDto.notVerified(member.getUser());
+                            ? generateVerifiedFeedItem(member.getUser(), verification)
+                            : generateNotVerifiedFeedItem(member.getUser());
                 })
                 .toList();
 
@@ -389,5 +433,27 @@ public class PartyService {
             sb.append(INVITE_CODE_CHARS.charAt(RANDOM.nextInt(INVITE_CODE_CHARS.length())));
         }
         return sb.toString();
+    }
+
+    private PartyFeedItemResDto generateVerifiedFeedItem(User user, Verification verification) {
+        return PartyFeedItemResDto.builder()
+                .userId(user.getId())
+                .nickname(user.getNickname())
+                .profileImageUrl(user.getProfileImageUrl())
+                .isVerifiedToday(true)
+                .verificationPhotoUrl(verification.getPhotoUrl())
+                .verifiedAt(verification.getVerifiedAt())
+                .build();
+    }
+
+    private PartyFeedItemResDto generateNotVerifiedFeedItem(User user) {
+        return PartyFeedItemResDto.builder()
+                .userId(user.getId())
+                .nickname(user.getNickname())
+                .profileImageUrl(user.getProfileImageUrl())
+                .isVerifiedToday(false)
+                .verificationPhotoUrl(null)
+                .verifiedAt(null)
+                .build();
     }
 }

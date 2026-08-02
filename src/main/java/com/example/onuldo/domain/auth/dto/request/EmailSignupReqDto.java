@@ -1,5 +1,6 @@
 package com.example.onuldo.domain.auth.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -10,6 +11,7 @@ import java.util.List;
 
 @Builder
 public record EmailSignupReqDto(
+        @Schema(example = "onuldo@onuldo.com")
         @NotBlank(message = "이메일은 필수입니다.")
         @Pattern(
                 regexp = "^[a-zA-Z0-9+\\-_\\.]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
@@ -17,16 +19,25 @@ public record EmailSignupReqDto(
         )
         String email,
 
+        @Schema(example = "onuldo1234!")
         @NotBlank(message = "비밀번호는 필수입니다.")
         String password,
 
+        @Schema(example = "오늘두")
         @NotBlank(message = "닉네임은 필수입니다.")
         String nickname,
 
+        @Schema(example = "https://cdn.onuldo.com/profile/default.png", nullable = true)
         String profileImageUrl,
 
+        @Schema(
+                description = "약관 동의 목록",
+                example = "[{\"termType\":\"SERVICE\",\"value\":true}," +
+                        "{\"termType\":\"PRIVACY\",\"value\":true}," +
+                        "{\"termType\":\"AGE_14\",\"value\":true}," +
+                        "{\"termType\":\"MARKETING\",\"value\":false}]"
+        )
         @NotNull(message = "약관 동의 목록은 필수입니다.")
-        @Valid
-        List<TermAgreementReqDto> termAgreements
+        List<@NotNull @Valid TermAgreementReqDto> termAgreements
 ) {
 }

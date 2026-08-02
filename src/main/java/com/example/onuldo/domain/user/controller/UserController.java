@@ -7,21 +7,26 @@ import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
-import com.example.onuldo.domain.user.dto.response.PointTransactionScrollResDto;
+import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.service.PointService;
 import com.example.onuldo.domain.user.service.UserService;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/users/me")
@@ -46,7 +51,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess("마이페이지 메인 조회에 성공했습니다.", userService.getMyPage(userId));
     }
 
-    @GetMapping("/notification")
+    @GetMapping("/notification-settings")
     public BaseResponse<GetNotificationResDto> getNotification(
             @AuthUser
             Long userId
@@ -54,7 +59,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(userService.getNotification(userId));
     }
 
-    @PatchMapping("/notification")
+    @PatchMapping("/notification-settings")
     public BaseResponse<UpdateNotificationResDto> updateNotification(
             @AuthUser
             Long userId,
@@ -65,7 +70,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(userService.updateNotification(userId, request));
     }
 
-    @PostMapping("/wallet/charge")
+    @PostMapping("/wallet/charges")
     public BaseResponse<ChargePointResDto> chargePoint(
             @AuthUser
             Long userId,
@@ -77,7 +82,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(pointService.chargePoint(userId, request));
     }
 
-    @PostMapping("/wallet/signup-bonus")
+    @PostMapping("/wallet/signup-bonuses")
     public BaseResponse<ChargePointResDto> grantSignupBonus(
             @AuthUser
             Long userId,
@@ -98,7 +103,7 @@ public class UserController implements UserControllerDoc {
     }
 
     @GetMapping("/wallet/transactions")
-    public BaseResponse<PointTransactionScrollResDto> getPointTransactions(
+    public CursorPageResponse<PointTransactionResDto> getPointTransactions(
             @AuthUser
             Long userId,
 
@@ -106,14 +111,11 @@ public class UserController implements UserControllerDoc {
             PointTransactionType type,
 
             @RequestParam(required = false)
-            Long cursor,
+            String cursor,
 
-            @Min(1)
-            @RequestParam(defaultValue = "10")
+            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
             int size
-    ){
-        return BaseResponse.onSuccess(pointService.getPointTransactions(userId, type, cursor, size));
+    ) {
+        return pointService.getPointTransactions(userId, type, cursor, size);
     }
-
-
 }
