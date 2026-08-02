@@ -58,7 +58,12 @@ public class PartyLifecycleService {
         }
 
         if (party.getStatus() != PartyStatus.WAITING) {
-            throw new RestApiException(GlobalErrorStatus._PARTY_ALREADY_STARTED);
+            throw switch (party.getStatus()) {
+                case ONGOING -> new RestApiException(GlobalErrorStatus._PARTY_ALREADY_STARTED);
+                case FINISHED -> new RestApiException(GlobalErrorStatus._PARTY_ALREADY_FINISHED);
+                case DISSOLVED -> new RestApiException(GlobalErrorStatus._PARTY_DISSOLVED);
+                default -> new RestApiException(GlobalErrorStatus._BAD_REQUEST);
+            };
         }
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);

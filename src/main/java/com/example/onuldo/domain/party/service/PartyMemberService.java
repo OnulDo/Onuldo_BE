@@ -37,7 +37,12 @@ public class PartyMemberService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_INVITE_CODE));
 
         if (party.getStatus() != PartyStatus.WAITING) {
-            throw new RestApiException(GlobalErrorStatus._PARTY_ALREADY_STARTED);
+            throw switch (party.getStatus()) {
+                case ONGOING -> new RestApiException(GlobalErrorStatus._PARTY_ALREADY_STARTED);
+                case FINISHED -> new RestApiException(GlobalErrorStatus._PARTY_ALREADY_FINISHED);
+                case DISSOLVED -> new RestApiException(GlobalErrorStatus._PARTY_DISSOLVED);
+                default -> new RestApiException(GlobalErrorStatus._BAD_REQUEST);
+            };
         }
 
         int currentMembers = partyMemberRepository.countByParty_Id(party.getId());
@@ -76,7 +81,12 @@ public class PartyMemberService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
 
         if (party.getStatus() != PartyStatus.WAITING) {
-            throw new RestApiException(GlobalErrorStatus._PARTY_ALREADY_STARTED);
+            throw switch (party.getStatus()) {
+                case ONGOING -> new RestApiException(GlobalErrorStatus._PARTY_ALREADY_STARTED);
+                case FINISHED -> new RestApiException(GlobalErrorStatus._PARTY_ALREADY_FINISHED);
+                case DISSOLVED -> new RestApiException(GlobalErrorStatus._PARTY_DISSOLVED);
+                default -> new RestApiException(GlobalErrorStatus._BAD_REQUEST);
+            };
         }
 
         PartyMember leavingMember = partyMemberRepository.findById(new PartyMemberId(partyId, userId))
