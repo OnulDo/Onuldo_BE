@@ -47,7 +47,6 @@ public interface UserChallengeControllerDoc {
     """
     )
     BaseResponse<DailyChallengeListResDto> getDailyChallenges(
-            @Parameter(hidden = true)
             @AuthUser
             Long userId,
             @Parameter(description = "조회할 날짜", example = "2026-07-29")
@@ -64,7 +63,7 @@ public interface UserChallengeControllerDoc {
 
     정렬 기준
     - parties: 인증 시각(verifiedAt) 빠른 순
-    - challenges: 연속 성공 일수(streak) 높은 순, 동일하면 인증 시각(verifiedAt) 빠른 순
+    - challenges: 인증 시각(verifiedAt) 빠른 순
 
     파티 항목은 총 참여 인원/오늘 인증 완료 인원을, 개인 챌린지 항목은 연속 성공 일수(streakDays)를 포함합니다.
     """

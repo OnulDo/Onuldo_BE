@@ -57,13 +57,13 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     List<Participation> findAllByIdIn(Collection<Long> ids);
 
     @Query("""
-        SELECT p.party.id, COUNT(p)
+        SELECT new com.example.onuldo.domain.challenge.repository.PartyCountProjection(p.party.id, COUNT(p))
         FROM Participation p
         WHERE p.party.id IN :partyIds
         AND p.status = :status
         GROUP BY p.party.id
     """)
-    List<Object[]> findParticipationCountsByPartyIdInAndStatus(
+    List<PartyCountProjection> findParticipationCountsByPartyIdInAndStatus(
             @Param("partyIds") Collection<Long> partyIds,
             @Param("status") ParticipationStatus status
     );

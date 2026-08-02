@@ -18,6 +18,7 @@ import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
+import com.example.onuldo.domain.challenge.repository.PartyCountProjection;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.user.entity.PointTransaction;
@@ -195,12 +196,8 @@ public class ParticipationService {
                 completedChallenges.stream().map(Participation::getId).toList()
         );
 
-        Comparator<Participation> byStreakThenVerifiedAt = Comparator
-                .comparing((Participation p) -> streakByParticipationId.get(p.getId()), Comparator.reverseOrder())
-                .thenComparing(byVerifiedAt);
-
         List<CompletedChallengeResDto> challenges = completedChallenges.stream()
-                .sorted(byStreakThenVerifiedAt)
+                .sorted(byVerifiedAt)
                 .map(participation -> toCompletedChallengeResDto(
                         participation,
                         verifiedAtByParticipationId.get(participation.getId()),
@@ -214,10 +211,10 @@ public class ParticipationService {
                 .build();
     }
 
-    private Map<Long, Long> toCountMap(List<Object[]> rows) {
+    private Map<Long, Long> toCountMap(List<PartyCountProjection> rows) {
         return rows.stream().collect(Collectors.toMap(
-                row -> (Long) row[0],
-                row -> (Long) row[1]
+                PartyCountProjection::partyId,
+                PartyCountProjection::count
         ));
     }
 

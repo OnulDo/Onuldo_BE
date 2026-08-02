@@ -66,7 +66,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     );
 
     @Query("""
-        SELECT p.party.id, COUNT(v)
+        SELECT new com.example.onuldo.domain.challenge.repository.PartyCountProjection(p.party.id, COUNT(v))
         FROM Verification v
         JOIN v.participation p
         WHERE p.party.id IN :partyIds
@@ -75,7 +75,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
         AND p.status = com.example.onuldo.domain.challenge.enums.ParticipationStatus.ONGOING
         GROUP BY p.party.id
     """)
-    List<Object[]> findAutoPassVerificationCountsByPartyIdInAndVerificationDate(
+    List<PartyCountProjection> findAutoPassVerificationCountsByPartyIdInAndVerificationDate(
             @Param("partyIds") Collection<Long> partyIds,
             @Param("date") LocalDate date
     );
