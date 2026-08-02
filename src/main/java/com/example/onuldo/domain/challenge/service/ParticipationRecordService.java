@@ -23,13 +23,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ParticipationRecordService {
-
     private static final int DAYS_PER_WEEK = 7;
     private static final int PERCENT_MULTIPLIER = 100;
     private static final List<ParticipationStatus> COMPLETED_STATUSES = List.of(
@@ -48,17 +46,17 @@ public class ParticipationRecordService {
                         ParticipationStatus.ONGOING
                 );
 
-        Map<Long, Integer> achievementRateByParticipationId = calculateOngoingAchievementRates(ongoingParticipations, date);
+        Map<Long, Set<LocalDate>> verifiedDatesByParticipationId = getVerifiedDatesByParticipationId(ongoingParticipations, date);
         Set<Long> verifiedParticipationIds = getVerifiedParticipationIds(ongoingParticipations, date);
 
         return ongoingParticipations.stream()
                 .map(participation -> toOngoingChallengeRecordResDto(
                         participation,
-                        achievementRateByParticipationId.getOrDefault(participation.getId(), 0),
+                        calculateOngoingAchievementRate(participation, date, verifiedDatesByParticipationId),
                         date,
-                        verifiedParticipationIds
-                ))
-                .toList();
+                        verifiedParticipationIds.contains(participation.getId())
+                )
+            ).toList();
     }
 
     public CompletedChallengeRecordSummaryResDto getCompletedChallengeRecords(Long userId) {
@@ -91,10 +89,9 @@ public class ParticipationRecordService {
             Participation participation,
             Integer achievementRate,
             LocalDate date,
-            Set<Long> verifiedParticipationIds
+            Boolean isVerifiedToday
     ) {
         var challenge = participation.getChallenge();
-        boolean isVerifiedToday = verifiedParticipationIds.contains(participation.getId());
 
         return OngoingChallengeRecordResDto.builder()
                 .participationId(participation.getId())
@@ -126,15 +123,21 @@ public class ParticipationRecordService {
                 .build();
     }
 
-    private Map<Long, Integer> calculateOngoingAchievementRates(List<Participation> participations, LocalDate date) {
-        return calculateAchievementRates(
-                participations,
-                (participation, dayScoreByParticipationId) -> calculateOngoingAchievementRate(
-                        participation,
-                        date,
-                        dayScoreByParticipationId
-                )
-        );
+    private int calculateOngoingAchievementRate(
+            Participation participation,
+            LocalDate date,
+            Map<Long, Set<LocalDate>> verifiedDatesByParticipationId
+    ) {
+        int elapsedDays = calculateInclusiveDays(participation.getStartDate(), date);
+        Set<LocalDate> verifiedDates = verifiedDatesByParticipationId.getOrDefault(participation.getId(), Set.of());
+        if (elapsedDays <= 0 || verifiedDates.isEmpty()) {
+            return 0;
+        }
+
+        return BigDecimal.valueOf(verifiedDates.size())
+                .multiply(BigDecimal.valueOf(PERCENT_MULTIPLIER))
+                .divide(BigDecimal.valueOf(elapsedDays), 0, RoundingMode.HALF_UP)
+                .intValue();
     }
 
     private Map<Long, Integer> calculateCompletedAchievementRates(List<Participation> participations) {
@@ -142,25 +145,6 @@ public class ParticipationRecordService {
                 participations,
                 this::calculateCompletedAchievementRate
         );
-    }
-
-    private int calculateOngoingAchievementRate(
-            Participation participation,
-            LocalDate date,
-            Map<LocalDate, BigDecimal> dayScoreByDate
-    ) {
-        int elapsedDays = calculateInclusiveDays(participation.getStartDate(), date);
-        if (elapsedDays <= 0 || dayScoreByDate.isEmpty()) {
-            return 0;
-        }
-
-        BigDecimal totalDayScore = dayScoreByDate.values().stream()
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        int achievementRate = totalDayScore
-                .divide(BigDecimal.valueOf(elapsedDays), 0, RoundingMode.HALF_UP)
-                .intValue();
-
-        return Math.min(PERCENT_MULTIPLIER, Math.max(0, achievementRate));
     }
 
     private int calculateCompletedAchievementRate(
@@ -189,11 +173,9 @@ public class ParticipationRecordService {
             return Map.of();
         }
 
-        Map<Long, Participation> participationById = participations.stream()
-                .collect(Collectors.toMap(Participation::getId, Function.identity()));
-        Map<Long, Map<LocalDate, BigDecimal>> dayScoreByParticipationId = collectDayScores(participationById.keySet());
+        Map<Long, Map<LocalDate, BigDecimal>> dayScoreByParticipationId = collectDayScores(participations);
 
-        return participationById.values().stream()
+        return participations.stream()
                 .collect(Collectors.toMap(
                         Participation::getId,
                         participation -> calculator.apply(
@@ -203,8 +185,11 @@ public class ParticipationRecordService {
                 ));
     }
 
-    private Map<Long, Map<LocalDate, BigDecimal>> collectDayScores(Set<Long> participationIds) {
+    private Map<Long, Map<LocalDate, BigDecimal>> collectDayScores(List<Participation> participations) {
         Map<Long, Map<LocalDate, BigDecimal>> dayScoreByParticipationId = new HashMap<>();
+        Set<Long> participationIds = participations.stream()
+                .map(Participation::getId)
+                .collect(Collectors.toSet());
 
         verificationRepository.findAllByParticipation_IdIn(participationIds)
                 .forEach(verification -> {
@@ -243,7 +228,7 @@ public class ParticipationRecordService {
                 .collect(Collectors.toMap(
                         settlement -> settlement.getParticipation().getId(),
                         Settlement::getRefundAmount,
-                        (first, second) -> second
+                        (first, second) -> first
                 ));
     }
 
@@ -276,6 +261,23 @@ public class ParticipationRecordService {
     private int calculateInclusiveDays(LocalDate startDate, LocalDate endDate) {
         long elapsedDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
         return Math.toIntExact(Math.max(1, elapsedDays));
+    }
+
+    private Map<Long, Set<LocalDate>> getVerifiedDatesByParticipationId(List<Participation> participations, LocalDate date) {
+        if (participations.isEmpty()) {
+            return Map.of();
+        }
+
+        Set<Long> participationIds = participations.stream()
+                .map(Participation::getId)
+                .collect(Collectors.toSet());
+
+        return verificationRepository.findAllByParticipation_IdIn(participationIds).stream()
+                .filter(verification -> !verification.getVerificationDate().isAfter(date))
+                .collect(Collectors.groupingBy(
+                        verification -> verification.getParticipation().getId(),
+                        Collectors.mapping(Verification::getVerificationDate, Collectors.toSet())
+                ));
     }
 
     private Set<Long> getVerifiedParticipationIds(List<Participation> participations, LocalDate date) {
