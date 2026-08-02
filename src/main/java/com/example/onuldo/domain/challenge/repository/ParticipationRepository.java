@@ -9,10 +9,9 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.Collection;
-import java.util.Collection;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -73,8 +72,6 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             LocalDate startDate,
             LocalDate endDate
     );
-
-    List<Participation> findAllByUser_IdAndStatusOrderByIdDesc(Long userId, ParticipationStatus status);
 
     @Query("""
             SELECT p
@@ -137,6 +134,4 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Participation p WHERE p.id = :id")
     Optional<Participation> findByIdForUpdate(@Param("id") Long id);
-
-    List<Participation> findAllByIdIn(Collection<Long> ids);
 }

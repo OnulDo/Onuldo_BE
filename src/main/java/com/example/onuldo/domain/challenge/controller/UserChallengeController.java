@@ -7,6 +7,7 @@ import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.service.ParticipationService;
+import com.example.onuldo.domain.challenge.service.ParticipationRecordService;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
@@ -27,6 +28,7 @@ import java.time.LocalDate;
 public class UserChallengeController implements UserChallengeControllerDoc {
 
     private final ParticipationService participationService;
+    private final ParticipationRecordService participationRecordService;
 
     @GetMapping("/challenges")
     public CursorPageResponse<UserChallengeResDto> getUserChallenges(
@@ -59,7 +61,7 @@ public class UserChallengeController implements UserChallengeControllerDoc {
             @RequestParam(required = true)
             LocalDate date
     ) {
-        return BaseResponse.onSuccess(participationService.getOngoingChallengeRecords(userId, date));
+        return BaseResponse.onSuccess(participationRecordService.getOngoingChallengeRecords(userId, date));
     }
 
     @GetMapping("/challenges/records/completed")
@@ -67,6 +69,6 @@ public class UserChallengeController implements UserChallengeControllerDoc {
             @AuthUser
             Long userId
     ) {
-        return BaseResponse.onSuccess(participationService.getCompletedChallengeRecords(userId));
+        return BaseResponse.onSuccess(participationRecordService.getCompletedChallengeRecords(userId));
     }
 }
