@@ -81,7 +81,7 @@ public class PartyMemberService {
     // PAR-07: 대기방 이탈(뒤로가기 포함) 시 자동 탈퇴 처리. 방장 이탈 시 가장 먼저 입장한 파티원에게 승계,
     // 남은 파티원이 없으면 파티 해체 + 초대코드 즉시 만료. 진행 중/종료된 파티는 대기방 이탈 대상이 아니므로 제외.
     public PartyLeaveResDto leaveParty(Long partyId, Long userId) {
-        Party party = partyRepository.findById(partyId)
+        Party party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
 
         if (party.getStatus() != PartyStatus.WAITING) {
