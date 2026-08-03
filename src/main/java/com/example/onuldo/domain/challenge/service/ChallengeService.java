@@ -1,5 +1,6 @@
 package com.example.onuldo.domain.challenge.service;
 
+import com.example.onuldo.domain.challenge.dto.response.ChallengeManualReviewResDto;
 import com.example.onuldo.domain.challenge.dto.response.ChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.ChallengeVerificationResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
@@ -142,6 +143,44 @@ public class ChallengeService {
                 .verificationDate(verification.getVerificationDate())
                 .verifiedAt(verification.getVerifiedAt())
                 .review(verification.getReview())
+                .build();
+    }
+
+    @Transactional
+    public ChallengeManualReviewResDto manualReviewVerification(Long userId, Long challengeId) {
+        challengeRepository.findById(challengeId)
+                .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+
+        Participation participation = participationRepository
+                .findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+
+        LocalDate today = timeService.todayKst();
+
+        if (verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
+                participation.getId(), today, VerificationReviewStatus.MANUAL_REVIEW).isPresent()) {
+            throw new RestApiException(GlobalErrorStatus._ALREADY_MANUALLY_REVIEWED);
+        }
+
+        Verification autoFail = verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
+                        participation.getId(), today, VerificationReviewStatus.AUTO_FAIL)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._AUTO_FAIL_VERIFICATION_NOT_FOUND));
+
+        Verification manualReview = verificationRepository.save(Verification.builder()
+                .participation(participation)
+                .verificationDate(autoFail.getVerificationDate())
+                .photoUrl(null)
+                .exifData(autoFail.getExifData())
+                .rekognitionResult(autoFail.getRekognitionResult())
+                .aiScore(autoFail.getAiScore())
+                .review(VerificationReviewStatus.MANUAL_REVIEW)
+                .dayScore(autoFail.getDayScore())
+                .verifiedAt(timeService.nowKst())
+                .build());
+
+        return ChallengeManualReviewResDto.builder()
+                .manualReviewRequestedAt(manualReview.getVerifiedAt())
                 .build();
     }
 

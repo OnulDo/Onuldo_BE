@@ -51,7 +51,7 @@ public class Verification {
     @Column(name = "verification_date", nullable = false)
     private LocalDate verificationDate;
 
-    @Column(name = "photo_url", nullable = false, length = 255)
+    @Column(name = "photo_url", nullable = true, length = 255)
     private String photoUrl;
 
     @Column(name = "exif_data", columnDefinition = "TEXT")

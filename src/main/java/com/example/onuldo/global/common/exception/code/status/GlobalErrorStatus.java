@@ -39,6 +39,8 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _DUPLICATE_VERIFICATION_PHOTO(HttpStatus.CONFLICT, "DUPLICATE_VERIFICATION_PHOTO", "이미 인증에 사용한 사진입니다."),
     _ALREADY_VERIFIED_TODAY(HttpStatus.CONFLICT, "ALREADY_VERIFIED_TODAY", "오늘은 이미 인증했습니다."),
     _PARTICIPATION_NOT_FOUND(HttpStatus.NOT_FOUND, "PARTICIPATION_NOT_FOUND", "해당 챌린지 참여 기록을 찾을 수 없습니다."),
+    _AUTO_FAIL_VERIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTO_FAIL_VERIFICATION_NOT_FOUND", "오늘 자동 실패 처리된 인증 기록을 찾을 수 없습니다."),
+    _ALREADY_MANUALLY_REVIEWED(HttpStatus.CONFLICT, "ALREADY_MANUALLY_REVIEWED", "오늘 이미 수동 검토 처리되었습니다."),
 
     // Party 관련 에러
     _INSUFFICIENT_POINT_FOR_PARTY(HttpStatus.CONFLICT, "INSUFFICIENT_POINT_FOR_PARTY", "보유 포인트가 도전금보다 부족합니다."),
