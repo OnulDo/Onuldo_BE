@@ -44,7 +44,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -164,19 +166,78 @@ public class PartyService {
             }
         }
 
+        LocalDate today = timeService.todayKst();
         List<Object[]> rows = partyRepository.findMyPartiesExcludingWaiting(
-                userId, lastCreatedAt, lastId, CursorPageable.of(resolvedSize)
+                userId, lastCreatedAt, lastId, today, CursorPageable.of(resolvedSize)
         );
 
         return CursorPageResponse.of(
                 rows,
                 resolvedSize,
-                row -> (PartyListResDto) row[0],
+                row -> toPartyListResDto(row, today),
                 row -> CursorKeyCodec.encode(
-                        ((LocalDateTime) row[1]).toString(),
-                        ((PartyListResDto) row[0]).partyId()
+                        ((LocalDateTime) row[10]).toString(),
+                        (Long) row[0]
                 )
         );
+    }
+
+    private PartyListResDto toPartyListResDto(Object[] row, LocalDate today) {
+        PartyStatus status = (PartyStatus) row[3];
+        LocalDate startDate = (LocalDate) row[4];
+        LocalDate endDate = (LocalDate) row[5];
+        int totalMemberCount = ((Long) row[7]).intValue();
+        int verifiedMemberCount = ((Long) row[8]).intValue();
+        long windowPassCount = (Long) row[9];
+
+        return PartyListResDto.builder()
+                .partyId((Long) row[0])
+                .name((String) row[1])
+                .challengeTitle((String) row[2])
+                .status(status)
+                .endDate(endDate)
+                .verificationDeadline((LocalTime) row[6])
+                .progressRate(calculateTeamProgressRate(
+                        status, startDate, endDate, totalMemberCount, windowPassCount, today))
+                .verifiedMemberCount(verifiedMemberCount)
+                .totalMemberCount(totalMemberCount)
+                .build();
+    }
+
+    // REC-02 팀 달성률: 팀 전체 PASS 인증 수 ÷ (인원 × 판정 기준일수).
+    // 진행중은 분모가 경과일수, 완료는 전체 진행일수. (수행일은 시작일 다음 날부터 산정)
+    private double calculateTeamProgressRate(
+            PartyStatus status,
+            LocalDate startDate,
+            LocalDate endDate,
+            int totalMemberCount,
+            long windowPassCount,
+            LocalDate today
+    ) {
+        if (startDate == null || endDate == null || totalMemberCount <= 0) {
+            return 0.0;
+        }
+
+        long totalDays = ChronoUnit.DAYS.between(startDate, endDate);
+        if (totalDays <= 0) {
+            return 0.0;
+        }
+
+        long denominatorDays = status == PartyStatus.FINISHED
+                ? totalDays
+                : elapsedPerformanceDays(startDate, endDate, today);
+        if (denominatorDays <= 0) {
+            return 0.0;
+        }
+
+        double rate = (double) windowPassCount / (totalMemberCount * denominatorDays);
+        return Math.round(rate * 100.0) / 100.0;
+    }
+
+    private long elapsedPerformanceDays(LocalDate startDate, LocalDate endDate, LocalDate today) {
+        LocalDate cappedToday = today.isAfter(endDate) ? endDate : today;
+        long elapsed = ChronoUnit.DAYS.between(startDate, cappedToday);
+        return Math.max(elapsed, 0);
     }
 
     @Transactional(readOnly = true)
