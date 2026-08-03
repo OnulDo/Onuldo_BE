@@ -22,6 +22,19 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class ExceptionAdvice {
     /*
+     * 포인트 부족 예외 처리 (errorDetail에 현재 포인트, 부족 금액 포함)
+     */
+    @ExceptionHandler(value = InsufficientPointException.class)
+    public ResponseEntity<BaseResponse<InsufficientPointException.PointErrorDetail>> handleInsufficientPointException(
+            InsufficientPointException e
+    ) {
+        BaseCodeDto errorCode = e.getErrorCode();
+        return ResponseEntity
+                .status(errorCode.getHttpStatus().value())
+                .body(BaseResponse.onFailure(errorCode.getCode(), errorCode.getMessage(), e.getErrorDetail()));
+    }
+
+    /*
      * 직접 정의한 RestApiException 에러 클래스에 대한 예외 처리
      */
     // @ExceptionHandler는 Controller계층에서 발생하는 에러를 잡아서 메서드로 처리해주는 기능

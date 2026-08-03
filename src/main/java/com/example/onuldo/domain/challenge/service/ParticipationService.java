@@ -29,6 +29,7 @@ import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
+import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
@@ -252,7 +253,7 @@ public class ParticipationService {
     private void validatePointBalance(User user, Integer depositAmount) {
         long currentPoint = user.getPointBalance();
         if (depositAmount > currentPoint) {
-            throw RestApiException.insufficientPoint(
+            throw new InsufficientPointException(
                     GlobalErrorStatus._INSUFFICIENT_POINT_FOR_CHALLENGE,
                     currentPoint,
                     depositAmount
