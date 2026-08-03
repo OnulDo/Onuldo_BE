@@ -3,6 +3,7 @@ package com.example.onuldo.domain.challenge.service;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Settlement;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
+import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.enums.SettlementStatus;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
@@ -34,6 +35,7 @@ public class SettlementService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final SettlementRepository settlementRepository;
+    private final PartySettlementService partySettlementService;
     private final UserRepository userRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final TimeService timeService;
@@ -46,6 +48,19 @@ public class SettlementService {
      * */
     @Transactional
     public void settleParticipatedChallenge(Long participationId) {
+        Participation participation = participationRepository.findById(participationId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+
+        // 파티 참여는 개인 공식이 아니라 파티 단위(POI-07/08)로 정산한다.
+        if (participation.getParticipationType() == ParticipationType.PARTY) {
+            partySettlementService.settleParty(participation.getParty().getId());
+            return;
+        }
+
+        settlePersonalChallenge(participationId);
+    }
+
+    private void settlePersonalChallenge(Long participationId) {
         Participation lockedParticipation = participationRepository.findByIdForUpdate(participationId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
