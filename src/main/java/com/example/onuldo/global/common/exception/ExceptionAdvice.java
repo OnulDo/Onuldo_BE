@@ -25,7 +25,7 @@ public class ExceptionAdvice {
      * 포인트 부족 예외 처리 (errorDetail에 현재 포인트, 부족 금액 포함)
      */
     @ExceptionHandler(value = InsufficientPointException.class)
-    public ResponseEntity<BaseResponse<InsufficientPointException.PointErrorDetail>> handleInsufficientPointException(
+    public ResponseEntity<BaseResponse<String>> handleInsufficientPointException(
             InsufficientPointException e
     ) {
         BaseCodeDto errorCode = e.getErrorCode();

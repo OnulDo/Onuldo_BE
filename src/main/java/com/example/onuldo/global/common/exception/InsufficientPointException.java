@@ -6,13 +6,11 @@ import lombok.Getter;
 @Getter
 public class InsufficientPointException extends RestApiException {
 
-    private final PointErrorDetail errorDetail;
+    private final String errorDetail;
 
     public InsufficientPointException(BaseCodeInterface errorCode, long currentPoint, long requiredPoint) {
         super(errorCode);
-        this.errorDetail = new PointErrorDetail(currentPoint, requiredPoint - currentPoint);
-    }
-
-    public record PointErrorDetail(long currentPoint, long shortage) {
+        long shortage = requiredPoint - currentPoint;
+        this.errorDetail = String.format("현재포인트 %d, 부족한 금액 %d", currentPoint, shortage);
     }
 }
