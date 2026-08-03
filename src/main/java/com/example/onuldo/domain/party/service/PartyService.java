@@ -331,7 +331,7 @@ public class PartyService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
         Challenge challenge = partyChallenge.getChallenge();
 
-        LocalDate startDate = timeService.todayKst().plusDays(1);
+        LocalDate startDate = now.toLocalDate().plusDays(1);
         LocalDate endDate = startDate.plusDays(party.getDurationDays());
         int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
 
