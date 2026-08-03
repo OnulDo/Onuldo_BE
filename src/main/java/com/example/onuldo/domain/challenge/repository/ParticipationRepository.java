@@ -135,6 +135,32 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     @Query("SELECT p FROM Participation p WHERE p.id = :id")
     Optional<Participation> findByIdForUpdate(@Param("id") Long id);
 
+    List<Participation> findAllByParty_IdAndStatus(Long partyId, ParticipationStatus status);
+
+    // POI-08: 마지막 수행일의 인증 마감(챌린지 timeEnd)이 지난, 아직 미정산 파티의 partyId 목록.
+    // 기존 실패 스케줄러는 마지막 날 PASS 한 파티원을 제외해 전원 성공 파티를 놓치므로, 파티 전용 스윕이 필요하다.
+    @Query("""
+        SELECT DISTINCT p.party.id
+        FROM Participation p
+        JOIN p.challenge c
+        WHERE p.participationType = com.example.onuldo.domain.challenge.enums.ParticipationType.PARTY
+          AND p.status = :status
+          AND (
+                p.endDate < :today
+                OR (p.endDate = :today AND (c.timeEnd IS NULL OR c.timeEnd <= :currentTime))
+          )
+          AND NOT EXISTS (
+                SELECT 1
+                FROM Settlement s
+                WHERE s.participation.party.id = p.party.id
+          )
+    """)
+    List<Long> findPartySettlementTargetPartyIds(
+            @Param("status") ParticipationStatus status,
+            @Param("today") LocalDate today,
+            @Param("currentTime") LocalTime currentTime
+    );
+
     List<Participation> findAllByIdIn(Collection<Long> ids);
 
     @Query("""
