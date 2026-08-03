@@ -102,7 +102,11 @@ public class PartyService {
 
         // PAR-ERR-02: 파티 생성 시 방장 보유 포인트 < 도전금이면 포인트 충전 안내
         if (host.getPointBalance() < request.depositAmount()) {
-            throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY);
+            throw RestApiException.insufficientPoint(
+                    GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+                    host.getPointBalance(),
+                    request.depositAmount()
+            );
         }
 
         String inviteCode = generateUniqueInviteCode();
@@ -253,7 +257,11 @@ public class PartyService {
             // PAR-ERR-03: 준비완료 클릭 시점에 보유 포인트 < 도전금이면 전환 불가
             User user = member.getUser();
             if (user.getPointBalance() < party.getDepositAmount()) {
-                throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY);
+                throw RestApiException.insufficientPoint(
+                        GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+                        user.getPointBalance(),
+                        party.getDepositAmount()
+                );
             }
             member.ready();
         }
@@ -301,7 +309,11 @@ public class PartyService {
                     .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
             if (user.getPointBalance() < party.getDepositAmount()) {
-                throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY);
+                throw RestApiException.insufficientPoint(
+                        GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+                        user.getPointBalance(),
+                        party.getDepositAmount()
+                );
             }
 
             long balanceAfter = user.getPointBalance() - party.getDepositAmount();
