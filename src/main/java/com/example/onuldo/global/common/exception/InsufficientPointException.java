@@ -11,6 +11,6 @@ public class InsufficientPointException extends RestApiException {
     public InsufficientPointException(BaseCodeInterface errorCode, long currentPoint, long requiredPoint) {
         super(errorCode);
         long shortage = requiredPoint - currentPoint;
-        this.errorDetail = String.format("현재포인트 %d, 부족한 금액 %d", currentPoint, shortage);
+        this.errorDetail = String.format("currentPoint:%d,shortage:%d", currentPoint, shortage);
     }
 }
