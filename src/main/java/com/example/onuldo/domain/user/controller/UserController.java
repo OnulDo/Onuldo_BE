@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 @RestController
 @RequiredArgsConstructor
@@ -112,6 +113,15 @@ public class UserController implements UserControllerDoc {
             Long userId
     ) {
         return BaseResponse.onSuccess(pointService.getPointWalletSummary(userId));
+    }
+
+    @DeleteMapping
+    public BaseResponse<Void> withdraw(
+            @AuthUser
+            Long userId
+    ) {
+        userService.withdraw(userId);
+        return BaseResponse.onSuccess("회원 탈퇴가 완료되었습니다.", null);
     }
 
     @GetMapping("/wallet/transactions")

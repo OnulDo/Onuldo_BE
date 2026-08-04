@@ -127,6 +127,10 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
+        }
+
         return createAuthResponse(user);
     }
 
@@ -144,6 +148,10 @@ public class AuthService {
         User user = existingUser.get();
         if (user.getSocialProvider() != info.provider()) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
         user.setLastLoginAt(timeService.nowKst());
