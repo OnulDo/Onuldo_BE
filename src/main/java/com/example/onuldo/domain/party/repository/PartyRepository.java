@@ -22,6 +22,12 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
     @Query("SELECT p FROM Party p WHERE p.id = :id")
     Optional<Party> findByIdForUpdate(@Param("id") Long id);
 
+    // PAR-04 동시성 방지: 초대코드로 파티에 참여할 때 정원 체크~저장 사이의
+    // 레이스 컨디션(정원 초과 참여)을 막기 위해 파티 행에 비관적 락을 건다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Party p WHERE p.inviteCode = :inviteCode")
+    Optional<Party> findByInviteCodeForUpdate(@Param("inviteCode") String inviteCode);
+
     /**
      * 나의 파티 목록 조회 (PAR-07: WAITING 상태 파티는 목록에서 제외)
      */
