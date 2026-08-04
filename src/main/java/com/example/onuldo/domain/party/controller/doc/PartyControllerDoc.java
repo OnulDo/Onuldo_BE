@@ -39,7 +39,9 @@ public interface PartyControllerDoc {
             summary = "나의 파티 목록 조회",
             description = "커서 기반 페이지네이션으로 로그인한 사용자가 속한 파티 목록을 조회합니다. "
                     + "생성일 최신순으로 정렬되며, cursor를 넘기지 않으면 첫 페이지를 반환합니다. "
-                    + "모집 중(WAITING)인 파티는 목록에서 제외되며, 진행 중/종료된 파티만 반환합니다."
+                    + "모집 중(WAITING)인 파티는 목록에서 제외되며, 진행 중/종료된 파티만 반환합니다. "
+                    + "파티 카드 UI(목표 문구, D-day, 마감 시각, 파티원별 오늘 인증 여부 아바타)를 그대로 그릴 수 있도록 "
+                    + "goal, dDay, members(파티원별 isVerifiedToday) 필드를 함께 반환합니다."
     )
     @ApiResponse(responseCode = "200")
     CursorPageResponse<PartyListResDto> getMyParties(

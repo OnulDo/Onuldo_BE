@@ -29,18 +29,21 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
      *
      * <p>진행률(progressRate)은 REC-02에 따라 상태별 분모가 달라(진행중=경과일수, 완료=전체진행일수)
      * 조회 결과의 원시값(시작일/종료일/총원/기간 내 PASS 수)을 서비스 계층에서 조합해 계산한다.
-     * 반환 컬럼: [partyId, name, challengeTitle, status, startDate, endDate, verificationDeadline,
-     * totalMemberCount, verifiedMemberCount(오늘 인증 인원), windowPassCount(기간 내 팀 PASS 수), createdAt]
+     * windowPassCount는 정산(POI-07)과 동일하게 예치일(시작일) 당일 인증은 수행일로 치지 않고 제외한다 —
+     * 포함하면 분자(수행일 PASS 수)가 분모(경과 수행일수)보다 커져 진행률이 100%를 넘을 수 있다.
+     * 반환 컬럼: [partyId, name, challengeTitle, goal, status, startDate, endDate, verificationDeadline,
+     * totalMemberCount, verifiedMemberCount(오늘 인증 인원), windowPassCount(수행일 기간 내 팀 PASS 수), createdAt]
      */
     @Query("""
         SELECT
             p.id,
             p.name,
-            (SELECT c.name FROM PartyChallenge pc JOIN pc.challenge c WHERE pc.party.id = p.id),
+            c.name,
+            c.explainContent,
             p.status,
             (SELECT MIN(pt.startDate) FROM Participation pt WHERE pt.party.id = p.id),
             (SELECT MIN(pt.endDate) FROM Participation pt WHERE pt.party.id = p.id),
-            (SELECT c.timeEnd FROM PartyChallenge pc JOIN pc.challenge c WHERE pc.party.id = p.id),
+            c.timeEnd,
             (SELECT COUNT(pm2) FROM PartyMember pm2 WHERE pm2.party.id = p.id),
             (SELECT COUNT(DISTINCT v.participation.user.id) FROM Verification v
                 WHERE v.participation.party.id = p.id
@@ -48,11 +51,14 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
                 AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS),
             (SELECT COUNT(v2) FROM Verification v2
                 WHERE v2.participation.party.id = p.id
+                AND v2.verificationDate > (SELECT MIN(pt2.startDate) FROM Participation pt2 WHERE pt2.party.id = p.id)
                 AND v2.verificationDate <= :today
                 AND v2.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS),
             p.createdAt
         FROM Party p
         JOIN PartyMember pm ON pm.party.id = p.id
+        JOIN PartyChallenge pc ON pc.party.id = p.id
+        JOIN pc.challenge c
         WHERE pm.user.id = :userId
         AND p.status <> com.example.onuldo.domain.party.enums.PartyStatus.WAITING
         AND (

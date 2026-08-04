@@ -13,6 +13,7 @@ import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedItemResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
+import com.example.onuldo.domain.party.dto.response.PartyMemberVerificationResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.domain.party.entity.Party;
@@ -47,8 +48,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -171,37 +174,87 @@ public class PartyService {
                 userId, lastCreatedAt, lastId, today, CursorPageable.of(resolvedSize)
         );
 
+        // CursorPageResponse.of가 사용할 페이지 슬라이스와 동일한 기준으로 미리 잘라
+        // "다음 페이지 미리보기용" 초과 1건까지 파티원 배치 조회에 끌려가지 않게 한다.
+        List<Object[]> pageRows = rows.size() > resolvedSize ? rows.subList(0, resolvedSize) : rows;
+        List<Long> pagePartyIds = pageRows.stream().map(row -> (Long) row[0]).toList();
+        Map<Long, List<PartyMemberVerificationResDto>> membersByParty =
+                loadMembersWithTodayVerification(pagePartyIds, today);
+
         return CursorPageResponse.of(
                 rows,
                 resolvedSize,
-                row -> toPartyListResDto(row, today),
+                row -> toPartyListResDto(row, today, membersByParty),
                 row -> CursorKeyCodec.encode(
-                        ((LocalDateTime) row[10]).toString(),
+                        ((LocalDateTime) row[11]).toString(),
                         (Long) row[0]
                 )
         );
     }
 
-    private PartyListResDto toPartyListResDto(Object[] row, LocalDate today) {
-        PartyStatus status = (PartyStatus) row[3];
-        LocalDate startDate = (LocalDate) row[4];
-        LocalDate endDate = (LocalDate) row[5];
-        int totalMemberCount = ((Long) row[7]).intValue();
-        int verifiedMemberCount = ((Long) row[8]).intValue();
-        long windowPassCount = (Long) row[9];
+    // 파티 목록 카드의 파티원 아바타·인증 배지 표시용: 파티원 목록과 오늘 PASS 인증 여부를 파티 ID 단위로 배치 조회
+    private Map<Long, List<PartyMemberVerificationResDto>> loadMembersWithTodayVerification(
+            List<Long> partyIds, LocalDate today
+    ) {
+        if (partyIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Set<Long> verifiedUserIds = verificationRepository
+                .findTodayAutoPassVerificationsByPartyIdIn(partyIds, today).stream()
+                .map(verification -> verification.getParticipation().getUser().getId())
+                .collect(Collectors.toSet());
+
+        return partyMemberRepository.findByParty_IdInOrderByJoinedAtAsc(partyIds).stream()
+                .collect(Collectors.groupingBy(
+                        member -> member.getParty().getId(),
+                        LinkedHashMap::new,
+                        Collectors.mapping(
+                                member -> PartyMemberVerificationResDto.builder()
+                                        .userId(member.getUser().getId())
+                                        .nickname(member.getUser().getNickname())
+                                        .profileImageUrl(member.getUser().getProfileImageUrl())
+                                        .isVerifiedToday(verifiedUserIds.contains(member.getUser().getId()))
+                                        .build(),
+                                Collectors.toList()
+                        )
+                ));
+    }
+
+    private PartyListResDto toPartyListResDto(
+            Object[] row, LocalDate today, Map<Long, List<PartyMemberVerificationResDto>> membersByParty
+    ) {
+        Long partyId = (Long) row[0];
+        PartyStatus status = (PartyStatus) row[4];
+        LocalDate startDate = (LocalDate) row[5];
+        LocalDate endDate = (LocalDate) row[6];
+        int totalMemberCount = ((Long) row[8]).intValue();
+        int verifiedMemberCount = ((Long) row[9]).intValue();
+        long windowPassCount = (Long) row[10];
 
         return PartyListResDto.builder()
-                .partyId((Long) row[0])
+                .partyId(partyId)
                 .name((String) row[1])
                 .challengeTitle((String) row[2])
+                .goal((String) row[3])
                 .status(status)
                 .endDate(endDate)
-                .verificationDeadline((LocalTime) row[6])
+                .dDay(calculateDDay(endDate, today))
+                .verificationDeadline((LocalTime) row[7])
                 .progressRate(calculateTeamProgressRate(
                         status, startDate, endDate, totalMemberCount, windowPassCount, today))
                 .verifiedMemberCount(verifiedMemberCount)
                 .totalMemberCount(totalMemberCount)
+                .members(membersByParty.getOrDefault(partyId, List.of()))
                 .build();
+    }
+
+    // D-day: 종료일까지 남은 일수. 종료일이 지난 파티(FINISHED)는 0으로 고정.
+    private int calculateDDay(LocalDate endDate, LocalDate today) {
+        if (endDate == null) {
+            return 0;
+        }
+        return (int) Math.max(0, ChronoUnit.DAYS.between(today, endDate));
     }
 
     // REC-02 팀 달성률: 팀 전체 PASS 인증 수 ÷ (인원 × 판정 기준일수).

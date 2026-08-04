@@ -6,26 +6,32 @@ import lombok.Builder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 @Builder
 public record PartyListResDto(
         @Schema(example = "101")
         Long partyId,
-        @Schema(example = "30일 헬스 챌린지 파티")
+        @Schema(example = "새벽 러너 파티")
         String name,
         @Schema(example = "30일 헬스")
         String challengeTitle,
+        @Schema(example = "30분 러닝")
+        String goal,
         @Schema(example = "ONGOING")
         PartyStatus status,
         @Schema(example = "2026-08-20")
         LocalDate endDate,
-        @Schema(example = "21:00:00")
+        @Schema(example = "12")
+        Integer dDay,
+        @Schema(example = "07:00:00")
         LocalTime verificationDeadline,
         @Schema(example = "0.72")
         Double progressRate,
         @Schema(example = "3")
         Integer verifiedMemberCount,
-        @Schema(example = "4")
-        Integer totalMemberCount
+        @Schema(example = "5")
+        Integer totalMemberCount,
+        List<PartyMemberVerificationResDto> members
 ) {
 }
