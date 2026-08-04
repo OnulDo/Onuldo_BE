@@ -44,12 +44,17 @@ import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
+import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
+import com.example.onuldo.domain.party.dto.response.PartyHomeItemResDto;
+import com.example.onuldo.domain.party.dto.response.PartyHomeMemberResDto;
+import com.example.onuldo.domain.party.enums.PartyHomeCardStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -560,4 +565,114 @@ public class PartyService {
                 .displayAmount(displayAmount)
                 .build();
     }
+
+    // 홈 화면 "함께하는 파티" 섹션 조회 (HOME-04, HOME-07, HOME-09)
+    @Transactional(readOnly = true)
+    public List<PartyHomeItemResDto> getHomeParties(Long userId) {
+        List<Party> ongoingParties = partyRepository.findOngoingPartiesByUserId(userId);
+
+        List<PartyHomeItemResDto> items = ongoingParties.stream()
+                .map(party -> generatePartyHomeItem(party, userId))
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+
+        // HOME-09: 상태 우선순위(미인증→검토대기→성공→실패) → 마감 빠른순 → D-day 짧은순 → 챌린지ID 오름차순
+        items.sort(java.util.Comparator
+                .comparingInt((PartyHomeItemResDto item) -> statusPriority(item.status()))
+                .thenComparing(PartyHomeItemResDto::verificationDeadline, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                .thenComparing(PartyHomeItemResDto::endDate, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                .thenComparing(PartyHomeItemResDto::partyId));
+
+        return items;
+    }
+
+    private int statusPriority(PartyHomeCardStatus status) {
+        return switch (status) {
+            case NOT_VERIFIED -> 0;
+            case PENDING -> 1;
+            case SUCCESS -> 2;
+            case FAIL -> 3;
+        };
+    }
+
+    private PartyHomeItemResDto generatePartyHomeItem(Party party, Long userId) {
+        PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(party.getId())
+                .orElse(null);
+        if (partyChallenge == null) {
+            return null;
+        }
+        Challenge challenge = partyChallenge.getChallenge();
+
+        List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(party.getId());
+
+        List<Verification> todayVerifications =
+                verificationRepository.findTodayVerificationsByPartyId(party.getId(), LocalDate.now());
+
+        // 파티원 1인당 하루 1회 인증이 원칙이므로 userId 기준으로 매핑
+        Map<Long, Verification> verificationByUserId = todayVerifications.stream()
+                .collect(Collectors.toMap(
+                        v -> v.getParticipation().getUser().getId(),
+                        v -> v,
+                        (existing, duplicate) -> existing
+                ));
+
+        List<PartyHomeMemberResDto> members = partyMembers.stream()
+                .map(member -> {
+                    Verification verification = verificationByUserId.get(member.getUser().getId());
+                    // HOME-07: 파티원 아바타의 "인증 완료"는 #15 피드와 동일하게 AUTO_PASS 기준
+                    boolean isVerified = verification != null
+                            && verification.getReview() == VerificationReviewStatus.PASS;
+                    return PartyHomeMemberResDto.builder()
+                            .userId(member.getUser().getId())
+                            .profileImageUrl(member.getUser().getProfileImageUrl())
+                            .isVerifiedToday(isVerified)
+                            .build();
+                })
+                .toList();
+
+        LocalTime deadline = challenge.getTimeEnd();
+        LocalDateTime now = LocalDateTime.now();
+        // HOME-03: 남은 시간 칩은 마감 1시간 전부터 표시
+        boolean showRemainingTime = deadline != null
+                && !now.toLocalTime().isBefore(deadline.minusHours(1))
+                && now.toLocalTime().isBefore(deadline);
+
+        Verification myVerification = verificationByUserId.get(userId);
+        PartyHomeCardStatus status;
+        LocalDateTime verifiedAt = null;
+
+        if (myVerification == null) {
+            // HOME-04: 오늘 인증 미완료 + 마감 시각 전이면 [인증하기] 노출
+            // 마감이 지났는데도 인증 기록이 없는 경우의 정책이 문서에 명시되어 있지 않아,
+            // 우선 실패로 간주함. 정책 확인 필요.
+            boolean beforeDeadline = deadline == null || now.toLocalTime().isBefore(deadline);
+            status = beforeDeadline ? PartyHomeCardStatus.NOT_VERIFIED : PartyHomeCardStatus.FAIL;
+        } else {
+            status = switch (myVerification.getReview()) {
+                case PASS -> PartyHomeCardStatus.SUCCESS;
+                case AUTO_FAIL -> PartyHomeCardStatus.FAIL;
+                case PENDING, MANUAL_REVIEW -> PartyHomeCardStatus.PENDING;
+            };
+            if (status == PartyHomeCardStatus.SUCCESS) {
+                verifiedAt = myVerification.getVerifiedAt();
+            }
+        }
+
+        LocalDate endDate = party.getStartTriggeredAt() != null
+                ? party.getStartTriggeredAt().toLocalDate().plusDays(party.getDurationDays())
+                : null;
+
+        return PartyHomeItemResDto.builder()
+                .partyId(party.getId())
+                .name(party.getName())
+                .challengeTitle(challenge.getName())
+                .endDate(endDate)
+                .verificationDeadline(deadline)
+                .showRemainingTime(showRemainingTime)
+                .status(status)
+                .verifiedAt(verifiedAt)
+                .members(members)
+                .build();
+    }
+
 }
