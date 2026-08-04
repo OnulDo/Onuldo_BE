@@ -1,6 +1,5 @@
 package com.example.onuldo.domain.party.repository;
 
-import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.entity.Party;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
@@ -26,15 +25,15 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
     /**
      * 나의 파티 목록 조회 (PAR-07: WAITING 상태 파티는 목록에서 제외)
      */
-    //TODO-endDate는 Party/Challenge 진행 기간 정보가 확정되면 실제 값으로 채워야 함. 현재는 CURRENT_DATE로 임시 채움.
-    // (WAITING 파티도 이 API로 조회될 가능성이 있어 startTriggeredAt이 null일 수 있는 케이스 정책 확인 필요 - 팀원 확인 예정)
+    // 코드리뷰 반영: endDate는 파티 시작 시 생성된 Participation.endDate를 단일 원본으로 사용
+    // (PartyService.generatePartyHomeItem도 동일 기준으로 통일)
     @Query("""
         SELECT new com.example.onuldo.domain.party.dto.response.PartyListResDto(
             p.id,
             p.name,
             c.name,
             p.status,
-            LOCAL_DATE,
+            en.endDate,
             c.timeEnd,
             CAST(
                 (SELECT COUNT(v)
@@ -59,6 +58,9 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
         JOIN PartyMember pm ON pm.party.id = p.id
         JOIN PartyChallenge pc ON pc.party.id = p.id
         JOIN Challenge c ON c.id = pc.challenge.id
+        LEFT JOIN Participation en ON en.party.id = p.id
+            AND en.user.id = :userId
+            AND en.participationType = com.example.onuldo.domain.challenge.enums.ParticipationType.PARTY
         WHERE pm.user.id = :userId
         AND p.status <> com.example.onuldo.domain.party.enums.PartyStatus.WAITING
         AND (

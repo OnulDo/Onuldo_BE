@@ -489,8 +489,8 @@ public class PartyService {
         PartySettlementResultType resultType = allSuccess
                 ? PartySettlementResultType.ALL_SUCCESS
                 : allFail
-                        ? PartySettlementResultType.ALL_FAIL
-                        : PartySettlementResultType.PARTIAL_SUCCESS;
+                  ? PartySettlementResultType.ALL_FAIL
+                  : PartySettlementResultType.PARTIAL_SUCCESS;
 
         Settlement mySettlement = settlementByUserId.get(userId);
         PartyMemberResultResDto myResult = members.stream()
@@ -571,19 +571,30 @@ public class PartyService {
     public List<PartyHomeItemResDto> getHomeParties(Long userId) {
         List<Party> ongoingParties = partyRepository.findOngoingPartiesByUserId(userId);
 
-        List<PartyHomeItemResDto> items = ongoingParties.stream()
+        List<HomeItemWithChallengeId> wrappedItems = ongoingParties.stream()
                 .map(party -> generatePartyHomeItem(party, userId))
                 .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 
         // HOME-09: 상태 우선순위(미인증→검토대기→성공→실패) → 마감 빠른순 → D-day 짧은순 → 챌린지ID 오름차순
-        items.sort(java.util.Comparator
-                .comparingInt((PartyHomeItemResDto item) -> statusPriority(item.status()))
-                .thenComparing(PartyHomeItemResDto::verificationDeadline, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
-                .thenComparing(PartyHomeItemResDto::endDate, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
-                .thenComparing(PartyHomeItemResDto::partyId));
+        wrappedItems.sort(java.util.Comparator
+                .comparingInt((HomeItemWithChallengeId w) -> statusPriority(w.item().status()))
+                .thenComparing(
+                        (HomeItemWithChallengeId w) -> w.item().verificationDeadline(),
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())
+                )
+                .thenComparing(
+                        (HomeItemWithChallengeId w) -> w.item().endDate(),
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())
+                )
+                .thenComparing(HomeItemWithChallengeId::challengeId));
 
-        return items;
+        return wrappedItems.stream()
+                .map(HomeItemWithChallengeId::item)
+                .toList();
+    }
+
+    private record HomeItemWithChallengeId(PartyHomeItemResDto item, Long challengeId) {
     }
 
     private int statusPriority(PartyHomeCardStatus status) {
@@ -595,7 +606,7 @@ public class PartyService {
         };
     }
 
-    private PartyHomeItemResDto generatePartyHomeItem(Party party, Long userId) {
+    private HomeItemWithChallengeId generatePartyHomeItem(Party party, Long userId) {
         PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(party.getId())
                 .orElse(null);
         if (partyChallenge == null) {
@@ -605,8 +616,9 @@ public class PartyService {
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(party.getId());
 
+        LocalDate today = timeService.todayKst();
         List<Verification> todayVerifications =
-                verificationRepository.findTodayVerificationsByPartyId(party.getId(), LocalDate.now());
+                verificationRepository.findTodayVerificationsByPartyId(party.getId(), today);
 
         // 파티원 1인당 하루 1회 인증이 원칙이므로 userId 기준으로 매핑
         Map<Long, Verification> verificationByUserId = todayVerifications.stream()
@@ -630,12 +642,13 @@ public class PartyService {
                 })
                 .toList();
 
+        LocalDateTime now = timeService.nowKst();
         LocalTime deadline = challenge.getTimeEnd();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime deadlineAt = deadline != null ? LocalDateTime.of(today, deadline) : null;
         // HOME-03: 남은 시간 칩은 마감 1시간 전부터 표시
-        boolean showRemainingTime = deadline != null
-                && !now.toLocalTime().isBefore(deadline.minusHours(1))
-                && now.toLocalTime().isBefore(deadline);
+        boolean showRemainingTime = deadlineAt != null
+                && !now.isBefore(deadlineAt.minusHours(1))
+                && now.isBefore(deadlineAt);
 
         Verification myVerification = verificationByUserId.get(userId);
         PartyHomeCardStatus status;
@@ -644,7 +657,7 @@ public class PartyService {
         if (myVerification == null) {
             // HOME-04: 오늘 인증 미완료 + 마감 시각 전이면 [인증하기] 노출
             // 마감 후 미인증은 오늘 하루치 실패로 표시함 (챌린지 전체 SUCCESS/FAIL과는 무관, 화면 표시용 판단)
-            boolean beforeDeadline = deadline == null || now.toLocalTime().isBefore(deadline);
+            boolean beforeDeadline = deadlineAt == null || now.isBefore(deadlineAt);
             status = beforeDeadline ? PartyHomeCardStatus.NOT_VERIFIED : PartyHomeCardStatus.FAIL;
         } else {
             status = switch (myVerification.getReview()) {
@@ -661,7 +674,7 @@ public class PartyService {
                 ? party.getStartTriggeredAt().toLocalDate().plusDays(party.getDurationDays())
                 : null;
 
-        return PartyHomeItemResDto.builder()
+        PartyHomeItemResDto item = PartyHomeItemResDto.builder()
                 .partyId(party.getId())
                 .name(party.getName())
                 .challengeTitle(challenge.getName())
@@ -672,6 +685,8 @@ public class PartyService {
                 .verifiedAt(verifiedAt)
                 .members(members)
                 .build();
+
+        return new HomeItemWithChallengeId(item, challenge.getId());
     }
 
 }
