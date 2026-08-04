@@ -31,6 +31,7 @@ public class PointService {
 
     private static final int PERCENT_MULTIPLIER = 100;
     private static final String SIGNUP_BONUS_DESCRIPTION = "신규 회원 가입 포인트 지급";
+    private static final int SIGNUP_BONUS = 100000;
 
     private final UserRepository userRepository;
     private final PointTransactionRepository pointTransactionRepository;
@@ -61,7 +62,7 @@ public class PointService {
     }
 
     @Transactional
-    public ChargePointResDto grantSignupBonus(Long userId, ChargePointReqDto request) {
+    public ChargePointResDto grantSignupBonus(Long userId) {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
@@ -69,21 +70,21 @@ public class PointService {
             throw new RestApiException(GlobalErrorStatus._SIGNUP_BONUS_ALREADY_GRANTED);
         }
 
-        long balanceAfter = user.getPointBalance() + request.point();
+        long balanceAfter = user.getPointBalance() + SIGNUP_BONUS;
         user.setPointBalance(balanceAfter);
         userRepository.save(user);
 
         pointTransactionRepository.save(PointTransaction.builder()
                 .user(user)
                 .type(PointTransactionType.CHARGE)
-                .amount(request.point())
+                .amount(SIGNUP_BONUS)
                 .balanceAfter(balanceAfter)
                 .description(SIGNUP_BONUS_DESCRIPTION)
                 .build()
         );
 
         return ChargePointResDto.builder()
-                .amount(request.point())
+                .amount(SIGNUP_BONUS)
                 .balanceAfter(balanceAfter)
                 .build();
     }
