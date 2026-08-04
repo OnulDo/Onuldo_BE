@@ -180,6 +180,7 @@ public class ChallengeService {
         try{
             manualReview = verificationRepository.save(Verification.builder()
                     .participation(participation)
+                    .originalVerification(autoFail)
                     .verificationDate(autoFail.getVerificationDate())
                     .photoUrl(null)
                     .exifData(autoFail.getExifData())
