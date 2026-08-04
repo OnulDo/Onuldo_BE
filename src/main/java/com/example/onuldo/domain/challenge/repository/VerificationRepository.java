@@ -26,6 +26,21 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("date") LocalDate date
     );
 
+    // 나의 파티 목록: 파티원별 오늘 인증 배지 표시를 위한 배치 조회 (findTodayAutoPassVerificationsByPartyId의 IN 버전)
+    @Query("""
+            SELECT v
+            FROM Verification v
+            JOIN FETCH v.participation p
+            JOIN FETCH p.user u
+            WHERE p.party.id IN :partyIds
+            AND v.verificationDate = :date
+            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
+            """)
+    List<Verification> findTodayAutoPassVerificationsByPartyIdIn(
+            @Param("partyIds") Collection<Long> partyIds,
+            @Param("date") LocalDate date
+    );
+
     long countByParticipation_IdAndReview(
             Long participationId,
             com.example.onuldo.domain.challenge.enums.VerificationReviewStatus review
