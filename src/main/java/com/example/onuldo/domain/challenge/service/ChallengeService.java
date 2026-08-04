@@ -100,6 +100,10 @@ public class ChallengeService {
                 .findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
+        if (timeService.todayKst().isBefore(participation.getStartDate())) {
+            throw new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_STARTED);
+        }
+
         if (verificationRepository.existsByPhotoUrl(s3FileService.getFileUrl(request.fileId()).url())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
         }
