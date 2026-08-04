@@ -27,6 +27,7 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _TERMS_REQUIRED(HttpStatus.BAD_REQUEST, "TERMS_REQUIRED", "필수 약관에 동의해주세요."),
     _USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
     _SIGNUP_BONUS_ALREADY_GRANTED(HttpStatus.CONFLICT, "SIGNUP_BONUS_ALREADY_GRANTED", "이미 신규 회원 가입 포인트가 지급되었습니다."),
+    _PROFILE_UPDATE_FIELD_REQUIRED(HttpStatus.BAD_REQUEST, "PROFILE_UPDATE_FIELD_REQUIRED", "변경할 닉네임 또는 프로필 사진을 입력해주세요."),
 
     // 파일 관련 에러
     _FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_NOT_FOUND", "파일을 찾을 수 없습니다."),
