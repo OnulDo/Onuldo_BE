@@ -82,8 +82,8 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             LocalDate verificationDate
     );
 
-    // HOME-03/04/07: 홈 화면에서는 AUTO_PASS 외에 PENDING/MANUAL_REVIEW/AUTO_FAIL도
-    // "검토대기"/"실패" 상태 표시에 필요해서, #15 피드용 쿼리(AUTO_PASS만 조회)와 달리
+    // HOME-03/04/07: 홈 화면에서는 PASS 외에 PENDING/MANUAL_REVIEW/AUTO_FAIL도
+    // "검토대기"/"실패" 상태 표시에 필요해서, #15 피드용 쿼리(PASS만 조회)와 달리
     // review 상태 무관하게 오늘의 인증 기록 전체를 조회함
     @Query("""
             SELECT v

@@ -107,7 +107,7 @@ public interface PartyControllerDoc {
     @Operation(
             summary = "파티 진행 피드 조회",
             description = "파티의 오늘 팀 진행률(오늘 인증 완료 파티원 비율)과 파티원별 오늘 인증 현황을 조회합니다. "
-                    + "인증이 AI 자동 심사에서 통과(AUTO_PASS)한 경우에만 인증 완료로 집계합니다. "
+                    + "인증이 AI 자동 심사에서 통과(PASS)한 경우에만 인증 완료로 집계합니다. "
                     + "요청자가 해당 파티의 파티원이 아니면 조회할 수 없습니다."
     )
     @ApiResponse(responseCode = "200")

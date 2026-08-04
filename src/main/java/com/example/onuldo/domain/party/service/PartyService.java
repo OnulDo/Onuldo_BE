@@ -619,7 +619,7 @@ public class PartyService {
         List<PartyHomeMemberResDto> members = partyMembers.stream()
                 .map(member -> {
                     Verification verification = verificationByUserId.get(member.getUser().getId());
-                    // HOME-07: 파티원 아바타의 "인증 완료"는 #15 피드와 동일하게 AUTO_PASS 기준
+                    // HOME-07: 파티원 아바타의 "인증 완료"는 #15 피드와 동일하게 PASS 기준
                     boolean isVerified = verification != null
                             && verification.getReview() == VerificationReviewStatus.PASS;
                     return PartyHomeMemberResDto.builder()
@@ -643,8 +643,7 @@ public class PartyService {
 
         if (myVerification == null) {
             // HOME-04: 오늘 인증 미완료 + 마감 시각 전이면 [인증하기] 노출
-            // 마감이 지났는데도 인증 기록이 없는 경우의 정책이 문서에 명시되어 있지 않아,
-            // 우선 실패로 간주함. 정책 확인 필요.
+            // 마감 후 미인증은 오늘 하루치 실패로 표시함 (챌린지 전체 SUCCESS/FAIL과는 무관, 화면 표시용 판단)
             boolean beforeDeadline = deadline == null || now.toLocalTime().isBefore(deadline);
             status = beforeDeadline ? PartyHomeCardStatus.NOT_VERIFIED : PartyHomeCardStatus.FAIL;
         } else {
