@@ -9,6 +9,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import com.example.onuldo.global.common.time.TimeService;
 
 @Getter
 @MappedSuperclass
@@ -29,6 +30,6 @@ public abstract class BaseEntity {            // AuditingEntityListener를 통�
     }
 
     public void delete() {
-        deletedAt = LocalDateTime.now();
+        deletedAt = TimeService.nowKstStatic();
     }
 }

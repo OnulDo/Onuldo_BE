@@ -36,8 +36,14 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorKeyCodec;
+import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.cursor.CursorPageable;
+import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +90,7 @@ public class PartyService {
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final SettlementRepository settlementRepository;
+    private final TimeService timeService;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
         // PAR-03: 파티 이름 규칙 검증 (2~20자 한글·영문·숫자·공백)
@@ -103,11 +111,15 @@ public class PartyService {
 
         // PAR-ERR-02: 파티 생성 시 방장 보유 포인트 < 도전금이면 포인트 충전 안내
         if (host.getPointBalance() < request.depositAmount()) {
-            throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY);
+            throw new InsufficientPointException(
+                    GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+                    host.getPointBalance(),
+                    request.depositAmount()
+            );
         }
 
         String inviteCode = generateUniqueInviteCode();
-        LocalDateTime inviteExpiresAt = LocalDateTime.now().plusDays(request.durationDays());
+        LocalDateTime inviteExpiresAt = timeService.nowKst().plusDays(request.durationDays());
 
         Party party = Party.builder()
                 .name(request.name())
@@ -150,8 +162,34 @@ public class PartyService {
     }
 
     @Transactional(readOnly = true)
-    public List<PartyListResDto> getMyParties(Long userId) {
-        return partyRepository.findMyPartiesExcludingWaiting(userId);
+    public CursorPageResponse<PartyListResDto> getMyParties(Long userId, String cursor, int size) {
+        int resolvedSize = CursorConstants.resolveSize(size);
+
+        LocalDateTime lastCreatedAt = null;
+        Long lastId = null;
+        if (!CursorKeyCodec.isBlank(cursor)) {
+            String[] parts = CursorKeyCodec.decodeParts(cursor, 2);
+            try {
+                lastCreatedAt = LocalDateTime.parse(parts[0]);
+                lastId = Long.parseLong(parts[1]);
+            } catch (DateTimeParseException | NumberFormatException e) {
+                throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+            }
+        }
+
+        List<Object[]> rows = partyRepository.findMyPartiesExcludingWaiting(
+                userId, lastCreatedAt, lastId, CursorPageable.of(resolvedSize)
+        );
+
+        return CursorPageResponse.of(
+                rows,
+                resolvedSize,
+                row -> (PartyListResDto) row[0],
+                row -> CursorKeyCodec.encode(
+                        ((LocalDateTime) row[1]).toString(),
+                        ((PartyListResDto) row[0]).partyId()
+                )
+        );
     }
 
     @Transactional(readOnly = true)
@@ -184,7 +222,7 @@ public class PartyService {
             throw new RestApiException(GlobalErrorStatus._PARTY_FULL);
         }
 
-        if (party.getInviteExpiresAt() != null && party.getInviteExpiresAt().isBefore(LocalDateTime.now())) {
+        if (party.getInviteExpiresAt() != null && party.getInviteExpiresAt().isBefore(timeService.nowKst())) {
             throw new RestApiException(GlobalErrorStatus._INVITE_CODE_EXPIRED);
         }
 
@@ -228,7 +266,11 @@ public class PartyService {
             // PAR-ERR-03: 준비완료 클릭 시점에 보유 포인트 < 도전금이면 전환 불가
             User user = member.getUser();
             if (user.getPointBalance() < party.getDepositAmount()) {
-                throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY);
+                throw new InsufficientPointException(
+                        GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+                        user.getPointBalance(),
+                        party.getDepositAmount()
+                );
             }
             member.ready();
         }
@@ -239,7 +281,7 @@ public class PartyService {
 
     // PAR-05: 파티 시작 (방장만 가능, 2인 이상 + 전원 준비완료 시 활성화, 전원 도전금 일괄 예치)
     public PartyStartResDto startParty(Long partyId, Long userId) {
-        Party party = partyRepository.findById(partyId)
+        Party party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
 
         if (!party.getHostUser().getId().equals(userId)) {
@@ -276,7 +318,11 @@ public class PartyService {
                     .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
             if (user.getPointBalance() < party.getDepositAmount()) {
-                throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY);
+                throw new InsufficientPointException(
+                        GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+                        user.getPointBalance(),
+                        party.getDepositAmount()
+                );
             }
 
             long balanceAfter = user.getPointBalance() - party.getDepositAmount();
@@ -294,7 +340,7 @@ public class PartyService {
         }
 
         // PAR-05: 시작 시 상태 전환 + 초대코드 만료 (시작 후 초대코드 만료·파티원 추가 불가)
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = timeService.nowKst();
         party.updateStatus(PartyStatus.ONGOING);
         party.updateStartTriggeredAt(now);
         party.updateInviteExpiresAt(now);
@@ -306,7 +352,7 @@ public class PartyService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
         Challenge challenge = partyChallenge.getChallenge();
 
-        LocalDate startDate = LocalDate.now();
+        LocalDate startDate = now.toLocalDate().plusDays(1);
         LocalDate endDate = startDate.plusDays(party.getDurationDays());
         int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
 
@@ -356,7 +402,7 @@ public class PartyService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
         List<Verification> todayVerifications =
-                verificationRepository.findTodayAutoPassVerificationsByPartyId(partyId, LocalDate.now());
+                verificationRepository.findTodayAutoPassVerificationsByPartyId(partyId, timeService.todayKst());
 
         // 파티원 1인당 하루 1회 인증이 원칙이므로 userId 기준으로 매핑
         Map<Long, Verification> verificationByUserId = todayVerifications.stream()

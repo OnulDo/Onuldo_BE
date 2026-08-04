@@ -39,6 +39,7 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _DUPLICATE_VERIFICATION_PHOTO(HttpStatus.CONFLICT, "DUPLICATE_VERIFICATION_PHOTO", "이미 인증에 사용한 사진입니다."),
     _ALREADY_VERIFIED_TODAY(HttpStatus.CONFLICT, "ALREADY_VERIFIED_TODAY", "오늘은 이미 인증했습니다."),
     _PARTICIPATION_NOT_FOUND(HttpStatus.NOT_FOUND, "PARTICIPATION_NOT_FOUND", "해당 챌린지 참여 기록을 찾을 수 없습니다."),
+    _CHALLENGE_NOT_STARTED(HttpStatus.CONFLICT, "CHALLENGE_NOT_STARTED", "아직 시작되지 않은 챌린지입니다."),
 
     // Party 관련 에러
     _INSUFFICIENT_POINT_FOR_PARTY(HttpStatus.CONFLICT, "INSUFFICIENT_POINT_FOR_PARTY", "보유 포인트가 도전금보다 부족합니다."),
@@ -75,7 +76,15 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
 
     // 약관 데이터 조회
     _TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "TERM_NOT_FOUND", "약관을 찾을 수 없습니다."),
-    _INVALID_TERM_TYPE(HttpStatus.BAD_REQUEST, "INVALID_TERM_TYPE", "조회 가능한 약관 종류가 아닙니다.");
+    _INVALID_TERM_TYPE(HttpStatus.BAD_REQUEST, "INVALID_TERM_TYPE", "조회 가능한 약관 종류가 아닙니다."),
+
+    // OAuth 관련 에러
+    _INVALID_SOCIAL_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_SOCIAL_TOKEN", "유효하지 않거나 만료된 소셜 액세스 토큰입니다."),
+    _OAUTH_PROVIDER_ERROR(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "OAUTH_PROVIDER_ERROR",
+            "소셜 로그인 서버와 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+    );
 
     private final HttpStatus httpStatus;
     private final boolean isSuccess = false;

@@ -20,12 +20,14 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.UUID;
+import com.example.onuldo.global.common.time.TimeService;
 
 @Service
 @RequiredArgsConstructor
 public class S3FileService {
     private final S3Client s3Client;
     private final AwsProperties awsProperties;
+    private final TimeService timeService;
 
     public S3UploadResDto uploadImage(MultipartFile file) {
         ImageUploadPayload payload = readAndValidateImage(file);
@@ -157,7 +159,7 @@ public class S3FileService {
     }
 
     private String createObjectKey(String contentType) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = timeService.todayKst();
         String extension = "image/png".equals(contentType) ? ".png" : ".jpg";
         String prefix = normalizePrefix(awsProperties.s3().uploadPrefix());
 
