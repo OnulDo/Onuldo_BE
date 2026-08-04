@@ -186,3 +186,123 @@ SELECT
     FROM challenge
     WHERE name = '건강한 아침 식사'
 );
+
+-- #16 파티 정산 결과 조회 API 더미데이터
+-- 주의: refund_amount / bonus_amount / party_share_amount 값은
+-- 실제 정산 계산 로직이 아직 없어 정책서 UI 목업("일부 성공" 케이스) 숫자를
+-- 그대로 옮겨 채운 예시값입니다. 실제 정산 로직 완성 전까지는 참고용입니다.
+
+INSERT INTO `user` (email, nickname, social_provider, email_verified, point_balance, status, login_fail_count, created_at)
+SELECT '오늘두-dummy@test.com', '오늘두', 'EMAIL', true, 50000, 'ACTIVE', 0, NOW()
+    WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE email = '오늘두-dummy@test.com');
+
+INSERT INTO `user` (email, nickname, social_provider, email_verified, point_balance, status, login_fail_count, created_at)
+SELECT '지호-dummy@test.com', '지호', 'EMAIL', true, 50000, 'ACTIVE', 0, NOW()
+    WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE email = '지호-dummy@test.com');
+
+INSERT INTO `user` (email, nickname, social_provider, email_verified, point_balance, status, login_fail_count, created_at)
+SELECT '수아-dummy@test.com', '수아', 'EMAIL', true, 50000, 'ACTIVE', 0, NOW()
+    WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE email = '수아-dummy@test.com');
+
+INSERT INTO `user` (email, nickname, social_provider, email_verified, point_balance, status, login_fail_count, created_at)
+SELECT '도윤-dummy@test.com', '도윤', 'EMAIL', true, 50000, 'ACTIVE', 0, NOW()
+    WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE email = '도윤-dummy@test.com');
+
+INSERT INTO party (name, host_user_id, invite_code, invite_expires_at, status, max_members, duration_days, deposit_amount, start_triggered_at, created_at)
+SELECT '정산 데모 파티',
+       (SELECT user_id FROM `user` WHERE email = '오늘두-dummy@test.com'),
+       'DEMO01',
+       DATE_SUB(NOW(), INTERVAL 28 DAY),
+       'FINISHED',
+       4,
+       28,
+       30000,
+       DATE_SUB(NOW(), INTERVAL 28 DAY),
+       DATE_SUB(NOW(), INTERVAL 28 DAY)
+    WHERE NOT EXISTS (SELECT 1 FROM party WHERE name = '정산 데모 파티');
+
+INSERT INTO party_member (party_id, user_id, role, status, joined_at)
+SELECT p.party_id, u.user_id, 'HOST', 'READY', p.created_at
+FROM party p, `user` u
+WHERE p.name = '정산 데모 파티' AND u.email = '오늘두-dummy@test.com'
+  AND NOT EXISTS (SELECT 1 FROM party_member pm WHERE pm.party_id = p.party_id AND pm.user_id = u.user_id);
+
+INSERT INTO party_member (party_id, user_id, role, status, joined_at)
+SELECT p.party_id, u.user_id, 'MEMBER', 'READY', p.created_at
+FROM party p, `user` u
+WHERE p.name = '정산 데모 파티' AND u.email = '지호-dummy@test.com'
+  AND NOT EXISTS (SELECT 1 FROM party_member pm WHERE pm.party_id = p.party_id AND pm.user_id = u.user_id);
+
+INSERT INTO party_member (party_id, user_id, role, status, joined_at)
+SELECT p.party_id, u.user_id, 'MEMBER', 'READY', p.created_at
+FROM party p, `user` u
+WHERE p.name = '정산 데모 파티' AND u.email = '수아-dummy@test.com'
+  AND NOT EXISTS (SELECT 1 FROM party_member pm WHERE pm.party_id = p.party_id AND pm.user_id = u.user_id);
+
+INSERT INTO party_member (party_id, user_id, role, status, joined_at)
+SELECT p.party_id, u.user_id, 'MEMBER', 'READY', p.created_at
+FROM party p, `user` u
+WHERE p.name = '정산 데모 파티' AND u.email = '도윤-dummy@test.com'
+  AND NOT EXISTS (SELECT 1 FROM party_member pm WHERE pm.party_id = p.party_id AND pm.user_id = u.user_id);
+
+INSERT INTO party_challenge (party_id, challenge_id)
+SELECT p.party_id, c.challenge_id
+FROM party p, challenge c
+WHERE p.name = '정산 데모 파티' AND c.name = '매일 6시 기상'
+  AND NOT EXISTS (SELECT 1 FROM party_challenge pc WHERE pc.party_id = p.party_id);
+
+INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_weeks, start_date, end_date, status)
+SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 4, DATE_SUB(CURDATE(), INTERVAL 28 DAY), CURDATE(), 'SUCCESS'
+FROM `user` u, challenge c, party p
+WHERE u.email = '오늘두-dummy@test.com' AND c.name = '매일 6시 기상' AND p.name = '정산 데모 파티'
+  AND NOT EXISTS (SELECT 1 FROM participation WHERE user_id = u.user_id AND party_id = p.party_id);
+
+INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_weeks, start_date, end_date, status)
+SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 4, DATE_SUB(CURDATE(), INTERVAL 28 DAY), CURDATE(), 'SUCCESS'
+FROM `user` u, challenge c, party p
+WHERE u.email = '지호-dummy@test.com' AND c.name = '매일 6시 기상' AND p.name = '정산 데모 파티'
+  AND NOT EXISTS (SELECT 1 FROM participation WHERE user_id = u.user_id AND party_id = p.party_id);
+
+INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_weeks, start_date, end_date, status)
+SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 4, DATE_SUB(CURDATE(), INTERVAL 28 DAY), CURDATE(), 'SUCCESS'
+FROM `user` u, challenge c, party p
+WHERE u.email = '수아-dummy@test.com' AND c.name = '매일 6시 기상' AND p.name = '정산 데모 파티'
+  AND NOT EXISTS (SELECT 1 FROM participation WHERE user_id = u.user_id AND party_id = p.party_id);
+
+INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_weeks, start_date, end_date, status)
+SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 4, DATE_SUB(CURDATE(), INTERVAL 28 DAY), CURDATE(), 'FAIL'
+FROM `user` u, challenge c, party p
+WHERE u.email = '도윤-dummy@test.com' AND c.name = '매일 6시 기상' AND p.name = '정산 데모 파티'
+  AND NOT EXISTS (SELECT 1 FROM participation WHERE user_id = u.user_id AND party_id = p.party_id);
+
+INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, bonus_amount, party_share_amount, status, processed_at)
+SELECT pt.participation_id, 30000, 1.33, 30000, 0, 10000, 'COMPLETED', NOW()
+FROM participation pt
+         JOIN `user` u ON pt.user_id = u.user_id
+         JOIN party p ON pt.party_id = p.party_id
+WHERE u.email = '오늘두-dummy@test.com' AND p.name = '정산 데모 파티'
+  AND NOT EXISTS (SELECT 1 FROM settlement s WHERE s.participation_id = pt.participation_id);
+
+INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, bonus_amount, party_share_amount, status, processed_at)
+SELECT pt.participation_id, 30000, 1.33, 30000, 0, 10000, 'COMPLETED', NOW()
+FROM participation pt
+         JOIN `user` u ON pt.user_id = u.user_id
+         JOIN party p ON pt.party_id = p.party_id
+WHERE u.email = '지호-dummy@test.com' AND p.name = '정산 데모 파티'
+  AND NOT EXISTS (SELECT 1 FROM settlement s WHERE s.participation_id = pt.participation_id);
+
+INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, bonus_amount, party_share_amount, status, processed_at)
+SELECT pt.participation_id, 30000, 1.33, 30000, 0, 10000, 'COMPLETED', NOW()
+FROM participation pt
+         JOIN `user` u ON pt.user_id = u.user_id
+         JOIN party p ON pt.party_id = p.party_id
+WHERE u.email = '수아-dummy@test.com' AND p.name = '정산 데모 파티'
+  AND NOT EXISTS (SELECT 1 FROM settlement s WHERE s.participation_id = pt.participation_id);
+
+INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, bonus_amount, party_share_amount, status, processed_at)
+SELECT pt.participation_id, 30000, 0.60, 18000, 0, 0, 'COMPLETED', NOW()
+FROM participation pt
+         JOIN `user` u ON pt.user_id = u.user_id
+         JOIN party p ON pt.party_id = p.party_id
+WHERE u.email = '도윤-dummy@test.com' AND p.name = '정산 데모 파티'
+  AND NOT EXISTS (SELECT 1 FROM settlement s WHERE s.participation_id = pt.participation_id);

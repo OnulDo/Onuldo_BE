@@ -71,6 +71,9 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     ),
     _HOST_CANNOT_READY(HttpStatus.BAD_REQUEST, "HOST_CANNOT_READY", "방장은 준비완료 대상이 아닙니다."),
 
+    // 파티 정산 결과 조회 시, 정산이 아직 처리되지 않은 경우 (정산 계산 로직은 별도 도메인에서 처리 예정)
+    _SETTLEMENT_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "SETTLEMENT_NOT_COMPLETED", "아직 정산이 완료되지 않은 파티입니다."),
+
     // 약관 데이터 조회
     _TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "TERM_NOT_FOUND", "약관을 찾을 수 없습니다."),
     _INVALID_TERM_TYPE(HttpStatus.BAD_REQUEST, "INVALID_TERM_TYPE", "조회 가능한 약관 종류가 아닙니다."),
