@@ -7,7 +7,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: true
   servlet:
     multipart:
@@ -34,3 +34,9 @@ aws:
   rekognition:
     max-labels: ${AWS_REKOGNITION_MAX_LABELS:30}
     min-confidence: ${AWS_REKOGNITION_MIN_CONFIDENCE:40}
+
+fcm:
+  enabled: ${FCM_ENABLED:false}
+  server-key: ${FCM_SERVER_KEY:}
+  send-url: ${FCM_SEND_URL:https://fcm.googleapis.com/fcm/send}
+  service-account-path: "classpath:firebase/firebase-service-key.json"

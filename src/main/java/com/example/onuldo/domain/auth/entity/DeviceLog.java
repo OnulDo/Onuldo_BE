@@ -42,6 +42,9 @@ public class DeviceLog {
     @Column(name = "android_id", length = 255)
     private String androidId;
 
+    @Column(name = "fcm_token", length = 512)
+    private String fcmToken;
+
     @Builder.Default
     @Column(name = "last_seen_at", nullable = false)
     private LocalDateTime lastSeenAt = TimeService.nowKstStatic();

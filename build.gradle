@@ -33,6 +33,8 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-jackson:0.12.3'
 	implementation 'org.springframework.boot:spring-boot-configuration-processor'
 
+	implementation 'com.google.firebase:firebase-admin:9.8.0'
+
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	annotationProcessor 'org.projectlombok:lombok'
