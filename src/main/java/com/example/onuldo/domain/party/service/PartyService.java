@@ -214,8 +214,11 @@ public class PartyService {
     }
 
     // PAR-04, PAR-ERR-01: 초대코드 검증 후 파티 참여
+    // 동시성 이슈 방지: 같은 파티에 대한 동시 참여 요청이 정원 체크를 동시에 통과해
+    // 정원을 초과해 저장되는 것을 막기 위해 Party 행에 비관적 락을 걸고
+    // 인원수 체크~저장까지를 같은 트랜잭션 안에서 직렬화한다.
     public PartyWaitingResDto joinParty(Long userId, PartyJoinReqDto request) {
-        Party party = partyRepository.findByInviteCode(request.inviteCode())
+        Party party = partyRepository.findByInviteCodeForUpdate(request.inviteCode())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_INVITE_CODE));
 
         if (party.getStatus() != PartyStatus.WAITING) {
@@ -594,6 +597,7 @@ public class PartyService {
                 .toList();
     }
 
+    // 정렬 시 마지막 비교 기준(챌린지ID)을 응답 DTO에 노출하지 않으면서도 함께 들고 다니기 위한 내부 전용 래퍼
     private record HomeItemWithChallengeId(PartyHomeItemResDto item, Long challengeId) {
     }
 
@@ -642,8 +646,11 @@ public class PartyService {
                 })
                 .toList();
 
+        // 서버 시간대가 KST가 아닐 수 있으므로 now/today 모두 TimeService 기준으로 통일
         LocalDateTime now = timeService.nowKst();
         LocalTime deadline = challenge.getTimeEnd();
+        // 자정 경계를 포함해 마감 임박 여부를 판단하기 위해 날짜가 결합된 deadlineAt을 사용
+        // (LocalTime만으로 minusHours(1)을 계산하면 마감이 자정 부근일 때 전날 시각으로 순환해버림)
         LocalDateTime deadlineAt = deadline != null ? LocalDateTime.of(today, deadline) : null;
         // HOME-03: 남은 시간 칩은 마감 1시간 전부터 표시
         boolean showRemainingTime = deadlineAt != null
