@@ -29,6 +29,7 @@ import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
+import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
@@ -75,8 +76,8 @@ public class ParticipationService {
         validateAlreadyParticipating(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
 
-        LocalDate startDate = timeService.todayKst();
-        LocalDate endDate = startDate.plusWeeks(request.durationWeeks()).minusDays(1);
+        LocalDate startDate = timeService.todayKst().plusDays(1);
+        LocalDate endDate = startDate.plusWeeks(request.durationWeeks());
         Integer durationDays = request.durationWeeks() * 7;
 
         long balanceAfter = user.getPointBalance() - request.depositAmount();
@@ -250,11 +251,12 @@ public class ParticipationService {
     }
 
     private void validatePointBalance(User user, Integer depositAmount) {
-        long shortage = depositAmount.longValue() - user.getPointBalance();
-        if (shortage > 0) {
-            throw new RestApiException(
+        long currentPoint = user.getPointBalance();
+        if (depositAmount > currentPoint) {
+            throw new InsufficientPointException(
                     GlobalErrorStatus._INSUFFICIENT_POINT_FOR_CHALLENGE,
-                    "보유 포인트가 " + shortage + "P 부족합니다."
+                    currentPoint,
+                    depositAmount
             );
         }
     }
