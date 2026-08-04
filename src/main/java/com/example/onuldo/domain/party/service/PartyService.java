@@ -109,6 +109,10 @@ public class PartyService {
         Challenge challenge = challengeRepository.findById(request.challengeId())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
+        // 파티는 챌린지가 제공하는 진행 기간/도전금 옵션 중에서만 선택 가능
+        validateDurationOption(challenge, request.durationWeeks());
+        validateDepositOption(challenge, request.depositAmount());
+
         // PAR-ERR-02: 파티 생성 시 방장 보유 포인트 < 도전금이면 포인트 충전 안내
         if (host.getPointBalance() < request.depositAmount()) {
             throw new InsufficientPointException(
@@ -119,7 +123,8 @@ public class PartyService {
         }
 
         String inviteCode = generateUniqueInviteCode();
-        LocalDateTime inviteExpiresAt = timeService.nowKst().plusDays(request.durationDays());
+        int durationDays = request.durationWeeks() * DAYS_PER_WEEK;
+        LocalDateTime inviteExpiresAt = timeService.nowKst().plusDays(durationDays);
 
         Party party = Party.builder()
                 .name(request.name())
@@ -127,7 +132,7 @@ public class PartyService {
                 .inviteCode(inviteCode)
                 .inviteExpiresAt(inviteExpiresAt)
                 .maxMembers(request.maxMembers())
-                .durationDays(request.durationDays())
+                .durationDays(durationDays)
                 .depositAmount(request.depositAmount())
                 .build();
         partyRepository.save(party);
@@ -501,6 +506,18 @@ public class PartyService {
                 .myDisplayAmount(myResult.displayAmount())
                 .members(members)
                 .build();
+    }
+
+    private void validateDurationOption(Challenge challenge, Integer durationWeeks) {
+        if (challenge.getDurationOptionList() == null || !challenge.getDurationOptionList().contains(durationWeeks)) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_DURATION_OPTION);
+        }
+    }
+
+    private void validateDepositOption(Challenge challenge, Integer depositAmount) {
+        if (challenge.getDepositOptionList() == null || !challenge.getDepositOptionList().contains(depositAmount)) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_DEPOSIT_OPTION);
+        }
     }
 
     private String generateUniqueInviteCode() {

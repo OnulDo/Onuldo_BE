@@ -72,6 +72,7 @@ public class ParticipationService {
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
+        validateDurationOption(challenge, request.durationWeeks());
         validateDepositOption(challenge, request.depositAmount());
         validateAlreadyParticipating(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
@@ -236,6 +237,12 @@ public class ParticipationService {
                 PartyCountProjection::partyId,
                 PartyCountProjection::count
         ));
+    }
+
+    private void validateDurationOption(Challenge challenge, Integer durationWeeks) {
+        if (challenge.getDurationOptionList() == null || !challenge.getDurationOptionList().contains(durationWeeks)) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_DURATION_OPTION);
+        }
     }
 
     private void validateDepositOption(Challenge challenge, Integer depositAmount) {
