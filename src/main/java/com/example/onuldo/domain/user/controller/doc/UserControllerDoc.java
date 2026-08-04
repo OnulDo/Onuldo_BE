@@ -2,13 +2,8 @@ package com.example.onuldo.domain.user.controller.doc;
 
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
-import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
-import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
-import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
-import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
-import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
-import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
-import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
+import com.example.onuldo.domain.user.dto.request.UpdateProfileReqDto;
+import com.example.onuldo.domain.user.dto.response.*;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
@@ -41,6 +36,23 @@ public interface UserControllerDoc {
     BaseResponse<GetMyPageResDto> getMyPage(
             @AuthUser
             Long userId
+    );
+
+    @Operation(
+            summary = "프로필 사진/닉네임 변경",
+            description = """
+                    로그인한 유저의 프로필 정보(사진, 닉네임)를 변경합니다.
+
+                    nickname, profileImageUrl 중 변경할 값만 채워서 요청하면 됩니다.
+                    - 값을 채운 필드만 변경되고, null로 보낸 필드는 기존 값이 유지됩니다.
+                    - 두 필드를 모두 채워 보내면 둘 다 한 번에 변경됩니다.
+                    """
+    )
+    BaseResponse<UpdateProfileResDto> updateProfile(
+            @AuthUser
+            Long userId,
+            @RequestBody
+            UpdateProfileReqDto request
     );
 
     @Operation(
