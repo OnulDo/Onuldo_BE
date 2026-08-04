@@ -18,6 +18,7 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
@@ -93,7 +94,11 @@ public class PartyLifecycleService {
                     .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
             if (user.getPointBalance() < party.getDepositAmount()) {
-                throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY);
+                throw new InsufficientPointException(
+                        GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+                        user.getPointBalance(),
+                        party.getDepositAmount()
+                );
             }
 
             long balanceAfter = user.getPointBalance() - party.getDepositAmount();
@@ -117,8 +122,9 @@ public class PartyLifecycleService {
         party.updateInviteExpiresAt(now);
         partyRepository.save(party);
 
-        LocalDate startDate = timeService.todayKst();
-        LocalDate endDate = startDate.plusDays(party.getDurationDays() - 1);
+        // #94: 참여 시작일은 시작 처리 다음 날부터 (당일 시작 금지, 시작 전 인증 방지)
+        LocalDate startDate = now.toLocalDate().plusDays(1);
+        LocalDate endDate = startDate.plusDays(party.getDurationDays());
         int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
 
         for (PartyMember member : partyMembers) {
