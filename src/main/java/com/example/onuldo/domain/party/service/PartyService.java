@@ -45,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -405,23 +406,30 @@ public class PartyService {
         }
 
         List<Settlement> settlements = settlementRepository.findByPartyId(partyId);
-        if (settlements.isEmpty() || settlements.size() < partyMembers.size()) {
-            throw new RestApiException(GlobalErrorStatus._SETTLEMENT_NOT_COMPLETED);
-        }
-
+        // 동일 유저의 정산 데이터가 중복 저장된 경우를 대비해 첫 값을 유지 (size 비교만으로는 파티원-정산 1:1 매핑을 보장할 수 없어 방어적으로 처리)
         Map<Long, Settlement> settlementByUserId = settlements.stream()
                 .collect(Collectors.toMap(
                         s -> s.getParticipation().getUser().getId(),
-                        s -> s
+                        s -> s,
+                        (existing, duplicate) -> existing
                 ));
 
-        List<PartyMemberResultResDto> members = partyMembers.stream()
-                .map(member -> {
-                    Settlement settlement = settlementByUserId.get(member.getUser().getId());
-                    ParticipationStatus status = settlement.getParticipation().getStatus();
-                    return generatePartyMemberResult(member.getUser(), status, settlement);
-                })
-                .toList();
+        // 파티원 각각에 대해 정산 데이터 존재 여부와 정산 대상 상태(SUCCESS/FAIL)인지 명시적으로 검증
+        // (ONGOING/CANCELED 상태의 참여 기록이 섞여 있으면 아직 정산이 확정되지 않은 것으로 간주)
+        List<PartyMemberResultResDto> members = new ArrayList<>();
+        for (PartyMember member : partyMembers) {
+            Settlement settlement = settlementByUserId.get(member.getUser().getId());
+            if (settlement == null) {
+                throw new RestApiException(GlobalErrorStatus._SETTLEMENT_NOT_COMPLETED);
+            }
+
+            ParticipationStatus status = settlement.getParticipation().getStatus();
+            if (status != ParticipationStatus.SUCCESS && status != ParticipationStatus.FAIL) {
+                throw new RestApiException(GlobalErrorStatus._SETTLEMENT_NOT_COMPLETED);
+            }
+
+            members.add(generatePartyMemberResult(member.getUser(), status, settlement));
+        }
 
         boolean allSuccess = members.stream()
                 .allMatch(m -> m.status() == ParticipationStatus.SUCCESS);
