@@ -163,21 +163,32 @@ public class ChallengeService {
             throw new RestApiException(GlobalErrorStatus._ALREADY_MANUALLY_REVIEWED);
         }
 
+        if (verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
+                participation.getId(), today, VerificationReviewStatus.PASS).isPresent()) {
+            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
+        }
+
         Verification autoFail = verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
                         participation.getId(), today, VerificationReviewStatus.AUTO_FAIL)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._AUTO_FAIL_VERIFICATION_NOT_FOUND));
 
-        Verification manualReview = verificationRepository.save(Verification.builder()
-                .participation(participation)
-                .verificationDate(autoFail.getVerificationDate())
-                .photoUrl(null)
-                .exifData(autoFail.getExifData())
-                .rekognitionResult(autoFail.getRekognitionResult())
-                .aiScore(autoFail.getAiScore())
-                .review(VerificationReviewStatus.MANUAL_REVIEW)
-                .dayScore(autoFail.getDayScore())
-                .verifiedAt(timeService.nowKst())
-                .build());
+        Verification manualReview;
+        try{
+            manualReview = verificationRepository.save(Verification.builder()
+                    .participation(participation)
+                    .verificationDate(autoFail.getVerificationDate())
+                    .photoUrl(null)
+                    .exifData(autoFail.getExifData())
+                    .rekognitionResult(autoFail.getRekognitionResult())
+                    .aiScore(autoFail.getAiScore())
+                    .review(VerificationReviewStatus.MANUAL_REVIEW)
+                    .dayScore(autoFail.getDayScore())
+                    .verifiedAt(timeService.nowKst())
+                    .build());
+        } catch(DataIntegrityViolationException e) {
+            throw new RestApiException(GlobalErrorStatus._ALREADY_MANUALLY_REVIEWED);
+        }
+
 
         return ChallengeManualReviewResDto.builder()
                 .manualReviewRequestedAt(manualReview.getVerifiedAt())
