@@ -76,6 +76,11 @@ public class Party {
         this.status = status;
     }
 
+    // PAR-07: 방장 이탈 시 새 방장에게 승계
+    public void updateHostUser(User hostUser) {
+        this.hostUser = hostUser;
+    }
+
     public void updateStartTriggeredAt(LocalDateTime startTriggeredAt) {
         this.startTriggeredAt = startTriggeredAt;
     }

@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 @RestController
 @RequiredArgsConstructor
@@ -103,13 +104,9 @@ public class UserController implements UserControllerDoc {
     @PostMapping("/wallet/signup-bonuses")
     public BaseResponse<ChargePointResDto> grantSignupBonus(
             @AuthUser
-            Long userId,
-
-            @Valid
-            @RequestBody
-            ChargePointReqDto request
+            Long userId
     ) {
-        return BaseResponse.onSuccess(pointService.grantSignupBonus(userId, request));
+        return BaseResponse.onSuccess(pointService.grantSignupBonus(userId));
     }
 
     @GetMapping("/wallet/summary")
@@ -118,6 +115,15 @@ public class UserController implements UserControllerDoc {
             Long userId
     ) {
         return BaseResponse.onSuccess(pointService.getPointWalletSummary(userId));
+    }
+
+    @DeleteMapping
+    public BaseResponse<Void> withdraw(
+            @AuthUser
+            Long userId
+    ) {
+        userService.withdraw(userId);
+        return BaseResponse.onSuccess("회원 탈퇴가 완료되었습니다.", null);
     }
 
     @GetMapping("/wallet/transactions")

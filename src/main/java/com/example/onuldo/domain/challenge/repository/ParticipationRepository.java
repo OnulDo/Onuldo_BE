@@ -2,22 +2,25 @@ package com.example.onuldo.domain.challenge.repository;
 
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
+import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
+import java.util.Optional;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 public interface ParticipationRepository extends JpaRepository<Participation, Long> {
 
     boolean existsByUser_IdAndChallenge_Id(Long userId, Long challengeId);
+
+    boolean existsByUser_IdAndStatus(Long userId, ParticipationStatus status);
+
     @Query("""
         SELECT COALESCE(SUM(p.depositAmount), 0)
         FROM Participation p
@@ -147,5 +150,12 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     List<PartyCountProjection> findParticipationCountsByPartyIdInAndStatus(
             @Param("partyIds") Collection<Long> partyIds,
             @Param("status") ParticipationStatus status
+    );
+
+    // HOME-07 코드리뷰 반영
+    Optional<Participation> findByParty_IdAndUser_IdAndParticipationType(
+            Long partyId,
+            Long userId,
+            ParticipationType participationType
     );
 }

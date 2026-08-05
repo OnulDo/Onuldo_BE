@@ -35,6 +35,7 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     // 챌린지 관련 에러
     _CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE_NOT_FOUND", "존재하지 않는 챌린지입니다."),
     _INVALID_DEPOSIT_OPTION(HttpStatus.BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "선택할 수 없는 도전금입니다."),
+    _INVALID_DURATION_OPTION(HttpStatus.BAD_REQUEST, "INVALID_DURATION_OPTION", "선택할 수 없는 진행 기간입니다."),
     _INSUFFICIENT_POINT_FOR_CHALLENGE(HttpStatus.BAD_REQUEST, "INSUFFICIENT_POINT_FOR_CHALLENGE", "보유 포인트가 부족합니다."),
     _ALREADY_PARTICIPATING_CHALLENGE(HttpStatus.CONFLICT, "ALREADY_PARTICIPATING_CHALLENGE", "이미 참여 중인 챌린지입니다."),
     _DUPLICATE_VERIFICATION_PHOTO(HttpStatus.CONFLICT, "DUPLICATE_VERIFICATION_PHOTO", "이미 인증에 사용한 사진입니다."),
@@ -62,6 +63,8 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     // PAR-ERR-01: 초대코드 오류 4종
     _INVALID_INVITE_CODE(HttpStatus.BAD_REQUEST, "INVALID_INVITE_CODE", "잘못된 초대코드예요. 코드를 다시 확인해주세요."),
     _PARTY_ALREADY_STARTED(HttpStatus.CONFLICT, "PARTY_ALREADY_STARTED", "이미 시작된 파티예요."),
+    _PARTY_ALREADY_FINISHED(HttpStatus.CONFLICT, "PARTY_ALREADY_FINISHED", "이미 종료된 파티예요."),
+    _PARTY_DISSOLVED(HttpStatus.CONFLICT, "PARTY_DISSOLVED", "해체된 파티예요."),
     _PARTY_FULL(HttpStatus.CONFLICT, "PARTY_FULL", "파티 인원이 가득 찼어요."),
     _INVITE_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "INVITE_CODE_EXPIRED", "만료된 초대코드예요."),
 

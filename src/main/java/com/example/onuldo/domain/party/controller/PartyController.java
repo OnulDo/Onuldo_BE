@@ -5,10 +5,15 @@ import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
+import com.example.onuldo.domain.party.dto.response.PartyHomeItemResDto;
+import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
+import com.example.onuldo.domain.party.service.PartyFeedService;
+import com.example.onuldo.domain.party.service.PartyLifecycleService;
+import com.example.onuldo.domain.party.service.PartyMemberService;
 import com.example.onuldo.domain.party.service.PartyService;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorConstants;
@@ -24,12 +29,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/parties")
 public class PartyController implements PartyControllerDoc {
 
     private final PartyService partyService;
+    private final PartyMemberService partyMemberService;
+    private final PartyLifecycleService partyLifecycleService;
+    private final PartyFeedService partyFeedService;
 
     @PostMapping
     public BaseResponse<PartyCreateResDto> createParty(
@@ -72,7 +82,17 @@ public class PartyController implements PartyControllerDoc {
             @RequestBody
             PartyJoinReqDto request
     ) {
-        return BaseResponse.onSuccess(partyService.joinParty(userId, request));
+        return BaseResponse.onSuccess(partyMemberService.joinParty(userId, request));
+    }
+
+    @PostMapping("/{partyId}/leave")
+    public BaseResponse<PartyLeaveResDto> leaveParty(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    ) {
+        return BaseResponse.onSuccess("파티 이탈에 성공했습니다.", partyMemberService.leaveParty(partyId, userId));
     }
 
     // 준비완료 전환 API는 파티 API 목록(7개)에 명시되어 있지 않았으나 PAR-05, PAR-ERR-03 근거로 추가함 (BE 확인 필요)
@@ -83,7 +103,7 @@ public class PartyController implements PartyControllerDoc {
             @PathVariable
             Long partyId
     ) {
-        return BaseResponse.onSuccess(partyService.togglePartyMemberReady(partyId, userId));
+        return BaseResponse.onSuccess(partyMemberService.togglePartyMemberReady(partyId, userId));
     }
 
     @PostMapping("/{partyId}/start")
@@ -93,7 +113,7 @@ public class PartyController implements PartyControllerDoc {
             @PathVariable
             Long partyId
     ) {
-        return BaseResponse.onSuccess(partyService.startParty(partyId, userId));
+        return BaseResponse.onSuccess(partyLifecycleService.startParty(partyId, userId));
     }
 
     @GetMapping("/{partyId}/feed")
@@ -103,7 +123,7 @@ public class PartyController implements PartyControllerDoc {
             @PathVariable
             Long partyId
     ) {
-        return BaseResponse.onSuccess(partyService.getPartyFeed(partyId, userId));
+        return BaseResponse.onSuccess(partyFeedService.getPartyFeed(partyId, userId));
     }
 
     @GetMapping("/{partyId}/results")
@@ -115,4 +135,13 @@ public class PartyController implements PartyControllerDoc {
     ) {
         return BaseResponse.onSuccess(partyService.getPartyResult(partyId, userId));
     }
+
+    @GetMapping("/home")
+    public BaseResponse<List<PartyHomeItemResDto>> getHomeParties(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess(partyService.getHomeParties(userId));
+    }
+
 }

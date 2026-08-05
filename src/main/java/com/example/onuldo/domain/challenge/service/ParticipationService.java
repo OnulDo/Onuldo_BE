@@ -72,12 +72,14 @@ public class ParticipationService {
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
-        validateDepositOption(challenge, request.depositAmount());
+        challenge.validateDurationOption(request.durationWeeks());
+        challenge.validateDepositOption(request.depositAmount());
         validateAlreadyParticipating(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
 
+        // durationWeeks*7일은 시작일·종료일을 포함한 총 수행일수 (ParticipationRecordService.calculateInclusiveDays와 동일 기준)
         LocalDate startDate = timeService.todayKst().plusDays(1);
-        LocalDate endDate = startDate.plusWeeks(request.durationWeeks());
+        LocalDate endDate = startDate.plusWeeks(request.durationWeeks()).minusDays(1);
         Integer durationDays = request.durationWeeks() * 7;
 
         long balanceAfter = user.getPointBalance() - request.depositAmount();
@@ -236,12 +238,6 @@ public class ParticipationService {
                 PartyCountProjection::partyId,
                 PartyCountProjection::count
         ));
-    }
-
-    private void validateDepositOption(Challenge challenge, Integer depositAmount) {
-        if (challenge.getDepositOptionList() == null || !challenge.getDepositOptionList().contains(depositAmount)) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_DEPOSIT_OPTION);
-        }
     }
 
     private void validateAlreadyParticipating(Long userId, Long challengeId) {
