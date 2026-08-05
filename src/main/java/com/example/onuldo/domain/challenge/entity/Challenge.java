@@ -2,6 +2,8 @@ package com.example.onuldo.domain.challenge.entity;
 
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
+import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.dto.response.ContentBlockResDto;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -100,4 +102,16 @@ public class Challenge {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ChallengeStatus status = ChallengeStatus.ACTIVE;
+
+    public void validateDurationOption(Integer durationWeeks) {
+        if (durationOptionList == null || !durationOptionList.contains(durationWeeks)) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_DURATION_OPTION);
+        }
+    }
+
+    public void validateDepositOption(Integer depositAmount) {
+        if (depositOptionList == null || !depositOptionList.contains(depositAmount)) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_DEPOSIT_OPTION);
+        }
+    }
 }
