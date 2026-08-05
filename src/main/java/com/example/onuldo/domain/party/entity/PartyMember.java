@@ -71,9 +71,7 @@ public class PartyMember {
         return this.status == PartyMemberStatus.READY;
     }
 
-    // PAR-07: 방장 이탈 시 가장 먼저 입장한 파티원에게 방장 권한 승계 — 새 방장은 준비완료 대상에서 제외되어 대기 상태로 초기화
-    public void promoteToHost() {
-        this.role = PartyMemberRole.HOST;
-        this.status = PartyMemberStatus.WAITING;
+    public void updateRole(PartyMemberRole role) {
+        this.role = role;
     }
 }

@@ -124,8 +124,10 @@ public class PartyMemberService {
                     .build();
         }
 
+        // PAR-07: 방장 승계 — 역할을 HOST로 올리고, 승계 대상은 준비완료 대상이 아니므로 대기 상태로 초기화
         PartyMember newHost = remainingMembers.get(0);
-        newHost.promoteToHost();
+        newHost.updateRole(PartyMemberRole.HOST);
+        newHost.waiting();
         partyMemberRepository.save(newHost);
         party.updateHostUser(newHost.getUser());
         partyRepository.save(party);
