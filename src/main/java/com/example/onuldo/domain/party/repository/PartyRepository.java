@@ -14,8 +14,6 @@ import java.util.Optional;
 
 public interface PartyRepository extends JpaRepository<Party, Long> {
 
-    Optional<Party> findByInviteCode(String inviteCode);
-
     boolean existsByInviteCode(String inviteCode);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -68,7 +66,7 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
             AND en.user.id = :userId
             AND en.participationType = com.example.onuldo.domain.challenge.enums.ParticipationType.PARTY
         WHERE pm.user.id = :userId
-        AND p.status <> com.example.onuldo.domain.party.enums.PartyStatus.WAITING
+        AND p.status NOT IN (com.example.onuldo.domain.party.enums.PartyStatus.WAITING, com.example.onuldo.domain.party.enums.PartyStatus.DISSOLVED)
         AND (
             :lastCreatedAt IS NULL
             OR p.createdAt < :lastCreatedAt

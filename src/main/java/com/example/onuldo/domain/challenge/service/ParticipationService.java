@@ -77,8 +77,9 @@ public class ParticipationService {
         validateAlreadyParticipating(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
 
+        // durationWeeks*7일은 시작일·종료일을 포함한 총 수행일수 (ParticipationRecordService.calculateInclusiveDays와 동일 기준)
         LocalDate startDate = timeService.todayKst().plusDays(1);
-        LocalDate endDate = startDate.plusWeeks(request.durationWeeks());
+        LocalDate endDate = startDate.plusWeeks(request.durationWeeks()).minusDays(1);
         Integer durationDays = request.durationWeeks() * 7;
 
         long balanceAfter = user.getPointBalance() - request.depositAmount();

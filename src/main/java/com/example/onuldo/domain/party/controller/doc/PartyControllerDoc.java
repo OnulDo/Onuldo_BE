@@ -5,6 +5,7 @@ import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
 import com.example.onuldo.domain.party.dto.response.PartyHomeItemResDto;
+import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
@@ -78,6 +79,20 @@ public interface PartyControllerDoc {
     BaseResponse<PartyWaitingResDto> joinParty(
             @AuthUser Long userId,
             @Valid @RequestBody PartyJoinReqDto request
+    );
+
+    @Operation(
+            summary = "파티 대기방 이탈",
+            description = "대기방에 있는 파티원이 파티를 나갑니다(뒤로가기 등으로 인한 이탈 포함). "
+                    + "방장이 나가면 가장 먼저 입장한 파티원에게 방장 권한이 자동으로 승계되며, "
+                    + "승계된 파티원은 기존 준비완료 상태가 해제됩니다. "
+                    + "방장이 나갔는데 남은 파티원이 없으면 파티가 해체되고 초대코드가 즉시 만료됩니다. "
+                    + "이미 시작되었거나 종료된 파티는 이탈할 수 없습니다."
+    )
+    @ApiResponse(responseCode = "200")
+    BaseResponse<PartyLeaveResDto> leaveParty(
+            @AuthUser Long userId,
+            @PathVariable Long partyId
     );
 
     @Operation(
