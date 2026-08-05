@@ -3,9 +3,11 @@ package com.example.onuldo.domain.user.service;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
+import com.example.onuldo.domain.user.dto.request.WithdrawPointReqDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
+import com.example.onuldo.domain.user.dto.response.WithdrawPointResDto;
 import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
@@ -58,6 +60,35 @@ public class PointService {
                 .amount(request.point())
                 .balanceAfter(balanceAfter)
                 .build();
+    }
+
+    @Transactional
+    public WithdrawPointResDto withdrawPoint(Long userId, WithdrawPointReqDto request) {
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+        if (user.getPointBalance() < request.point()) {
+            throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_WITHDRAW);
+        }
+
+        long balanceAfter = user.getPointBalance() - request.point();
+        user.setPointBalance(balanceAfter);
+        userRepository.save(user);
+
+        pointTransactionRepository.save(PointTransaction.builder()
+                .user(user)
+                .type(PointTransactionType.WITHDRAW)
+                .amount(request.point())
+                .balanceAfter(balanceAfter)
+                .description("포인트 출금")
+                .build()
+        );
+
+        return WithdrawPointResDto.builder()
+                .amount(request.point())
+                .balanceAfter(balanceAfter)
+                .build();
+
     }
 
     @Transactional
