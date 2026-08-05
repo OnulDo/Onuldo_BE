@@ -62,6 +62,8 @@ public class PartyService {
     private static final int MIN_MEMBERS = 2;
     private static final int MAX_MEMBERS = 5;
 
+    private static final int DAYS_PER_WEEK = 7;
+
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
     private final PartyChallengeRepository partyChallengeRepository;
@@ -86,6 +88,8 @@ public class PartyService {
 
         Challenge challenge = challengeRepository.findById(request.challengeId())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+
+        validateDurationOption(challenge, request.durationDays());
 
         // PAR-ERR-02: 파티 생성 시 방장 보유 포인트 < 도전금이면 포인트 충전 안내
         if (host.getPointBalance() < request.depositAmount()) {
@@ -256,6 +260,16 @@ public class PartyService {
                 .myDisplayAmount(myResult.displayAmount())
                 .members(members)
                 .build();
+    }
+
+    // 파티는 일 단위로 기간을 받지만(durationDays), 챌린지의 허용 기간 옵션은 주 단위(durationOptionList)라 변환해서 검증
+    private void validateDurationOption(Challenge challenge, Integer durationDays) {
+        List<Integer> durationOptionList = challenge.getDurationOptionList();
+        if (durationOptionList == null
+                || durationDays % DAYS_PER_WEEK != 0
+                || !durationOptionList.contains(durationDays / DAYS_PER_WEEK)) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_DURATION_OPTION);
+        }
     }
 
     private String generateUniqueInviteCode() {
