@@ -18,6 +18,9 @@ import java.util.Optional;
 public interface ParticipationRepository extends JpaRepository<Participation, Long> {
 
     boolean existsByUser_IdAndChallenge_Id(Long userId, Long challengeId);
+
+    boolean existsByUser_IdAndStatus(Long userId, ParticipationStatus status);
+
     @Query("""
         SELECT COALESCE(SUM(p.depositAmount), 0)
         FROM Participation p

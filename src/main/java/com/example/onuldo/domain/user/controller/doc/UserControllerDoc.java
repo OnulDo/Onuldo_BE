@@ -137,6 +137,16 @@ public interface UserControllerDoc {
     );
 
     @Operation(
+            summary = "회원 탈퇴",
+            description = "현재 로그인한 사용자의 계정을 탈퇴 처리합니다. 탈퇴 후에는 기존 토큰으로 API 접근이 차단됩니다."
+    )
+    @ApiResponse(responseCode = "200")
+    BaseResponse<Void> withdraw(
+            @AuthUser
+            Long userId
+    );
+
+    @Operation(
             summary = "포인트 거래 내역 조회",
             description = """
                     로그인한 유저의 포인트 거래 내역을 최신순으로 커서 기반 스크롤 조회합니다.
