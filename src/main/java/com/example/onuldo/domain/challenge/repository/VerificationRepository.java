@@ -51,6 +51,22 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             @Param("date") LocalDate date
     );
 
+    // 나의 파티 목록: 파티 카드별 "오늘 나의 인증 상태" 판단용 — PASS 여부와 무관하게 본인 인증 전체 조회
+    @Query("""
+            SELECT v
+            FROM Verification v
+            JOIN FETCH v.participation p
+            JOIN FETCH p.party
+            WHERE p.party.id IN :partyIds
+            AND p.user.id = :userId
+            AND v.verificationDate = :date
+            """)
+    List<Verification> findTodayVerificationsByPartyIdInAndUserId(
+            @Param("partyIds") Collection<Long> partyIds,
+            @Param("userId") Long userId,
+            @Param("date") LocalDate date
+    );
+
     // 홈 "함께하는 파티" 섹션: 리뷰 상태(PENDING/검토대기 포함) 구분 표시를 위해 PASS 여부와 무관하게 오늘 인증 전체 조회
     @Query("""
             SELECT v

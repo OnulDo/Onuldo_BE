@@ -33,7 +33,6 @@ import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
-import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
@@ -50,9 +49,9 @@ import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -167,39 +166,65 @@ public class PartyService {
     public CursorPageResponse<PartyListResDto> getMyParties(Long userId, String cursor, int size) {
         int resolvedSize = CursorConstants.resolveSize(size);
 
-        LocalDateTime lastCreatedAt = null;
-        Long lastId = null;
+        int offset = 0;
         if (!CursorKeyCodec.isBlank(cursor)) {
-            String[] parts = CursorKeyCodec.decodeParts(cursor, 2);
-            try {
-                lastCreatedAt = LocalDateTime.parse(parts[0]);
-                lastId = Long.parseLong(parts[1]);
-            } catch (DateTimeParseException | NumberFormatException e) {
-                throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
-            }
+            offset = CursorKeyCodec.toIntCursorValue(CursorKeyCodec.decodeAsLongs(cursor, 1)[0]);
         }
 
         LocalDate today = timeService.todayKst();
-        List<Object[]> rows = partyRepository.findMyPartiesExcludingWaiting(
-                userId, lastCreatedAt, lastId, today, CursorPageable.of(resolvedSize)
-        );
+        List<Object[]> rows = partyRepository.findMyPartiesExcludingWaiting(userId, today);
 
-        // CursorPageResponse.of가 사용할 페이지 슬라이스와 동일한 기준으로 미리 잘라
-        // "다음 페이지 미리보기용" 초과 1건까지 파티원 배치 조회에 끌려가지 않게 한다.
-        List<Object[]> pageRows = rows.size() > resolvedSize ? rows.subList(0, resolvedSize) : rows;
-        List<Long> pagePartyIds = pageRows.stream().map(row -> (Long) row[0]).toList();
+        List<Long> partyIds = rows.stream().map(row -> (Long) row[0]).toList();
         Map<Long, List<PartyMemberVerificationResDto>> membersByParty =
-                loadMembersWithTodayVerification(pagePartyIds, today);
+                loadMembersWithTodayVerification(partyIds, today);
+        Map<Long, Verification> myVerificationByParty =
+                loadMyTodayVerification(partyIds, userId, today);
 
+        // HOME-09(상태 우선순위 → 마감 시각 → D-day → 챌린지ID)와 동일한 기준으로 정렬한다.
+        // "오늘 나의 인증 상태"가 DB 컬럼이 아닌 계산값이라 결과 전체를 가져와 서비스에서 정렬하고,
+        // 커서는 이 정렬된 목록 안에서의 위치(오프셋)를 가리킨다.
+        List<PartyListSortEntry> sorted = rows.stream()
+                .map(row -> toSortEntry(row, today, membersByParty, myVerificationByParty))
+                .sorted(Comparator
+                        .comparingInt((PartyListSortEntry entry) -> statusPriority(entry.item().myStatus()))
+                        .thenComparing(
+                                entry -> entry.item().verificationDeadline(),
+                                Comparator.nullsLast(Comparator.naturalOrder())
+                        )
+                        .thenComparing(
+                                entry -> entry.item().endDate(),
+                                Comparator.nullsLast(Comparator.naturalOrder())
+                        )
+                        .thenComparing(PartyListSortEntry::challengeId))
+                .toList();
+
+        int fromIndex = Math.min(offset, sorted.size());
+        int toIndex = Math.min(fromIndex + resolvedSize + 1, sorted.size());
+        List<PartyListSortEntry> page = sorted.subList(fromIndex, toIndex);
+
+        int nextOffset = fromIndex + resolvedSize;
         return CursorPageResponse.of(
-                rows,
+                page,
                 resolvedSize,
-                row -> toPartyListResDto(row, today, membersByParty),
-                row -> CursorKeyCodec.encode(
-                        ((LocalDateTime) row[11]).toString(),
-                        (Long) row[0]
-                )
+                PartyListSortEntry::item,
+                ignored -> CursorKeyCodec.encode(nextOffset)
         );
+    }
+
+    // 정렬 시 마지막 비교 기준(챌린지ID)을 응답 DTO에 노출하지 않으면서도 함께 들고 다니기 위한 내부 전용 래퍼
+    private record PartyListSortEntry(PartyListResDto item, Long challengeId) {
+    }
+
+    private PartyListSortEntry toSortEntry(
+            Object[] row,
+            LocalDate today,
+            Map<Long, List<PartyMemberVerificationResDto>> membersByParty,
+            Map<Long, Verification> myVerificationByParty
+    ) {
+        Long partyId = (Long) row[0];
+        Long challengeId = (Long) row[11];
+        PartyListResDto item = toPartyListResDto(row, today, membersByParty, myVerificationByParty.get(partyId));
+        return new PartyListSortEntry(item, challengeId);
     }
 
     // 파티 목록 카드의 파티원 아바타·인증 배지 표시용: 파티원 목록과 오늘 PASS 인증 여부를 파티 ID 단위로 배치 조회
@@ -231,13 +256,31 @@ public class PartyService {
                 ));
     }
 
+    // 파티 카드별 "오늘 나의 인증 상태" 판정용 배치 조회 (파티당 1건 — 같은 날 재검토로 여러 건이면 먼저 조회된 것 유지)
+    private Map<Long, Verification> loadMyTodayVerification(List<Long> partyIds, Long userId, LocalDate today) {
+        if (partyIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return verificationRepository.findTodayVerificationsByPartyIdInAndUserId(partyIds, userId, today).stream()
+                .collect(Collectors.toMap(
+                        v -> v.getParticipation().getParty().getId(),
+                        v -> v,
+                        (existing, duplicate) -> existing
+                ));
+    }
+
     private PartyListResDto toPartyListResDto(
-            Object[] row, LocalDate today, Map<Long, List<PartyMemberVerificationResDto>> membersByParty
+            Object[] row,
+            LocalDate today,
+            Map<Long, List<PartyMemberVerificationResDto>> membersByParty,
+            Verification myVerification
     ) {
         Long partyId = (Long) row[0];
         PartyStatus status = (PartyStatus) row[4];
         LocalDate startDate = (LocalDate) row[5];
         LocalDate endDate = (LocalDate) row[6];
+        LocalTime verificationDeadline = (LocalTime) row[7];
         int totalMemberCount = ((Long) row[8]).intValue();
         int verifiedMemberCount = ((Long) row[9]).intValue();
         long windowPassCount = (Long) row[10];
@@ -248,15 +291,30 @@ public class PartyService {
                 .challengeTitle((String) row[2])
                 .goal((String) row[3])
                 .status(status)
+                .myStatus(resolveMyStatus(myVerification, verificationDeadline, today))
                 .endDate(endDate)
                 .dDay(calculateDDay(endDate, today))
-                .verificationDeadline((LocalTime) row[7])
+                .verificationDeadline(verificationDeadline)
                 .progressRate(calculateTeamProgressRate(
                         status, startDate, endDate, totalMemberCount, windowPassCount, today))
                 .verifiedMemberCount(verifiedMemberCount)
                 .totalMemberCount(totalMemberCount)
                 .members(membersByParty.getOrDefault(partyId, List.of()))
                 .build();
+    }
+
+    // 오늘 나의 인증 상태 — 홈 "함께하는 파티" 카드 정책(generatePartyHomeItem)과 동일 기준
+    private PartyHomeCardStatus resolveMyStatus(Verification myVerification, LocalTime deadline, LocalDate today) {
+        if (myVerification == null) {
+            LocalDateTime deadlineAt = deadline != null ? LocalDateTime.of(today, deadline) : null;
+            boolean beforeDeadline = deadlineAt == null || timeService.nowKst().isBefore(deadlineAt);
+            return beforeDeadline ? PartyHomeCardStatus.NOT_VERIFIED : PartyHomeCardStatus.FAIL;
+        }
+        return switch (myVerification.getReview()) {
+            case PASS -> PartyHomeCardStatus.SUCCESS;
+            case AUTO_FAIL -> PartyHomeCardStatus.FAIL;
+            case PENDING, MANUAL_REVIEW -> PartyHomeCardStatus.PENDING;
+        };
     }
 
     // D-day: 종료일까지 남은 일수. 종료일이 지난 파티(FINISHED)는 0으로 고정.
@@ -385,7 +443,7 @@ public class PartyService {
                 .partyId(party.getId())
                 .name(party.getName())
                 .resultType(resultType)
-                .myRefundAmount(mySettlement.getRefundAmount())
+                .myDepositRefundAmount(mySettlement.getDepositRefundAmount())
                 .myDisplayAmount(myResult.displayAmount())
                 .members(members)
                 .build();
