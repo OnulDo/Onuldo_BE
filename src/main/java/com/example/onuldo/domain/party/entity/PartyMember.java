@@ -70,4 +70,8 @@ public class PartyMember {
     public boolean isReady() {
         return this.status == PartyMemberStatus.READY;
     }
+
+    public void updateRole(PartyMemberRole role) {
+        this.role = role;
+    }
 }

@@ -1,6 +1,7 @@
 package com.example.onuldo.domain.challenge.repository;
 
 import com.example.onuldo.domain.challenge.entity.Verification;
+import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -8,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
@@ -38,6 +40,20 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             """)
     List<Verification> findTodayAutoPassVerificationsByPartyIdIn(
             @Param("partyIds") Collection<Long> partyIds,
+            @Param("date") LocalDate date
+    );
+
+    // 홈 "함께하는 파티" 섹션: 리뷰 상태(PENDING/검토대기 포함) 구분 표시를 위해 PASS 여부와 무관하게 오늘 인증 전체 조회
+    @Query("""
+            SELECT v
+            FROM Verification v
+            JOIN FETCH v.participation p
+            JOIN FETCH p.user u
+            WHERE p.party.id = :partyId
+            AND v.verificationDate = :date
+            """)
+    List<Verification> findTodayVerificationsByPartyId(
+            @Param("partyId") Long partyId,
             @Param("date") LocalDate date
     );
 
@@ -95,5 +111,11 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     List<Verification> findAllByParticipation_IdInAndVerificationDate(
             Collection<Long> participationIds,
             LocalDate verificationDate
+    );
+
+    Optional<Verification> findByParticipation_IdAndVerificationDateAndReview(
+            Long participationId,
+            LocalDate verificationDate,
+            VerificationReviewStatus review
     );
 }

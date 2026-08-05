@@ -27,6 +27,7 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _TERMS_REQUIRED(HttpStatus.BAD_REQUEST, "TERMS_REQUIRED", "필수 약관에 동의해주세요."),
     _USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
     _SIGNUP_BONUS_ALREADY_GRANTED(HttpStatus.CONFLICT, "SIGNUP_BONUS_ALREADY_GRANTED", "이미 신규 회원 가입 포인트가 지급되었습니다."),
+    _PROFILE_UPDATE_FIELD_REQUIRED(HttpStatus.BAD_REQUEST, "PROFILE_UPDATE_FIELD_REQUIRED", "변경할 닉네임 또는 프로필 사진을 입력해주세요."),
 
     // 파일 관련 에러
     _FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_NOT_FOUND", "파일을 찾을 수 없습니다."),
@@ -34,11 +35,15 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     // 챌린지 관련 에러
     _CHALLENGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHALLENGE_NOT_FOUND", "존재하지 않는 챌린지입니다."),
     _INVALID_DEPOSIT_OPTION(HttpStatus.BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "선택할 수 없는 도전금입니다."),
+    _INVALID_DURATION_OPTION(HttpStatus.BAD_REQUEST, "INVALID_DURATION_OPTION", "선택할 수 없는 진행 기간입니다."),
     _INSUFFICIENT_POINT_FOR_CHALLENGE(HttpStatus.BAD_REQUEST, "INSUFFICIENT_POINT_FOR_CHALLENGE", "보유 포인트가 부족합니다."),
     _ALREADY_PARTICIPATING_CHALLENGE(HttpStatus.CONFLICT, "ALREADY_PARTICIPATING_CHALLENGE", "이미 참여 중인 챌린지입니다."),
     _DUPLICATE_VERIFICATION_PHOTO(HttpStatus.CONFLICT, "DUPLICATE_VERIFICATION_PHOTO", "이미 인증에 사용한 사진입니다."),
     _ALREADY_VERIFIED_TODAY(HttpStatus.CONFLICT, "ALREADY_VERIFIED_TODAY", "오늘은 이미 인증했습니다."),
     _PARTICIPATION_NOT_FOUND(HttpStatus.NOT_FOUND, "PARTICIPATION_NOT_FOUND", "해당 챌린지 참여 기록을 찾을 수 없습니다."),
+    _CHALLENGE_NOT_STARTED(HttpStatus.CONFLICT, "CHALLENGE_NOT_STARTED", "아직 시작되지 않은 챌린지입니다."),
+    _AUTO_FAIL_VERIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTO_FAIL_VERIFICATION_NOT_FOUND", "오늘 자동 실패 처리된 인증 기록을 찾을 수 없습니다."),
+    _ALREADY_MANUALLY_REVIEWED(HttpStatus.CONFLICT, "ALREADY_MANUALLY_REVIEWED", "오늘 이미 수동 검토 처리되었습니다."),
 
     // Party 관련 에러
     _INSUFFICIENT_POINT_FOR_PARTY(HttpStatus.CONFLICT, "INSUFFICIENT_POINT_FOR_PARTY", "보유 포인트가 도전금보다 부족합니다."),
@@ -55,6 +60,8 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     // PAR-ERR-01: 초대코드 오류 4종
     _INVALID_INVITE_CODE(HttpStatus.BAD_REQUEST, "INVALID_INVITE_CODE", "잘못된 초대코드예요. 코드를 다시 확인해주세요."),
     _PARTY_ALREADY_STARTED(HttpStatus.CONFLICT, "PARTY_ALREADY_STARTED", "이미 시작된 파티예요."),
+    _PARTY_ALREADY_FINISHED(HttpStatus.CONFLICT, "PARTY_ALREADY_FINISHED", "이미 종료된 파티예요."),
+    _PARTY_DISSOLVED(HttpStatus.CONFLICT, "PARTY_DISSOLVED", "해체된 파티예요."),
     _PARTY_FULL(HttpStatus.CONFLICT, "PARTY_FULL", "파티 인원이 가득 찼어요."),
     _INVITE_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "INVITE_CODE_EXPIRED", "만료된 초대코드예요."),
 
@@ -69,6 +76,9 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
             "파티원이 2인 이상 모이고 전원 준비완료해야 시작할 수 있습니다."
     ),
     _HOST_CANNOT_READY(HttpStatus.BAD_REQUEST, "HOST_CANNOT_READY", "방장은 준비완료 대상이 아닙니다."),
+
+    // 파티 정산 결과 조회 시, 정산이 아직 처리되지 않은 경우 (정산 계산 로직은 별도 도메인에서 처리 예정)
+    _SETTLEMENT_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "SETTLEMENT_NOT_COMPLETED", "아직 정산이 완료되지 않은 파티입니다."),
 
     // 약관 데이터 조회
     _TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "TERM_NOT_FOUND", "약관을 찾을 수 없습니다."),

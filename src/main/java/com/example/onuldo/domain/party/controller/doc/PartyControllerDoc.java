@@ -4,7 +4,10 @@ import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
+import com.example.onuldo.domain.party.dto.response.PartyHomeItemResDto;
+import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
+import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
@@ -19,7 +22,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작, 진행 피드 관련 API")
+import java.util.List;
+
+@Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작, 진행 피드, 정산 결과, 홈 화면 관련 API")
 public interface PartyControllerDoc {
 
     @Operation(
@@ -80,6 +85,20 @@ public interface PartyControllerDoc {
     );
 
     @Operation(
+            summary = "파티 대기방 이탈",
+            description = "대기방에 있는 파티원이 파티를 나갑니다(뒤로가기 등으로 인한 이탈 포함). "
+                    + "방장이 나가면 가장 먼저 입장한 파티원에게 방장 권한이 자동으로 승계되며, "
+                    + "승계된 파티원은 기존 준비완료 상태가 해제됩니다. "
+                    + "방장이 나갔는데 남은 파티원이 없으면 파티가 해체되고 초대코드가 즉시 만료됩니다. "
+                    + "이미 시작되었거나 종료된 파티는 이탈할 수 없습니다."
+    )
+    @ApiResponse(responseCode = "200")
+    BaseResponse<PartyLeaveResDto> leaveParty(
+            @AuthUser Long userId,
+            @PathVariable Long partyId
+    );
+
+    @Operation(
             summary = "파티원 준비완료 상태 토글",
             description = "파티원이 대기방에서 [준비완료]/[대기] 상태를 전환합니다. "
                     + "방장은 준비완료 대상이 아닙니다. "
@@ -113,5 +132,33 @@ public interface PartyControllerDoc {
     BaseResponse<PartyFeedResDto> getPartyFeed(
             @AuthUser Long userId,
             @PathVariable Long partyId
+    );
+
+    @Operation(
+            summary = "파티 정산 결과 조회",
+            description = """
+                    파티 챌린지 종료 후 정산 결과를 조회합니다.
+                    전원 성공/전원 실패/일부 성공 여부와 나의 정산 결과, 파티원별 정산 결과를 반환합니다.
+                    정산 계산 및 처리는 별도 도메인에서 수행되며, 아직 정산이 완료되지 않은 파티는 조회할 수 없습니다.
+                    요청자가 해당 파티의 파티원이 아니면 조회할 수 없습니다.
+                    """
+    )
+    @ApiResponse(responseCode = "200")
+    BaseResponse<PartyResultResDto> getPartyResult(
+            @AuthUser Long userId,
+            @PathVariable Long partyId
+    );
+
+    @Operation(
+            summary = "홈 - 함께하는 파티 섹션 조회",
+            description = """
+                    로그인한 사용자가 참여 중인(ONGOING) 파티 목록을 홈 화면 "함께하는 파티" 섹션용으로 조회합니다.
+                    파티별 D-day, 마감 시각, 오늘 나의 인증 상태(미인증/검토대기/성공/실패), 파티원별 오늘 인증 여부를 반환합니다.
+                    HOME-09 정렬 규칙(상태 우선순위 → 마감 시각 → D-day → 챌린지ID)에 따라 정렬되어 반환됩니다.
+                    """
+    )
+    @ApiResponse(responseCode = "200")
+    BaseResponse<List<PartyHomeItemResDto>> getHomeParties(
+            @AuthUser Long userId
     );
 }
