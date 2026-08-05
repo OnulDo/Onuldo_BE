@@ -98,7 +98,7 @@ public class AuthService {
 
     @Transactional
     public AuthResDto login(EmailLoginReqDto request) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmailForUpdate(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
         LocalDateTime now = timeService.nowKst();
@@ -145,7 +145,8 @@ public class AuthService {
                     .build();
         }
 
-        User user = existingUser.get();
+        User user = userRepository.findByIdForUpdate(existingUser.get().getId())
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
         if (user.getSocialProvider() != info.provider()) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
         }

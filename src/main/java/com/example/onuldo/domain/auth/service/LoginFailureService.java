@@ -20,12 +20,12 @@ public class LoginFailureService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFailure(Long userId, LocalDateTime now) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다."));
 
         if (user.getLockedUntil() != null && !user.getLockedUntil().isAfter(now)) {
-            user.setLockedUntil(null);
             user.setLoginFailCount(0);
+            user.setLockedUntil(null);
         }
 
         int nextFailCount = user.getLoginFailCount() == null ? 1 : user.getLoginFailCount() + 1;

@@ -1,6 +1,8 @@
 package com.example.onuldo.domain.user.service;
 
 import com.example.onuldo.domain.auth.support.NicknameValidator;
+import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
+import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateProfileReqDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
@@ -27,6 +29,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final NotificationSettingRepository notificationSettingRepository;
+    private final ParticipationRepository participationRepository;
     private final NicknameValidator nicknameValidator;
     private final TimeService timeService;
 
@@ -105,6 +108,11 @@ public class UserService {
     @Transactional
     public void withdraw(Long userId) {
         User user = getActiveUserForUpdate(userId);
+
+        if (participationRepository.existsByUser_IdAndStatus(userId, ParticipationStatus.ONGOING)) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "진행 중인 챌린지가 있어 회원 탈퇴할 수 없습니다.");
+        }
+
         user.setStatus(UserStatus.WITHDRAWN);
         user.setWithdrawalRequestedAt(timeService.nowKst());
     }
