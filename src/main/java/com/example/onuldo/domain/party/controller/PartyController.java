@@ -5,7 +5,7 @@ import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
-import com.example.onuldo.domain.party.dto.response.PartyHomeItemResDto;
+import com.example.onuldo.domain.party.dto.response.PartyHomeResDto;
 import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
@@ -28,8 +28,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -137,7 +135,7 @@ public class PartyController implements PartyControllerDoc {
     }
 
     @GetMapping("/home")
-    public BaseResponse<List<PartyHomeItemResDto>> getHomeParties(
+    public BaseResponse<PartyHomeResDto> getHomeParties(
             @AuthUser
             Long userId
     ) {

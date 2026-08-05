@@ -68,4 +68,13 @@ public class Settlement {
 
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
+
+    // 홈 "정산이 완료됐어요!" 배너 노출 여부 — 정산 결과 화면을 조회하면 확인 처리되어 배너에서 사라진다.
+    @Builder.Default
+    @Column(name = "confirmed", nullable = false)
+    private boolean confirmed = false;
+
+    public void confirm() {
+        this.confirmed = true;
+    }
 }

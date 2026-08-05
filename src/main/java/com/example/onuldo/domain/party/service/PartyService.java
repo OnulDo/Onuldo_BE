@@ -40,6 +40,8 @@ import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.party.dto.response.PartyHomeItemResDto;
 import com.example.onuldo.domain.party.dto.response.PartyHomeMemberResDto;
+import com.example.onuldo.domain.party.dto.response.PartyHomeResDto;
+import com.example.onuldo.domain.party.dto.response.PartySettlementBannerResDto;
 import com.example.onuldo.domain.party.enums.PartyHomeCardStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -384,7 +386,8 @@ public class PartyService {
     // 파티 정산 결과 조회
     // 정산 계산(환급/보너스 계산) 및 Settlement 생성 로직은 별도 도메인(포인트/정산 담당)에서 처리 예정이며,
     // 이 메서드는 이미 계산되어 저장된 Settlement 데이터를 조회해서 응답 형태로 가공하는 역할만 담당함
-    @Transactional(readOnly = true)
+    // 정산 결과 조회 시 홈 배너 확인 처리(Settlement.confirm())가 함께 일어나므로 readOnly 불가
+    @Transactional
     public PartyResultResDto getPartyResult(Long partyId, Long userId) {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
@@ -434,6 +437,7 @@ public class PartyService {
                   : PartySettlementResultType.PARTIAL_SUCCESS;
 
         Settlement mySettlement = settlementByUserId.get(userId);
+        mySettlement.confirm();
         PartyMemberResultResDto myResult = members.stream()
                 .filter(m -> m.userId().equals(userId))
                 .findFirst()
@@ -487,7 +491,7 @@ public class PartyService {
 
     // 홈 화면 "함께하는 파티" 섹션 조회 (HOME-04, HOME-07, HOME-09)
     @Transactional(readOnly = true)
-    public List<PartyHomeItemResDto> getHomeParties(Long userId) {
+    public PartyHomeResDto getHomeParties(Long userId) {
         List<Party> ongoingParties = partyRepository.findOngoingPartiesByUserId(userId);
 
         List<HomeItemWithChallengeId> wrappedItems = ongoingParties.stream()
@@ -508,8 +512,27 @@ public class PartyService {
                 )
                 .thenComparing(HomeItemWithChallengeId::challengeId));
 
-        return wrappedItems.stream()
+        List<PartyHomeItemResDto> parties = wrappedItems.stream()
                 .map(HomeItemWithChallengeId::item)
+                .toList();
+
+        return PartyHomeResDto.builder()
+                .settlementBanners(resolveSettlementBanners(userId))
+                .parties(parties)
+                .build();
+    }
+
+    // 홈 상단 "정산이 완료됐어요!" 배너: 아직 확인하지 않은 정산 전부 노출 (결과 조회 시 confirm 처리되어 사라짐)
+    private List<PartySettlementBannerResDto> resolveSettlementBanners(Long userId) {
+        return settlementRepository.findAllByParticipation_User_IdAndConfirmedFalseOrderByProcessedAtDesc(userId)
+                .stream()
+                .map(settlement -> {
+                    Party party = settlement.getParticipation().getParty();
+                    return PartySettlementBannerResDto.builder()
+                            .partyId(party.getId())
+                            .partyName(party.getName())
+                            .build();
+                })
                 .toList();
     }
 
