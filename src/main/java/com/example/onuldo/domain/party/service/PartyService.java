@@ -677,9 +677,12 @@ public class PartyService {
             }
         }
 
-        LocalDate endDate = party.getStartTriggeredAt() != null
-                ? party.getStartTriggeredAt().toLocalDate().plusDays(party.getDurationDays())
-                : null;
+        // HOME-07 코드리뷰 반영: endDate는 startParty()에서 생성된 Participation.endDate를 단일 원본으로 사용
+        // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 홈/파티목록 화면 종료일이 하루 어긋남)
+        LocalDate endDate = participationRepository
+                .findByParty_IdAndUser_IdAndParticipationType(party.getId(), userId, ParticipationType.PARTY)
+                .map(Participation::getEndDate)
+                .orElse(null);
 
         PartyHomeItemResDto item = PartyHomeItemResDto.builder()
                 .partyId(party.getId())
