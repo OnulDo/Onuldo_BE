@@ -115,19 +115,15 @@ public interface UserControllerDoc {
 
     @Operation(
             summary = "신규 회원 가입 포인트 지급",
-            description = "회원가입 직후 클라이언트가 호출하여 신규 회원 가입 포인트를 지급받고, 지급된 금액과 지급 후 잔액을 반환합니다."
-    )
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            content = @Content(mediaType = "application/json")
+            description = """
+                    회원가입 직후 클라이언트가 호출하면 서버가 신규 회원 가입 포인트 100,000P를 지급하고,
+                    지급된 금액과 지급 후 잔액을 반환합니다.
+                    """
     )
     @ApiResponse(responseCode = "200")
     BaseResponse<ChargePointResDto> grantSignupBonus(
             @AuthUser
-            Long userId,
-
-            @Valid
-            @RequestBody
-            ChargePointReqDto request
+            Long userId
     );
 
     @Operation(
