@@ -123,8 +123,9 @@ public class PartyLifecycleService {
         partyRepository.save(party);
 
         // #94: 참여 시작일은 시작 처리 다음 날부터 (당일 시작 금지, 시작 전 인증 방지)
+        // durationDays는 시작일·종료일을 포함한 총 수행일수 (ParticipationRecordService.calculateInclusiveDays와 동일 기준)
         LocalDate startDate = now.toLocalDate().plusDays(1);
-        LocalDate endDate = startDate.plusDays(party.getDurationDays());
+        LocalDate endDate = startDate.plusDays(party.getDurationDays() - 1);
         int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
 
         for (PartyMember member : partyMembers) {
