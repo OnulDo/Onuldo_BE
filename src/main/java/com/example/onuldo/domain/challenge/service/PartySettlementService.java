@@ -208,12 +208,12 @@ public class PartySettlementService {
         // 잔여 예치금 = 성공일수 × s (몰수된 실패일 지분 제외)
         BigDecimal remainingDeposit = dayShare.multiply(BigDecimal.valueOf(successDays));
 
-        // 지급은 종료 후 일괄 1회 — 최종 합산 후 1P 미만 올림(단수 차액은 운영 부담), 이후 보너스 합산
-        int payoutAmount = remainingDeposit.add(accruedDistribution)
-                .setScale(0, RoundingMode.CEILING)
-                .intValue() + bonusAmount;
+        // 지급 항목별로 1P 미만 올림(단수 차액은 운영 부담, 유저 유리 원칙)해서 화면에 "도전금 환급"/"분배금"을
+        // 각각 정확한 금액으로 나눠 보여줄 수 있게 한다. 항목별로 올림한 값을 그대로 더하므로 총액과도 항상 일치한다.
+        int depositRefundAmount = remainingDeposit.setScale(0, RoundingMode.CEILING).intValue();
+        int partyShareAmount = accruedDistribution.setScale(0, RoundingMode.CEILING).intValue();
+        int payoutAmount = depositRefundAmount + partyShareAmount + bonusAmount;
 
-        int partyShareAmount = accruedDistribution.setScale(0, RoundingMode.HALF_UP).intValue();
         BigDecimal achievementRate = BigDecimal.valueOf(successDays)
                 .divide(BigDecimal.valueOf(totalDays), 2, RoundingMode.HALF_UP);
         ParticipationStatus status = achievementRate.compareTo(SUCCESS_THRESHOLD) >= 0
@@ -228,6 +228,7 @@ public class PartySettlementService {
                 .depositAmount(participation.getDepositAmount())
                 .rValue(achievementRate)
                 .refundAmount(payoutAmount)
+                .depositRefundAmount(depositRefundAmount)
                 .bonusAmount(bonusAmount)
                 .partyShareAmount(partyShareAmount)
                 .status(SettlementStatus.COMPLETED)

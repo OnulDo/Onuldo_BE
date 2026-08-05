@@ -96,11 +96,12 @@ public class SettlementService {
 
     private void settleSuccess(Participation participation, BigDecimal rValue) {
         int bonusAmount = calculateBonusAmount(participation.getDepositAmount());
-        int refundAmount = participation.getDepositAmount() + bonusAmount;
+        int depositRefundAmount = participation.getDepositAmount();
+        int refundAmount = depositRefundAmount + bonusAmount;
 
         refundPoint(participation, refundAmount, bonusAmount);
 
-        Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, bonusAmount);
+        Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, depositRefundAmount, bonusAmount);
         settlementRepository.save(resultSettlement);
     }
 
@@ -110,7 +111,8 @@ public class SettlementService {
 
         refundPoint(participation, refundAmount, -penaltyAmount);
 
-        Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, 0);
+        // 개인 실패 정산엔 보너스·분배금 개념이 없어 전액이 곧 예치금 환급분이다.
+        Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, refundAmount, 0);
 
         settlementRepository.save(resultSettlement);
     }
@@ -119,6 +121,7 @@ public class SettlementService {
             Participation participation,
             BigDecimal rValue,
             int refundAmount,
+            int depositRefundAmount,
             int bonusAmount
     ) {
         return Settlement.builder()
@@ -126,6 +129,7 @@ public class SettlementService {
                 .depositAmount(participation.getDepositAmount())
                 .rValue(rValue)
                 .refundAmount(refundAmount)
+                .depositRefundAmount(depositRefundAmount)
                 .bonusAmount(bonusAmount)
                 .partyShareAmount(0)
                 .status(SettlementStatus.COMPLETED)

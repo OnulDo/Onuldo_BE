@@ -48,6 +48,11 @@ public class Settlement {
     @Column(name = "refund_amount", nullable = false)
     private Integer refundAmount = 0;
 
+    // 예치금 환급분만(보너스·파티 분배금 제외) — 화면에 "도전금 환급"으로 별도 표시하기 위해 정산 시점에 저장
+    @Builder.Default
+    @Column(name = "deposit_refund_amount", nullable = false)
+    private Integer depositRefundAmount = 0;
+
     @Builder.Default
     @Column(name = "bonus_amount", nullable = false)
     private Integer bonusAmount = 0;

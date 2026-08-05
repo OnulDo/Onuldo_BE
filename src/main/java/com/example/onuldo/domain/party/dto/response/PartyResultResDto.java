@@ -14,9 +14,9 @@ public record PartyResultResDto(
         String name,
         @Schema(example = "PARTIAL_SUCCESS")
         PartySettlementResultType resultType,
-        @Schema(example = "30000")
-        Integer myRefundAmount,
-        @Schema(example = "10000")
+        @Schema(description = "도전금 환급분 (보너스·파티 분배금 제외)", example = "30000")
+        Integer myDepositRefundAmount,
+        @Schema(description = "성과에 따른 보너스·파티 분배금(양수) 또는 차감액(음수)", example = "10000")
         Integer myDisplayAmount,
         List<PartyMemberResultResDto> members
 ) {
