@@ -110,8 +110,8 @@ public class PartyService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
         // 파티는 챌린지가 제공하는 진행 기간/도전금 옵션 중에서만 선택 가능
-        validateDurationOption(challenge, request.durationWeeks());
-        validateDepositOption(challenge, request.depositAmount());
+        challenge.validateDurationOption(request.durationWeeks());
+        challenge.validateDepositOption(request.depositAmount());
 
         // PAR-ERR-02: 파티 생성 시 방장 보유 포인트 < 도전금이면 포인트 충전 안내
         if (host.getPointBalance() < request.depositAmount()) {
@@ -506,18 +506,6 @@ public class PartyService {
                 .myDisplayAmount(myResult.displayAmount())
                 .members(members)
                 .build();
-    }
-
-    private void validateDurationOption(Challenge challenge, Integer durationWeeks) {
-        if (challenge.getDurationOptionList() == null || !challenge.getDurationOptionList().contains(durationWeeks)) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_DURATION_OPTION);
-        }
-    }
-
-    private void validateDepositOption(Challenge challenge, Integer depositAmount) {
-        if (challenge.getDepositOptionList() == null || !challenge.getDepositOptionList().contains(depositAmount)) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_DEPOSIT_OPTION);
-        }
     }
 
     private String generateUniqueInviteCode() {
