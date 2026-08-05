@@ -47,6 +47,8 @@ public class PartySettlementService {
     private static final BigDecimal SUCCESS_THRESHOLD = BigDecimal.valueOf(0.85);
     // POI-07 전원 완주 보너스 b = 5% (개인 성공 보너스 2.5%와 다름)
     private static final BigDecimal BONUS_RATE = BigDecimal.valueOf(0.05);
+    // POI-08 직접검토 유예 시간
+    private static final long MANUAL_REVIEW_GRACE_HOURS = 24;
 
     private final PartyRepository partyRepository;
     private final ParticipationRepository participationRepository;
@@ -76,26 +78,39 @@ public class PartySettlementService {
             return;
         }
 
-        // 전원 마지막 일 인증 마감 전이면 정산 보류
-        if (!isSettlementWindowClosed(participations.get(0))) {
+        // 전원 마지막 일 인증 마감 전이거나, 직접검토 중인 인증의 유예 기간이 안 지났으면 정산 보류
+        if (!isSettlementWindowClosed(participations)) {
             return;
         }
 
         processSettlement(participations);
     }
 
-    private boolean isSettlementWindowClosed(Participation participation) {
-        LocalDate endDate = participation.getEndDate();
-        LocalTime deadline = participation.getChallenge().getTimeEnd();
+    private boolean isSettlementWindowClosed(List<Participation> participations) {
+        Participation reference = participations.get(0);
+        LocalDate endDate = reference.getEndDate();
+        LocalTime deadline = reference.getChallenge().getTimeEnd();
         LocalDateTime now = timeService.nowKst();
 
+        boolean timeWindowClosed;
         if (now.toLocalDate().isAfter(endDate)) {
-            return true;
+            timeWindowClosed = true;
+        } else if (now.toLocalDate().isEqual(endDate)) {
+            timeWindowClosed = deadline == null || !now.toLocalTime().isBefore(deadline);
+        } else {
+            timeWindowClosed = false;
         }
-        if (now.toLocalDate().isEqual(endDate)) {
-            return deadline == null || !now.toLocalTime().isBefore(deadline);
+        if (!timeWindowClosed) {
+            return false;
         }
-        return false;
+
+        // POI-08: 직접검토(MANUAL_REVIEW) 중인 인증이 있으면 검토 확정까지 최대 24시간 정산을 미룬다.
+        // 검토가 PASS로 확정되면 collectPassDates가 review=PASS만 카운트하므로 별도 처리 없이 그날이 자동으로 성공 반영된다.
+        List<Long> participationIds = participations.stream().map(Participation::getId).toList();
+        LocalDateTime manualReviewGraceCutoff = now.minusHours(MANUAL_REVIEW_GRACE_HOURS);
+        boolean hasPendingManualReview = verificationRepository.existsByParticipation_IdInAndReviewAndVerifiedAtAfter(
+                participationIds, VerificationReviewStatus.MANUAL_REVIEW, manualReviewGraceCutoff);
+        return !hasPendingManualReview;
     }
 
     private void processSettlement(List<Participation> participations) {

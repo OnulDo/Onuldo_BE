@@ -7,11 +7,19 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
+
+    // POI-08: 파티 정산 전 직접검토(MANUAL_REVIEW) 유예 여부 판단용 — verifiedAt은 검토 "요청" 시각
+    boolean existsByParticipation_IdInAndReviewAndVerifiedAtAfter(
+            Collection<Long> participationIds,
+            VerificationReviewStatus review,
+            LocalDateTime cutoff
+    );
 
     // 파티 진행 피드: 오늘 PASS 처리된 인증만 "인증 완료"로 집계
     @Query("""
