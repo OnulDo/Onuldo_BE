@@ -1,10 +1,15 @@
 package com.example.onuldo.domain.party.service;
 
 import com.example.onuldo.domain.challenge.entity.Challenge;
+import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Settlement;
+import com.example.onuldo.domain.challenge.entity.Verification;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
+import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
+import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
+import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
@@ -32,11 +37,17 @@ import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
+import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
+import com.example.onuldo.domain.party.dto.response.PartyHomeItemResDto;
+import com.example.onuldo.domain.party.dto.response.PartyHomeMemberResDto;
+import com.example.onuldo.domain.party.enums.PartyHomeCardStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -69,6 +80,8 @@ public class PartyService {
     private final PartyChallengeRepository partyChallengeRepository;
     private final UserRepository userRepository;
     private final ChallengeRepository challengeRepository;
+    private final ParticipationRepository participationRepository;
+    private final VerificationRepository verificationRepository;
     private final SettlementRepository settlementRepository;
     private final TimeService timeService;
 
@@ -89,7 +102,9 @@ public class PartyService {
         Challenge challenge = challengeRepository.findById(request.challengeId())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
-        validateDurationOption(challenge, request.durationDays());
+        // 파티는 챌린지가 제공하는 진행 기간/도전금 옵션 중에서만 선택 가능
+        challenge.validateDurationOption(request.durationWeeks());
+        challenge.validateDepositOption(request.depositAmount());
 
         // PAR-ERR-02: 파티 생성 시 방장 보유 포인트 < 도전금이면 포인트 충전 안내
         if (host.getPointBalance() < request.depositAmount()) {
@@ -101,7 +116,8 @@ public class PartyService {
         }
 
         String inviteCode = generateUniqueInviteCode();
-        LocalDateTime inviteExpiresAt = timeService.nowKst().plusDays(request.durationDays());
+        int durationDays = request.durationWeeks() * DAYS_PER_WEEK;
+        LocalDateTime inviteExpiresAt = timeService.nowKst().plusDays(durationDays);
 
         Party party = Party.builder()
                 .name(request.name())
@@ -109,7 +125,7 @@ public class PartyService {
                 .inviteCode(inviteCode)
                 .inviteExpiresAt(inviteExpiresAt)
                 .maxMembers(request.maxMembers())
-                .durationDays(request.durationDays())
+                .durationDays(durationDays)
                 .depositAmount(request.depositAmount())
                 .build();
         partyRepository.save(party);
@@ -243,8 +259,8 @@ public class PartyService {
         PartySettlementResultType resultType = allSuccess
                 ? PartySettlementResultType.ALL_SUCCESS
                 : allFail
-                        ? PartySettlementResultType.ALL_FAIL
-                        : PartySettlementResultType.PARTIAL_SUCCESS;
+                  ? PartySettlementResultType.ALL_FAIL
+                  : PartySettlementResultType.PARTIAL_SUCCESS;
 
         Settlement mySettlement = settlementByUserId.get(userId);
         PartyMemberResultResDto myResult = members.stream()
@@ -260,16 +276,6 @@ public class PartyService {
                 .myDisplayAmount(myResult.displayAmount())
                 .members(members)
                 .build();
-    }
-
-    // 파티는 일 단위로 기간을 받지만(durationDays), 챌린지의 허용 기간 옵션은 주 단위(durationOptionList)라 변환해서 검증
-    private void validateDurationOption(Challenge challenge, Integer durationDays) {
-        List<Integer> durationOptionList = challenge.getDurationOptionList();
-        if (durationOptionList == null
-                || durationDays % DAYS_PER_WEEK != 0
-                || !durationOptionList.contains(durationDays / DAYS_PER_WEEK)) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_DURATION_OPTION);
-        }
     }
 
     private String generateUniqueInviteCode() {
@@ -307,4 +313,135 @@ public class PartyService {
                 .displayAmount(displayAmount)
                 .build();
     }
+
+    // 홈 화면 "함께하는 파티" 섹션 조회 (HOME-04, HOME-07, HOME-09)
+    @Transactional(readOnly = true)
+    public List<PartyHomeItemResDto> getHomeParties(Long userId) {
+        List<Party> ongoingParties = partyRepository.findOngoingPartiesByUserId(userId);
+
+        List<HomeItemWithChallengeId> wrappedItems = ongoingParties.stream()
+                .map(party -> generatePartyHomeItem(party, userId))
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+
+        // HOME-09: 상태 우선순위(미인증→검토대기→성공→실패) → 마감 빠른순 → D-day 짧은순 → 챌린지ID 오름차순
+        wrappedItems.sort(java.util.Comparator
+                .comparingInt((HomeItemWithChallengeId w) -> statusPriority(w.item().status()))
+                .thenComparing(
+                        (HomeItemWithChallengeId w) -> w.item().verificationDeadline(),
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())
+                )
+                .thenComparing(
+                        (HomeItemWithChallengeId w) -> w.item().endDate(),
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())
+                )
+                .thenComparing(HomeItemWithChallengeId::challengeId));
+
+        return wrappedItems.stream()
+                .map(HomeItemWithChallengeId::item)
+                .toList();
+    }
+
+    // 정렬 시 마지막 비교 기준(챌린지ID)을 응답 DTO에 노출하지 않으면서도 함께 들고 다니기 위한 내부 전용 래퍼
+    private record HomeItemWithChallengeId(PartyHomeItemResDto item, Long challengeId) {
+    }
+
+    private int statusPriority(PartyHomeCardStatus status) {
+        return switch (status) {
+            case NOT_VERIFIED -> 0;
+            case PENDING -> 1;
+            case SUCCESS -> 2;
+            case FAIL -> 3;
+        };
+    }
+
+    private HomeItemWithChallengeId generatePartyHomeItem(Party party, Long userId) {
+        PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(party.getId())
+                .orElse(null);
+        if (partyChallenge == null) {
+            return null;
+        }
+        Challenge challenge = partyChallenge.getChallenge();
+
+        List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(party.getId());
+
+        LocalDate today = timeService.todayKst();
+        List<Verification> todayVerifications =
+                verificationRepository.findTodayVerificationsByPartyId(party.getId(), today);
+
+        // 파티원 1인당 하루 1회 인증이 원칙이므로 userId 기준으로 매핑
+        Map<Long, Verification> verificationByUserId = todayVerifications.stream()
+                .collect(Collectors.toMap(
+                        v -> v.getParticipation().getUser().getId(),
+                        v -> v,
+                        (existing, duplicate) -> existing
+                ));
+
+        List<PartyHomeMemberResDto> members = partyMembers.stream()
+                .map(member -> {
+                    Verification verification = verificationByUserId.get(member.getUser().getId());
+                    // HOME-07: 파티원 아바타의 "인증 완료"는 #15 피드와 동일하게 PASS 기준
+                    boolean isVerified = verification != null
+                            && verification.getReview() == VerificationReviewStatus.PASS;
+                    return PartyHomeMemberResDto.builder()
+                            .userId(member.getUser().getId())
+                            .profileImageUrl(member.getUser().getProfileImageUrl())
+                            .isVerifiedToday(isVerified)
+                            .build();
+                })
+                .toList();
+
+        // 서버 시간대가 KST가 아닐 수 있으므로 now/today 모두 TimeService 기준으로 통일
+        LocalDateTime now = timeService.nowKst();
+        LocalTime deadline = challenge.getTimeEnd();
+        // 자정 경계를 포함해 마감 임박 여부를 판단하기 위해 날짜가 결합된 deadlineAt을 사용
+        // (LocalTime만으로 minusHours(1)을 계산하면 마감이 자정 부근일 때 전날 시각으로 순환해버림)
+        LocalDateTime deadlineAt = deadline != null ? LocalDateTime.of(today, deadline) : null;
+        // HOME-03: 남은 시간 칩은 마감 1시간 전부터 표시
+        boolean showRemainingTime = deadlineAt != null
+                && !now.isBefore(deadlineAt.minusHours(1))
+                && now.isBefore(deadlineAt);
+
+        Verification myVerification = verificationByUserId.get(userId);
+        PartyHomeCardStatus status;
+        LocalDateTime verifiedAt = null;
+
+        if (myVerification == null) {
+            // HOME-04: 오늘 인증 미완료 + 마감 시각 전이면 [인증하기] 노출
+            // 마감 후 미인증은 오늘 하루치 실패로 표시함 (챌린지 전체 SUCCESS/FAIL과는 무관, 화면 표시용 판단)
+            boolean beforeDeadline = deadlineAt == null || now.isBefore(deadlineAt);
+            status = beforeDeadline ? PartyHomeCardStatus.NOT_VERIFIED : PartyHomeCardStatus.FAIL;
+        } else {
+            status = switch (myVerification.getReview()) {
+                case PASS -> PartyHomeCardStatus.SUCCESS;
+                case AUTO_FAIL -> PartyHomeCardStatus.FAIL;
+                case PENDING, MANUAL_REVIEW -> PartyHomeCardStatus.PENDING;
+            };
+            if (status == PartyHomeCardStatus.SUCCESS) {
+                verifiedAt = myVerification.getVerifiedAt();
+            }
+        }
+
+        // HOME-07 코드리뷰 반영: endDate는 startParty()에서 생성된 Participation.endDate를 단일 원본으로 사용
+        // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 홈/파티목록 화면 종료일이 하루 어긋남)
+        LocalDate endDate = participationRepository
+                .findByParty_IdAndUser_IdAndParticipationType(party.getId(), userId, ParticipationType.PARTY)
+                .map(Participation::getEndDate)
+                .orElse(null);
+
+        PartyHomeItemResDto item = PartyHomeItemResDto.builder()
+                .partyId(party.getId())
+                .name(party.getName())
+                .challengeTitle(challenge.getName())
+                .endDate(endDate)
+                .verificationDeadline(deadline)
+                .showRemainingTime(showRemainingTime)
+                .status(status)
+                .verifiedAt(verifiedAt)
+                .members(members)
+                .build();
+
+        return new HomeItemWithChallengeId(item, challenge.getId());
+    }
+
 }

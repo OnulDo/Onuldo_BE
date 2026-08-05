@@ -33,8 +33,11 @@ public class PartyMemberService {
     private final TimeService timeService;
 
     // PAR-04, PAR-ERR-01: 초대코드 검증 후 파티 참여
+    // 동시성 방어: 초대코드 조회 시점에 바로 비관적 락을 걸어, 상태 확인부터 저장까지를 하나의 조회로 직렬화한다.
+    // (락 없이 조회 → 락 걸고 재조회하는 2단계 방식은 그 사이에 다른 트랜잭션이 파티를 시작시켜도
+    //  먼저 읽은 상태값으로 통과해버리는 레이스 컨디션이 있어 단일 조회 방식으로 변경)
     public PartyWaitingResDto joinParty(Long userId, PartyJoinReqDto request) {
-        Party party = partyRepository.findByInviteCode(request.inviteCode())
+        Party party = partyRepository.findByInviteCodeForUpdate(request.inviteCode())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_INVITE_CODE));
 
         if (party.getStatus() != PartyStatus.WAITING) {
@@ -50,33 +53,29 @@ public class PartyMemberService {
             throw new RestApiException(GlobalErrorStatus._INVITE_CODE_EXPIRED);
         }
 
-        // 동시성 방어: 비관적 쓰기 락 획득
-        Party lockedParty = partyRepository.findByIdForUpdate(party.getId())
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
         // 파티 중복 참여 방지용 코드 (정책서 근거 없음)
-        if (partyMemberRepository.existsByParty_IdAndUser_Id(lockedParty.getId(), userId)) {
+        if (partyMemberRepository.existsByParty_IdAndUser_Id(party.getId(), userId)) {
             throw new RestApiException(GlobalErrorStatus._ALREADY_PARTY_MEMBER);
         }
 
-        int currentMembers = partyMemberRepository.countByParty_Id(lockedParty.getId());
-        if (currentMembers >= lockedParty.getMaxMembers()) {
+        int currentMembers = partyMemberRepository.countByParty_Id(party.getId());
+        if (currentMembers >= party.getMaxMembers()) {
             throw new RestApiException(GlobalErrorStatus._PARTY_FULL);
         }
 
         PartyMember member = PartyMember.builder()
-                .id(new PartyMemberId(lockedParty.getId(), userId))
-                .party(lockedParty)
+                .id(new PartyMemberId(party.getId(), userId))
+                .party(party)
                 .user(user)
                 .role(PartyMemberRole.MEMBER)
                 .build();
         partyMemberRepository.save(member);
 
-        List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(lockedParty.getId());
-        return PartyWaitingResDto.of(lockedParty, partyMembers, userId);
+        List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(party.getId());
+        return PartyWaitingResDto.of(party, partyMembers, userId);
     }
 
     // PAR-07: 대기방 이탈(뒤로가기 포함) 시 자동 탈퇴 처리. 방장 이탈 시 가장 먼저 입장한 파티원에게 승계,

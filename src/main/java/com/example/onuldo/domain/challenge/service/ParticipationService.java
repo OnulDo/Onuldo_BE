@@ -72,8 +72,8 @@ public class ParticipationService {
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
-        validateDepositOption(challenge, request.depositAmount());
-        validateDurationOption(challenge, request.durationWeeks());
+        challenge.validateDurationOption(request.durationWeeks());
+        challenge.validateDepositOption(request.depositAmount());
         validateAlreadyParticipating(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
 
@@ -238,19 +238,6 @@ public class ParticipationService {
                 PartyCountProjection::partyId,
                 PartyCountProjection::count
         ));
-    }
-
-    private void validateDepositOption(Challenge challenge, Integer depositAmount) {
-        if (challenge.getDepositOptionList() == null || !challenge.getDepositOptionList().contains(depositAmount)) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_DEPOSIT_OPTION);
-        }
-    }
-
-    // durationWeeks 정수 오버플로(예: Integer.MAX_VALUE / 7 이상) 방지 겸 챌린지가 허용하지 않는 기간 차단
-    private void validateDurationOption(Challenge challenge, Integer durationWeeks) {
-        if (challenge.getDurationOptionList() == null || !challenge.getDurationOptionList().contains(durationWeeks)) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_DURATION_OPTION);
-        }
     }
 
     private void validateAlreadyParticipating(Long userId, Long challengeId) {

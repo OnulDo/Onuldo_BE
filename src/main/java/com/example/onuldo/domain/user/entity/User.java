@@ -90,4 +90,5 @@ public class User {
     @Column(name = "last_login_at")
     @Setter
     private LocalDateTime lastLoginAt;
+
 }
