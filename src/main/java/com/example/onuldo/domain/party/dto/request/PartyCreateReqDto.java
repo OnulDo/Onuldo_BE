@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -27,6 +28,7 @@ public record PartyCreateReqDto(
 
         @Schema(example = "30000")
         @NotNull(message = "도전금은 필수입니다.")
+        @Positive(message = "도전금은 0보다 커야 합니다.")
         Integer depositAmount,
 
         @Schema(example = "4")
