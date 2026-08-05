@@ -36,6 +36,7 @@ public class User {
     private String email;
 
     @Column(nullable = false, length = 50)
+    @Setter
     private String nickname;
 
     @Column(name = "password_hash", length = 255)

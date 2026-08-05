@@ -3,6 +3,7 @@ package com.example.onuldo.domain.user.controller;
 import com.example.onuldo.domain.user.controller.doc.UserControllerDoc;
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
+import com.example.onuldo.domain.user.dto.request.UpdateProfileReqDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
@@ -10,6 +11,7 @@ import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
 import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
+import com.example.onuldo.domain.user.dto.response.UpdateProfileResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.service.PointService;
 import com.example.onuldo.domain.user.service.UserService;
@@ -49,6 +51,16 @@ public class UserController implements UserControllerDoc {
             Long userId
     ) {
         return BaseResponse.onSuccess("마이페이지 메인 조회에 성공했습니다.", userService.getMyPage(userId));
+    }
+
+    @PatchMapping ("/profile")
+    public BaseResponse<UpdateProfileResDto> updateProfile(
+            @AuthUser
+            Long userId,
+            @RequestBody
+            UpdateProfileReqDto request
+    ) {
+        return BaseResponse.onSuccess(userService.updateProfile(userId, request));
     }
 
     @GetMapping("/notification-settings")

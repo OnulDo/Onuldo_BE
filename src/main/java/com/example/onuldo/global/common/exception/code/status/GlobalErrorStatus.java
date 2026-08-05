@@ -27,6 +27,7 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _TERMS_REQUIRED(HttpStatus.BAD_REQUEST, "TERMS_REQUIRED", "필수 약관에 동의해주세요."),
     _USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
     _SIGNUP_BONUS_ALREADY_GRANTED(HttpStatus.CONFLICT, "SIGNUP_BONUS_ALREADY_GRANTED", "이미 신규 회원 가입 포인트가 지급되었습니다."),
+    _PROFILE_UPDATE_FIELD_REQUIRED(HttpStatus.BAD_REQUEST, "PROFILE_UPDATE_FIELD_REQUIRED", "변경할 닉네임 또는 프로필 사진을 입력해주세요."),
 
     // 파일 관련 에러
     _FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_NOT_FOUND", "파일을 찾을 수 없습니다."),
@@ -40,6 +41,8 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _ALREADY_VERIFIED_TODAY(HttpStatus.CONFLICT, "ALREADY_VERIFIED_TODAY", "오늘은 이미 인증했습니다."),
     _PARTICIPATION_NOT_FOUND(HttpStatus.NOT_FOUND, "PARTICIPATION_NOT_FOUND", "해당 챌린지 참여 기록을 찾을 수 없습니다."),
     _CHALLENGE_NOT_STARTED(HttpStatus.CONFLICT, "CHALLENGE_NOT_STARTED", "아직 시작되지 않은 챌린지입니다."),
+    _AUTO_FAIL_VERIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTO_FAIL_VERIFICATION_NOT_FOUND", "오늘 자동 실패 처리된 인증 기록을 찾을 수 없습니다."),
+    _ALREADY_MANUALLY_REVIEWED(HttpStatus.CONFLICT, "ALREADY_MANUALLY_REVIEWED", "오늘 이미 수동 검토 처리되었습니다."),
 
     // Party 관련 에러
     _INSUFFICIENT_POINT_FOR_PARTY(HttpStatus.CONFLICT, "INSUFFICIENT_POINT_FOR_PARTY", "보유 포인트가 도전금보다 부족합니다."),

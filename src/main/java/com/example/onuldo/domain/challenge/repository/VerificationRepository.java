@@ -1,6 +1,7 @@
 package com.example.onuldo.domain.challenge.repository;
 
 import com.example.onuldo.domain.challenge.entity.Verification;
+import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -8,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
@@ -82,20 +84,9 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             LocalDate verificationDate
     );
 
-    // HOME-03/04/07: 홈 화면에서는 PASS 외에 PENDING/MANUAL_REVIEW/AUTO_FAIL도
-    // "검토대기"/"실패" 상태 표시에 필요해서, #15 피드용 쿼리(PASS만 조회)와 달리
-    // review 상태 무관하게 오늘의 인증 기록 전체를 조회함
-    @Query("""
-            SELECT v
-            FROM Verification v
-            JOIN FETCH v.participation p
-            JOIN FETCH p.user u
-            WHERE p.party.id = :partyId
-            AND v.verificationDate = :date
-            """)
-    List<Verification> findTodayVerificationsByPartyId(
-            @Param("partyId") Long partyId,
-            @Param("date") LocalDate date
+    Optional<Verification> findByParticipation_IdAndVerificationDateAndReview(
+            Long participationId,
+            LocalDate verificationDate,
+            VerificationReviewStatus review
     );
-
 }
