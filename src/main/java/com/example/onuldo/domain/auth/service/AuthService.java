@@ -124,7 +124,7 @@ public class AuthService {
 
     public AuthResDto refresh(RefreshTokenReqDto request) {
         Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
         if (user.getStatus() != UserStatus.ACTIVE) {
