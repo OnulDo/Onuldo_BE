@@ -6,6 +6,7 @@ import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
 import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
+import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
@@ -20,7 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작, 진행 피드 관련 API")
+@Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작, 진행 피드, 정산 결과 관련 API")
 public interface PartyControllerDoc {
 
     @Operation(
@@ -124,6 +125,21 @@ public interface PartyControllerDoc {
     )
     @ApiResponse(responseCode = "200")
     BaseResponse<PartyFeedResDto> getPartyFeed(
+            @AuthUser Long userId,
+            @PathVariable Long partyId
+    );
+
+    @Operation(
+            summary = "파티 정산 결과 조회",
+            description = """
+                    파티 챌린지 종료 후 정산 결과를 조회합니다.
+                    전원 성공/전원 실패/일부 성공 여부와 나의 정산 결과, 파티원별 정산 결과를 반환합니다.
+                    정산 계산 및 처리는 별도 도메인에서 수행되며, 아직 정산이 완료되지 않은 파티는 조회할 수 없습니다.
+                    요청자가 해당 파티의 파티원이 아니면 조회할 수 없습니다.
+                    """
+    )
+    @ApiResponse(responseCode = "200")
+    BaseResponse<PartyResultResDto> getPartyResult(
             @AuthUser Long userId,
             @PathVariable Long partyId
     );

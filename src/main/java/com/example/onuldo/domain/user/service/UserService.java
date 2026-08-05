@@ -1,10 +1,13 @@
 package com.example.onuldo.domain.user.service;
 
+import com.example.onuldo.domain.auth.support.NicknameValidator;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
+import com.example.onuldo.domain.user.dto.request.UpdateProfileReqDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
+import com.example.onuldo.domain.user.dto.response.UpdateProfileResDto;
 import com.example.onuldo.domain.user.entity.NotificationSetting;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
@@ -22,6 +25,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final NotificationSettingRepository notificationSettingRepository;
+    private final NicknameValidator nicknameValidator;
 
     public GetProfileResDto getProfile(Long userId) {
         User user = userRepository.findById(userId)
@@ -45,6 +49,33 @@ public class UserService {
                 .currentPoint(user.getPointBalance())
                 .joinedAt(user.getCreatedAt().toLocalDate())
                 .build();
+    }
+
+    @Transactional
+    public UpdateProfileResDto updateProfile(Long userId, UpdateProfileReqDto request) {
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+        boolean hasProfileImageUrl = request.profileImageUrl() != null && !request.profileImageUrl().isBlank();
+
+        if (request.nickname() == null && !hasProfileImageUrl) {
+            throw new RestApiException(GlobalErrorStatus._PROFILE_UPDATE_FIELD_REQUIRED);
+        }
+
+        if (request.nickname() != null) {
+            nicknameValidator.validate(request.nickname());
+            user.setNickname(request.nickname());
+        }
+
+        if (hasProfileImageUrl) {
+            user.setProfileImageUrl(request.profileImageUrl());
+        }
+
+        return UpdateProfileResDto.builder()
+                .nickname(user.getNickname())
+                .profileImageUrl(user.getProfileImageUrl())
+                .build();
+
     }
 
     @Transactional

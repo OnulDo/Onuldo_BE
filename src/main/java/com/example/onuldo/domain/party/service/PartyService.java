@@ -1,10 +1,15 @@
 package com.example.onuldo.domain.party.service;
 
 import com.example.onuldo.domain.challenge.entity.Challenge;
+import com.example.onuldo.domain.challenge.entity.Settlement;
+import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
+import com.example.onuldo.domain.challenge.repository.SettlementRepository;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
+import com.example.onuldo.domain.party.dto.response.PartyMemberResultResDto;
+import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.party.entity.PartyChallenge;
@@ -12,6 +17,7 @@ import com.example.onuldo.domain.party.entity.PartyChallengeId;
 import com.example.onuldo.domain.party.entity.PartyMember;
 import com.example.onuldo.domain.party.entity.PartyMemberId;
 import com.example.onuldo.domain.party.enums.PartyMemberRole;
+import com.example.onuldo.domain.party.enums.PartySettlementResultType;
 import com.example.onuldo.domain.party.enums.PartyStatus;
 import com.example.onuldo.domain.party.repository.PartyChallengeRepository;
 import com.example.onuldo.domain.party.repository.PartyMemberRepository;
@@ -33,8 +39,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +67,7 @@ public class PartyService {
     private final PartyChallengeRepository partyChallengeRepository;
     private final UserRepository userRepository;
     private final ChallengeRepository challengeRepository;
+    private final SettlementRepository settlementRepository;
     private final TimeService timeService;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
@@ -180,6 +190,74 @@ public class PartyService {
         return PartyWaitingResDto.of(party, partyMembers, userId);
     }
 
+    // 파티 정산 결과 조회
+    // 정산 계산(환급/보너스 계산) 및 Settlement 생성 로직은 별도 도메인(포인트/정산 담당)에서 처리 예정이며,
+    // 이 메서드는 이미 계산되어 저장된 Settlement 데이터를 조회해서 응답 형태로 가공하는 역할만 담당함
+    @Transactional(readOnly = true)
+    public PartyResultResDto getPartyResult(Long partyId, Long userId) {
+        Party party = partyRepository.findById(partyId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
+
+        List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
+
+        boolean isRequesterMember = partyMembers.stream()
+                .anyMatch(member -> member.getUser().getId().equals(userId));
+        if (!isRequesterMember) {
+            throw new RestApiException(GlobalErrorStatus._NOT_PARTY_MEMBER);
+        }
+
+        List<Settlement> settlements = settlementRepository.findByPartyId(partyId);
+        // 동일 유저의 정산 데이터가 중복 저장된 경우를 대비해 첫 값을 유지 (size 비교만으로는 파티원-정산 1:1 매핑을 보장할 수 없어 방어적으로 처리)
+        Map<Long, Settlement> settlementByUserId = settlements.stream()
+                .collect(Collectors.toMap(
+                        s -> s.getParticipation().getUser().getId(),
+                        s -> s,
+                        (existing, duplicate) -> existing
+                ));
+
+        // 파티원 각각에 대해 정산 데이터 존재 여부와 정산 대상 상태(SUCCESS/FAIL)인지 명시적으로 검증
+        // (ONGOING/CANCELED 상태의 참여 기록이 섞여 있으면 아직 정산이 확정되지 않은 것으로 간주)
+        List<PartyMemberResultResDto> members = new ArrayList<>();
+        for (PartyMember member : partyMembers) {
+            Settlement settlement = settlementByUserId.get(member.getUser().getId());
+            if (settlement == null) {
+                throw new RestApiException(GlobalErrorStatus._SETTLEMENT_NOT_COMPLETED);
+            }
+
+            ParticipationStatus status = settlement.getParticipation().getStatus();
+            if (status != ParticipationStatus.SUCCESS && status != ParticipationStatus.FAIL) {
+                throw new RestApiException(GlobalErrorStatus._SETTLEMENT_NOT_COMPLETED);
+            }
+
+            members.add(generatePartyMemberResult(member.getUser(), status, settlement));
+        }
+
+        boolean allSuccess = members.stream()
+                .allMatch(m -> m.status() == ParticipationStatus.SUCCESS);
+        boolean allFail = members.stream()
+                .allMatch(m -> m.status() == ParticipationStatus.FAIL);
+        PartySettlementResultType resultType = allSuccess
+                ? PartySettlementResultType.ALL_SUCCESS
+                : allFail
+                        ? PartySettlementResultType.ALL_FAIL
+                        : PartySettlementResultType.PARTIAL_SUCCESS;
+
+        Settlement mySettlement = settlementByUserId.get(userId);
+        PartyMemberResultResDto myResult = members.stream()
+                .filter(m -> m.userId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._NOT_PARTY_MEMBER));
+
+        return PartyResultResDto.builder()
+                .partyId(party.getId())
+                .name(party.getName())
+                .resultType(resultType)
+                .myRefundAmount(mySettlement.getRefundAmount())
+                .myDisplayAmount(myResult.displayAmount())
+                .members(members)
+                .build();
+    }
+
     private String generateUniqueInviteCode() {
         String code;
         int attempts = 0;
@@ -199,5 +277,20 @@ public class PartyService {
             sb.append(INVITE_CODE_CHARS.charAt(RANDOM.nextInt(INVITE_CODE_CHARS.length())));
         }
         return sb.toString();
+    }
+
+    // 성공: 성과 보너스 + 재분배 몫 / 실패: 환급액 - 도전금(손실)
+    private PartyMemberResultResDto generatePartyMemberResult(User user, ParticipationStatus status, Settlement settlement) {
+        int displayAmount = status == ParticipationStatus.SUCCESS
+                ? settlement.getBonusAmount() + settlement.getPartyShareAmount()
+                : settlement.getRefundAmount() - settlement.getDepositAmount();
+
+        return PartyMemberResultResDto.builder()
+                .userId(user.getId())
+                .nickname(user.getNickname())
+                .profileImageUrl(user.getProfileImageUrl())
+                .status(status)
+                .displayAmount(displayAmount)
+                .build();
     }
 }

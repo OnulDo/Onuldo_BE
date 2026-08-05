@@ -7,6 +7,7 @@ import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
 import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
+import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.domain.party.service.PartyFeedService;
@@ -120,5 +121,15 @@ public class PartyController implements PartyControllerDoc {
             Long partyId
     ) {
         return BaseResponse.onSuccess(partyFeedService.getPartyFeed(partyId, userId));
+    }
+
+    @GetMapping("/{partyId}/results")
+    public BaseResponse<PartyResultResDto> getPartyResult(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long partyId
+    ) {
+        return BaseResponse.onSuccess(partyService.getPartyResult(partyId, userId));
     }
 }

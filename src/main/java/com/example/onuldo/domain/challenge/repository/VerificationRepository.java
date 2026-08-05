@@ -1,6 +1,7 @@
 package com.example.onuldo.domain.challenge.repository;
 
 import com.example.onuldo.domain.challenge.entity.Verification;
+import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -8,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
@@ -80,5 +82,11 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     List<Verification> findAllByParticipation_IdInAndVerificationDate(
             Collection<Long> participationIds,
             LocalDate verificationDate
+    );
+
+    Optional<Verification> findByParticipation_IdAndVerificationDateAndReview(
+            Long participationId,
+            LocalDate verificationDate,
+            VerificationReviewStatus review
     );
 }
