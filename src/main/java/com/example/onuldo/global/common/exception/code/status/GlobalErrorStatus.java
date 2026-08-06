@@ -79,6 +79,8 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
 
     // 파티 정산 결과 조회 시, 정산이 아직 처리되지 않은 경우 (정산 계산 로직은 별도 도메인에서 처리 예정)
     _SETTLEMENT_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "SETTLEMENT_NOT_COMPLETED", "아직 정산이 완료되지 않은 파티입니다."),
+    // 파티 정산 시 시작일=종료일 등으로 수행일이 0 이하가 되어 일 지분 계산이 불가능한 데이터 이상 상태
+    _SETTLEMENT_INVALID_PERIOD(HttpStatus.INTERNAL_SERVER_ERROR, "SETTLEMENT_INVALID_PERIOD", "정산 대상 기간이 올바르지 않습니다."),
 
     // 약관 데이터 조회
     _TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "TERM_NOT_FOUND", "약관을 찾을 수 없습니다."),

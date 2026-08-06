@@ -121,6 +121,12 @@ public class PartySettlementService {
         int totalDays = (int) ChronoUnit.DAYS.between(startDate, endDate);
         int memberCount = participations.size();
 
+        // 수행일이 0 이하면(시작일=종료일 등) 일 지분 나눗셈이 불가능하고, 재시도해도 데이터가 바뀌지 않아
+        // 스케줄러가 매번 같은 예외를 반복하며 영구 미정산 상태로 남는다 — 정산 대상에서 명시적으로 제외한다.
+        if (totalDays <= 0) {
+            throw new RestApiException(GlobalErrorStatus._SETTLEMENT_INVALID_PERIOD);
+        }
+
         // 수행일 집합: 시작일(예치일) 다음 날 ~ 종료일 (개인 모델과 동일하게 종료일이 마지막 인증일)
         List<LocalDate> performanceDates = startDate.plusDays(1)
                 .datesUntil(endDate.plusDays(1))
