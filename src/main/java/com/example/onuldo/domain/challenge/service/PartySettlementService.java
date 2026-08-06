@@ -2,7 +2,6 @@ package com.example.onuldo.domain.challenge.service;
 
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Settlement;
-import com.example.onuldo.domain.challenge.entity.Verification;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.SettlementStatus;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
@@ -27,23 +26,17 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
- * POI-07/08 파티 정산
+ * POI-07/08 파티 정산 (2026-08-07 개정: 일 단위 몰수·분배 모델 폐기, 일괄 정산 모델로 변경)
  */
 @Service
 @RequiredArgsConstructor
 public class PartySettlementService {
 
-    // 일별 귀속을 소수점 정확값으로 유지하기 위한 내부 계산 스케일
+    // 환급·분배 계산을 소수점 정확값으로 유지하기 위한 내부 계산 스케일
     private static final int CALC_SCALE = 10;
-    // 파티 참여 상태 라벨링 기준 (개인과 동일한 85% 재사용, 금액 계산과 무관)
     private static final BigDecimal SUCCESS_THRESHOLD = BigDecimal.valueOf(0.85);
     // POI-07 전원 완주 보너스 b = 5% (개인 성공 보너스 2.5%와 다름)
     private static final BigDecimal BONUS_RATE = BigDecimal.valueOf(0.05);
@@ -105,7 +98,7 @@ public class PartySettlementService {
         }
 
         // POI-08: 직접검토(MANUAL_REVIEW) 중인 인증이 있으면 검토 확정까지 최대 24시간 정산을 미룬다.
-        // 검토가 PASS로 확정되면 collectPassDates가 review=PASS만 카운트하므로 별도 처리 없이 그날이 자동으로 성공 반영된다.
+        // 검토가 PASS로 확정되면 r 계산이 review=PASS만 카운트하므로 별도 처리 없이 자동으로 반영된다.
         List<Long> participationIds = participations.stream().map(Participation::getId).toList();
         LocalDateTime manualReviewGraceCutoff = now.minusHours(MANUAL_REVIEW_GRACE_HOURS);
         boolean hasPendingManualReview = verificationRepository.existsByParticipation_IdInAndReviewAndVerifiedAtAfter(
@@ -114,140 +107,85 @@ public class PartySettlementService {
     }
 
     private void processSettlement(List<Participation> participations) {
-        Participation reference = participations.get(0);
-        int depositAmount = reference.getDepositAmount();
-        LocalDate startDate = reference.getStartDate();
-        LocalDate endDate = reference.getEndDate();
-        int totalDays = (int) ChronoUnit.DAYS.between(startDate, endDate);
         int memberCount = participations.size();
+        List<MemberSettlementDraft> drafts = participations.stream()
+                .map(this::createMemberDraft)
+                .toList();
 
-        // 수행일이 0 이하면(시작일=종료일 등) 일 지분 나눗셈이 불가능하고, 재시도해도 데이터가 바뀌지 않아
-        // 스케줄러가 매번 같은 예외를 반복하며 영구 미정산 상태로 남는다 — 정산 대상에서 명시적으로 제외한다.
+        BigDecimal failurePool = drafts.stream()
+                .map(MemberSettlementDraft::shortfall)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        long successCount = drafts.stream()
+                .filter(draft -> draft.status() == ParticipationStatus.SUCCESS)
+                .count();
+        boolean allSuccess = successCount == memberCount;
+
+        // 실패금 풀을 성공 파티원에게 1/n 균등 분배. 성공자가 없으면(전원 실패) 분배 없이 운영자 회수.
+        BigDecimal shareExact = successCount > 0
+                ? failurePool.divide(BigDecimal.valueOf(successCount), CALC_SCALE, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        for (MemberSettlementDraft draft : drafts) {
+            settleMember(draft, shareExact, allSuccess);
+        }
+    }
+
+    private MemberSettlementDraft createMemberDraft(Participation participation) {
+        long totalDays = participation.getDurationWeeks() * 7L;
         if (totalDays <= 0) {
             throw new RestApiException(GlobalErrorStatus._SETTLEMENT_INVALID_PERIOD);
         }
 
-        // 수행일 집합: 시작일(예치일) 다음 날 ~ 종료일 (개인 모델과 동일하게 종료일이 마지막 인증일)
-        List<LocalDate> performanceDates = startDate.plusDays(1)
-                .datesUntil(endDate.plusDays(1))
-                .toList();
-        Map<Long, Set<LocalDate>> passDates = collectPassDates(participations, startDate, endDate);
+        long passDays = verificationRepository.countByParticipation_IdAndReview(
+                participation.getId(), VerificationReviewStatus.PASS);
 
-        // 일 지분 s = 도전금 ÷ 총 수행일 (선형 균등)
-        BigDecimal dayShare = BigDecimal.valueOf(depositAmount)
-                .divide(BigDecimal.valueOf(totalDays), CALC_SCALE, RoundingMode.HALF_UP);
-        Map<Long, BigDecimal> accruedDistribution = distributeDaily(performanceDates, passDates, dayShare, memberCount);
+        // POI-07: 파티는 개인 챌린지와 동일한 달성률 공식을 쓰되, 주 1회 면제는 적용하지 않는다.
+        BigDecimal rValue = BigDecimal.valueOf(passDays)
+                .divide(BigDecimal.valueOf(totalDays), 4, RoundingMode.HALF_UP)
+                .min(BigDecimal.ONE);
 
-        // 전원 완주 보너스: 전원이 전 수행일을 성공한 경우에만 지급
-        boolean allComplete = passDates.values().stream()
-                .allMatch(dates -> dates.size() == totalDays);
-        int bonusAmount = allComplete
-                ? BigDecimal.valueOf(depositAmount).multiply(BONUS_RATE).setScale(0, RoundingMode.HALF_UP).intValue()
-                : 0;
-
-        for (Participation participation : participations) {
-            settleMember(participation, passDates.get(participation.getId()),
-                    accruedDistribution.get(participation.getId()), dayShare, totalDays, bonusAmount);
-        }
-    }
-
-    /**
-     * 매일 실패자의 당일 지분을 그날 성공자에게 1/n 균등 분배한 누적 귀속액(소수점 정확값)을 참여 ID별로 계산한다.
-     * 전원 실패일은 운영자 회수(분배 없음), 전원 성공일은 몰수·분배 없음.
-     */
-    private Map<Long, BigDecimal> distributeDaily(
-            List<LocalDate> performanceDates,
-            Map<Long, Set<LocalDate>> passDates,
-            BigDecimal dayShare,
-            int memberCount
-    ) {
-        Map<Long, BigDecimal> accrued = new HashMap<>();
-        for (Long participationId : passDates.keySet()) {
-            accrued.put(participationId, BigDecimal.ZERO);
-        }
-
-        for (LocalDate date : performanceDates) {
-            List<Long> successParticipations = passDates.entrySet().stream()
-                    .filter(entry -> entry.getValue().contains(date))
-                    .map(Map.Entry::getKey)
-                    .toList();
-
-            int successCount = successParticipations.size();
-            if (successCount == 0 || successCount == memberCount) {
-                continue;
-            }
-
-            int failureCount = memberCount - successCount;
-            BigDecimal sharePerSuccess = dayShare.multiply(BigDecimal.valueOf(failureCount))
-                    .divide(BigDecimal.valueOf(successCount), CALC_SCALE, RoundingMode.HALF_UP);
-
-            for (Long participationId : successParticipations) {
-                accrued.merge(participationId, sharePerSuccess, BigDecimal::add);
-            }
-        }
-        return accrued;
-    }
-
-    private Map<Long, Set<LocalDate>> collectPassDates(
-            List<Participation> participations,
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        List<Long> participationIds = participations.stream()
-                .map(Participation::getId)
-                .toList();
-
-        // 인증이 없는 파티원도 빈 집합으로 포함해야 총원 수가 맞다.
-        Map<Long, Set<LocalDate>> passDates = new HashMap<>();
-        for (Long participationId : participationIds) {
-            passDates.put(participationId, new HashSet<>());
-        }
-
-        for (Verification verification : verificationRepository.findAllByParticipation_IdIn(participationIds)) {
-            if (verification.getReview() != VerificationReviewStatus.PASS) {
-                continue;
-            }
-
-            LocalDate verifiedDate = verification.getVerificationDate();
-            // 수행일 범위(시작일 다음 날 ~ 종료일) 밖의 인증은 정산 대상에서 제외한다.
-            if (verifiedDate.isAfter(startDate) && !verifiedDate.isAfter(endDate)) {
-                passDates.get(verification.getParticipation().getId()).add(verifiedDate);
-            }
-        }
-        return passDates;
-    }
-
-    private void settleMember(
-            Participation participation,
-            Set<LocalDate> memberPassDates,
-            BigDecimal accruedDistribution,
-            BigDecimal dayShare,
-            int totalDays,
-            int bonusAmount
-    ) {
-        int successDays = memberPassDates.size();
-        // 잔여 예치금 = 성공일수 × s (몰수된 실패일 지분 제외)
-        BigDecimal remainingDeposit = dayShare.multiply(BigDecimal.valueOf(successDays));
-
-        // 지급 항목별로 1P 미만 올림(단수 차액은 운영 부담, 유저 유리 원칙)해서 화면에 "도전금 환급"/"분배금"을
-        // 각각 정확한 금액으로 나눠 보여줄 수 있게 한다. 항목별로 올림한 값을 그대로 더하므로 총액과도 항상 일치한다.
-        int depositRefundAmount = remainingDeposit.setScale(0, RoundingMode.CEILING).intValue();
-        int partyShareAmount = accruedDistribution.setScale(0, RoundingMode.CEILING).intValue();
-        int payoutAmount = depositRefundAmount + partyShareAmount + bonusAmount;
-
-        BigDecimal achievementRate = BigDecimal.valueOf(successDays)
-                .divide(BigDecimal.valueOf(totalDays), 2, RoundingMode.HALF_UP);
-        ParticipationStatus status = achievementRate.compareTo(SUCCESS_THRESHOLD) >= 0
+        ParticipationStatus status = rValue.compareTo(SUCCESS_THRESHOLD) >= 0
                 ? ParticipationStatus.SUCCESS
                 : ParticipationStatus.FAIL;
 
-        participation.changeStatus(status);
+        int depositAmount = participation.getDepositAmount();
+        BigDecimal ownRefundExact = status == ParticipationStatus.SUCCESS
+                ? BigDecimal.valueOf(depositAmount)
+                : calculateFailureRefundExact(depositAmount, rValue);
+        BigDecimal shortfall = BigDecimal.valueOf(depositAmount).subtract(ownRefundExact);
+
+        return new MemberSettlementDraft(participation, rValue, status, ownRefundExact, shortfall);
+    }
+
+    // 환급 = 도전금 × (r ÷ 85%). 몰수분(도전금 − 환급액)은 파티 실패금 풀로 보관했다가 종료 시 성공자에게 분배된다.
+    private BigDecimal calculateFailureRefundExact(int depositAmount, BigDecimal rValue) {
+        BigDecimal rate = rValue.divide(SUCCESS_THRESHOLD, CALC_SCALE, RoundingMode.HALF_UP);
+        return BigDecimal.valueOf(depositAmount).multiply(rate);
+    }
+
+    private void settleMember(MemberSettlementDraft draft, BigDecimal shareExact, boolean allSuccess) {
+        Participation participation = draft.participation();
+        boolean isSuccess = draft.status() == ParticipationStatus.SUCCESS;
+        int depositAmount = participation.getDepositAmount();
+
+        // 지급 항목별로 1P 미만 올림(단수 차액은 운영 부담, 유저 유리 원칙)해서 화면에 "도전금 환급"/"분배금"을
+        // 각각 정확한 금액으로 나눠 보여줄 수 있게 한다. 항목별로 올림한 값을 그대로 더하므로 총액과도 항상 일치한다.
+        int depositRefundAmount = draft.ownRefundExact().setScale(0, RoundingMode.CEILING).intValue();
+        int partyShareAmount = isSuccess ? shareExact.setScale(0, RoundingMode.CEILING).intValue() : 0;
+        // 개인 완주 보너스 없음 — 전원 완주(실패금 풀 없음)일 때만 파티 유일 보너스로 각자 도전금 × 5% 지급
+        int bonusAmount = allSuccess
+                ? BigDecimal.valueOf(depositAmount).multiply(BONUS_RATE).setScale(0, RoundingMode.HALF_UP).intValue()
+                : 0;
+        int payoutAmount = depositRefundAmount + partyShareAmount + bonusAmount;
+
+        participation.changeStatus(draft.status());
         payoutPoint(participation, payoutAmount);
 
         settlementRepository.save(Settlement.builder()
                 .participation(participation)
-                .depositAmount(participation.getDepositAmount())
-                .rValue(achievementRate)
+                .depositAmount(depositAmount)
+                .rValue(draft.rValue())
                 .refundAmount(payoutAmount)
                 .depositRefundAmount(depositRefundAmount)
                 .bonusAmount(bonusAmount)
@@ -283,5 +221,14 @@ public class PartySettlementService {
     // 포인트 트랜잭션 description에 챌린지명 + 성공/실패를 함께 남겨 사람이 봐도 결과를 바로 알 수 있게 한다.
     private String describeSettlementResult(String challengeName, ParticipationStatus status) {
         return "%s %s".formatted(challengeName, status == ParticipationStatus.SUCCESS ? "성공" : "실패");
+    }
+
+    private record MemberSettlementDraft(
+            Participation participation,
+            BigDecimal rValue,
+            ParticipationStatus status,
+            BigDecimal ownRefundExact,
+            BigDecimal shortfall
+    ) {
     }
 }
