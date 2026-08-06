@@ -73,7 +73,7 @@ public class PartySettlementService {
         }
 
         List<Participation> participations =
-                participationRepository.findAllByParty_IdAndStatus(partyId, ParticipationStatus.ONGOING);
+                participationRepository.findAllByParty_IdAndStatusOrderByUser_IdAsc(partyId, ParticipationStatus.ONGOING);
         if (participations.isEmpty()) {
             return;
         }
