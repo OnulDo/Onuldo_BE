@@ -91,12 +91,10 @@ public class PartyService {
     private final TimeService timeService;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
-        // PAR-03: 파티 이름 규칙 검증 (2~20자 한글·영문·숫자·공백)
         if (!PARTY_NAME_PATTERN.matcher(request.name()).matches()) {
             throw new RestApiException(GlobalErrorStatus._INVALID_PARTY_NAME);
         }
 
-        // PAR-02: 모집 인원 범위 검증 (2~5명)
         if (request.maxMembers() < MIN_MEMBERS || request.maxMembers() > MAX_MEMBERS) {
             throw new RestApiException(GlobalErrorStatus._INVALID_MAX_MEMBERS);
         }
@@ -107,11 +105,9 @@ public class PartyService {
         Challenge challenge = challengeRepository.findById(request.challengeId())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
-        // 파티는 챌린지가 제공하는 진행 기간/도전금 옵션 중에서만 선택 가능
         challenge.validateDurationOption(request.durationWeeks());
         challenge.validateDepositOption(request.depositAmount());
 
-        // PAR-ERR-02: 파티 생성 시 방장 보유 포인트 < 도전금이면 포인트 충전 안내
         if (host.getPointBalance() < request.depositAmount()) {
             throw new InsufficientPointException(
                     GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
@@ -213,7 +209,7 @@ public class PartyService {
         );
     }
 
-    // 정렬 시 마지막 비교 기준(챌린지ID)을 응답 DTO에 노출하지 않으면서도 함께 들고 다니기 위한 내부 전용 래퍼
+    // 정렬 기준(챌린지ID)을 응답 DTO에 노출하지 않으면서 함께 들고 다니기 위한 내부 전용 래퍼
     private record PartyListSortEntry(PartyListResDto item, Long challengeId) {
     }
 
@@ -229,7 +225,6 @@ public class PartyService {
         return new PartyListSortEntry(item, challengeId);
     }
 
-    // 파티 목록 카드의 파티원 아바타·인증 배지 표시용: 파티원 목록과 오늘 PASS 인증 여부를 파티 ID 단위로 배치 조회
     private Map<Long, List<PartyMemberVerificationResDto>> loadMembersWithTodayVerification(
             List<Long> partyIds, LocalDate today
     ) {
@@ -267,7 +262,7 @@ public class PartyService {
                 ));
     }
 
-    // 파티 카드별 "오늘 나의 인증 상태" 판정용 배치 조회 (파티당 1건 — 같은 날 재검토로 여러 건이면 먼저 조회된 것 유지)
+    // 같은 날 재검토로 파티당 여러 건이 나와도 먼저 조회된 것을 유지 (파티당 1건 기준)
     private Map<Long, Verification> loadMyTodayVerification(List<Long> partyIds, Long userId, LocalDate today) {
         if (partyIds.isEmpty()) {
             return Map.of();
@@ -328,7 +323,6 @@ public class PartyService {
         };
     }
 
-    // D-day: 종료일까지 남은 일수. 종료일이 지난 파티(FINISHED)는 0으로 고정.
     private int calculateDDay(LocalDate endDate, LocalDate today) {
         if (endDate == null) {
             return 0;
@@ -392,9 +386,6 @@ public class PartyService {
         return PartyWaitingResDto.of(party, partyMembers, userId);
     }
 
-    // 파티 정산 결과 조회
-    // 정산 계산(환급/보너스 계산) 및 Settlement 생성 로직은 별도 도메인(포인트/정산 담당)에서 처리 예정이며,
-    // 이 메서드는 이미 계산되어 저장된 Settlement 데이터를 조회해서 응답 형태로 가공하는 역할만 담당함
     // 정산 결과 조회 시 홈 배너 확인 처리(Settlement.confirm())가 함께 일어나므로 readOnly 불가
     @Transactional
     public PartyResultResDto getPartyResult(Long partyId, Long userId) {
@@ -410,7 +401,7 @@ public class PartyService {
         }
 
         List<Settlement> settlements = settlementRepository.findByPartyId(partyId);
-        // 동일 유저의 정산 데이터가 중복 저장된 경우를 대비해 첫 값을 유지 (size 비교만으로는 파티원-정산 1:1 매핑을 보장할 수 없어 방어적으로 처리)
+        // 동일 유저의 정산 데이터가 중복 저장된 경우를 대비해 첫 값만 유지
         Map<Long, Settlement> settlementByUserId = settlements.stream()
                 .collect(Collectors.toMap(
                         s -> s.getParticipation().getUser().getId(),
@@ -418,8 +409,7 @@ public class PartyService {
                         (existing, duplicate) -> existing
                 ));
 
-        // 파티원 각각에 대해 정산 데이터 존재 여부와 정산 대상 상태(SUCCESS/FAIL)인지 명시적으로 검증
-        // (ONGOING/CANCELED 상태의 참여 기록이 섞여 있으면 아직 정산이 확정되지 않은 것으로 간주)
+        // ONGOING/CANCELED 상태가 섞여 있으면 아직 정산이 확정되지 않은 것으로 간주
         List<PartyMemberResultResDto> members = new ArrayList<>();
         for (PartyMember member : partyMembers) {
             Settlement settlement = settlementByUserId.get(member.getUser().getId());
@@ -498,7 +488,6 @@ public class PartyService {
                 .build();
     }
 
-    // 홈 화면 "함께하는 파티" 섹션 조회 (HOME-04, HOME-07, HOME-09)
     @Transactional(readOnly = true)
     public PartyHomeResDto getHomeParties(Long userId) {
         List<Party> ongoingParties = partyRepository.findOngoingPartiesByUserId(userId);
@@ -531,7 +520,7 @@ public class PartyService {
                 .build();
     }
 
-    // 홈 상단 "정산이 완료됐어요!" 배너: 아직 확인하지 않은 정산 전부 노출 (결과 조회 시 confirm 처리되어 사라짐)
+    // 아직 확인하지 않은 정산 전부 노출 — 결과 조회 시 confirm 처리되어 다음 응답부터 사라짐
     private List<PartySettlementBannerResDto> resolveSettlementBanners(Long userId) {
         return settlementRepository.findUnconfirmedPartySettlementsByUserId(userId)
                 .stream()
@@ -545,7 +534,7 @@ public class PartyService {
                 .toList();
     }
 
-    // 정렬 시 마지막 비교 기준(챌린지ID)을 응답 DTO에 노출하지 않으면서도 함께 들고 다니기 위한 내부 전용 래퍼
+    // 정렬 기준(챌린지ID)을 응답 DTO에 노출하지 않으면서 함께 들고 다니기 위한 내부 전용 래퍼
     private record HomeItemWithChallengeId(PartyHomeItemResDto item, Long challengeId) {
     }
 
@@ -625,8 +614,8 @@ public class PartyService {
             }
         }
 
-        // HOME-07 코드리뷰 반영: endDate는 startParty()에서 생성된 Participation.endDate를 단일 원본으로 사용
-        // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 홈/파티목록 화면 종료일이 하루 어긋남)
+        // endDate는 startParty()에서 생성된 Participation.endDate를 단일 원본으로 사용한다
+        // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 종료일이 하루 어긋남)
         LocalDate endDate = participationRepository
                 .findByParty_IdAndUser_IdAndParticipationType(party.getId(), userId, ParticipationType.PARTY)
                 .map(Participation::getEndDate)
