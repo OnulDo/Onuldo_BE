@@ -131,7 +131,7 @@ public class ChallengeService {
                     .verifiedAt(timeService.nowKst())
                     .build());
         } catch (DataIntegrityViolationException e) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY, "오늘은 이미 인증했습니다.");
+            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
         }
 
         // 인증 성공 시 정산 트리거 호출
@@ -261,7 +261,7 @@ public class ChallengeService {
         try {
             return objectMapper.writeValueAsString(detectedLabelNames);
         } catch (JsonProcessingException e) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "인증 결과 저장 중 JSON 변환에 실패했습니다.");
+            throw new RestApiException(GlobalErrorStatus._VERIFICATION_RESULT_SERIALIZATION_FAILED);
         }
     }
 }

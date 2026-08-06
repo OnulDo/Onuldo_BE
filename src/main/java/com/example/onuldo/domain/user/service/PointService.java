@@ -151,7 +151,7 @@ public class PointService {
         try {
             return averageReturnRate.intValueExact();
         } catch (ArithmeticException e) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "평균 환급률이 허용 범위를 초과했습니다.");
+            throw new RestApiException(GlobalErrorStatus._RETURN_RATE_OUT_OF_RANGE);
         }
     }
 

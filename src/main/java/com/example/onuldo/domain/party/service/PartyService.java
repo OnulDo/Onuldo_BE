@@ -171,7 +171,7 @@ public class PartyService {
                 lastCreatedAt = LocalDateTime.parse(parts[0]);
                 lastId = Long.parseLong(parts[1]);
             } catch (DateTimeParseException | NumberFormatException e) {
-                throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+                throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
             }
         }
 

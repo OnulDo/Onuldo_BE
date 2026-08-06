@@ -110,7 +110,7 @@ public class UserService {
         User user = getActiveUserForUpdate(userId);
 
         if (participationRepository.existsByUser_IdAndStatus(userId, ParticipationStatus.ONGOING)) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "진행 중인 챌린지가 있어 회원 탈퇴할 수 없습니다.");
+            throw new RestApiException(GlobalErrorStatus._WITHDRAWAL_BLOCKED_BY_ONGOING_CHALLENGE);
         }
 
         user.setStatus(UserStatus.WITHDRAWN);
