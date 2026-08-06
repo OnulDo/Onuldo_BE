@@ -36,6 +36,7 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
             JOIN FETCH p.party
             WHERE p.user.id = :userId
             AND p.participationType = com.example.onuldo.domain.challenge.enums.ParticipationType.PARTY
+            AND s.status = com.example.onuldo.domain.challenge.enums.SettlementStatus.COMPLETED
             AND s.confirmed = false
             ORDER BY s.processedAt DESC
             """)
