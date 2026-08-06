@@ -265,6 +265,7 @@ public class PartySettlementService {
         long balanceAfter = user.getPointBalance() + payoutAmount;
         user.setPointBalance(balanceAfter);
 
+        ParticipationStatus resultStatus = participation.getStatus();
         pointTransactionRepository.save(PointTransaction.builder()
                 .user(user)
                 .type(PointTransactionType.REFUND)
@@ -272,9 +273,15 @@ public class PartySettlementService {
                 .depositAmount(participation.getDepositAmount())
                 .adjustmentAmount(payoutAmount - participation.getDepositAmount())
                 .balanceAfter(balanceAfter)
-                .description(participation.getChallenge().getName())
+                .description(describeSettlementResult(participation.getChallenge().getName(), resultStatus))
+                .resultStatus(resultStatus)
                 .refType("SETTLEMENT")
                 .refId(participation.getId())
                 .build());
+    }
+
+    // 포인트 트랜잭션 description에 챌린지명 + 성공/실패를 함께 남겨 사람이 봐도 결과를 바로 알 수 있게 한다.
+    private String describeSettlementResult(String challengeName, ParticipationStatus status) {
+        return "%s %s".formatted(challengeName, status == ParticipationStatus.SUCCESS ? "성공" : "실패");
     }
 }
