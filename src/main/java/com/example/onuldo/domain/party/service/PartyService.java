@@ -237,10 +237,17 @@ public class PartyService {
             return Map.of();
         }
 
-        Set<Long> verifiedUserIds = verificationRepository
+        // 파티별로 오늘 PASS한 유저를 분리 집계 — 한 유저가 여러 파티에 동시 참여 중이면
+        // 파티 구분 없는 단일 Set으로는 A파티 인증이 B파티 카드에도 "인증완료"로 새어 나간다.
+        Map<Long, Set<Long>> verifiedUserIdsByParty = verificationRepository
                 .findTodayAutoPassVerificationsByPartyIdIn(partyIds, today).stream()
-                .map(verification -> verification.getParticipation().getUser().getId())
-                .collect(Collectors.toSet());
+                .collect(Collectors.groupingBy(
+                        verification -> verification.getParticipation().getParty().getId(),
+                        Collectors.mapping(
+                                verification -> verification.getParticipation().getUser().getId(),
+                                Collectors.toSet()
+                        )
+                ));
 
         return partyMemberRepository.findByParty_IdInOrderByJoinedAtAsc(partyIds).stream()
                 .collect(Collectors.groupingBy(
@@ -251,7 +258,9 @@ public class PartyService {
                                         .userId(member.getUser().getId())
                                         .nickname(member.getUser().getNickname())
                                         .profileImageUrl(member.getUser().getProfileImageUrl())
-                                        .isVerifiedToday(verifiedUserIds.contains(member.getUser().getId()))
+                                        .isVerifiedToday(verifiedUserIdsByParty
+                                                .getOrDefault(member.getParty().getId(), Set.of())
+                                                .contains(member.getUser().getId()))
                                         .build(),
                                 Collectors.toList()
                         )
