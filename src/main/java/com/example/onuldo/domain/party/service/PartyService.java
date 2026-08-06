@@ -447,7 +447,7 @@ public class PartyService {
                 .partyId(party.getId())
                 .name(party.getName())
                 .resultType(resultType)
-                .myDepositRefundAmount(mySettlement.getDepositRefundAmount())
+                .myDepositAmount(mySettlement.getDepositAmount())
                 .myDisplayAmount(myResult.displayAmount())
                 .members(members)
                 .build();
