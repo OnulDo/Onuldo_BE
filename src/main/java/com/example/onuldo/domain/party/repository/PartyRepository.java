@@ -26,21 +26,13 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
     Optional<Party> findByInviteCodeForUpdate(@Param("inviteCode") String inviteCode);
 
     /**
-     * 나의 파티 목록 조회 (PAR-07: WAITING 상태 파티는 목록에서 제외).
-     *
-     * <p>진행률(progressRate)은 REC-02에 따라 상태별 분모가 달라(진행중=경과일수, 완료=전체진행일수)
-     * 조회 결과의 원시값(시작일/종료일/총원/기간 내 PASS 수)을 서비스 계층에서 조합해 계산한다.
-     * windowPassCount는 정산(POI-07)과 동일하게 예치일(시작일) 당일 인증은 수행일로 치지 않고 제외한다 —
-     * 포함하면 분자(수행일 PASS 수)가 분모(경과 수행일수)보다 커져 진행률이 100%를 넘을 수 있다.
+     * 나의 파티 목록 조회 원시값 (PAR-07: WAITING/DISSOLVED 제외).
      * 반환 컬럼: [partyId, name, challengeTitle, goal, status, startDate, endDate, verificationDeadline,
      * totalMemberCount, verifiedMemberCount(오늘 인증 인원), windowPassCount(수행일 기간 내 팀 PASS 수), challengeId]
      *
-     * <p>startDate/endDate는 파티원 참여 기록 전체의 MIN이 아니라 조회하는 본인(:userId)의 Participation을
-     * 단일 원본으로 사용한다 (PartyService.generatePartyHomeItem과 동일 기준 — 코드리뷰 반영).
-     *
-     * <p>정렬(HOME-09: 상태 우선순위 → 마감 시각 → D-day → 챌린지ID)은 "오늘 나의 인증 상태"라는
-     * DB 컬럼이 아닌 계산값 기준이라 서비스 계층에서 전체 결과를 한 번에 가져와 정렬한다
-     * (커서는 정렬된 결과 내 위치를 가리키는 오프셋으로 서비스에서 별도 관리).
+     * <p>windowPassCount는 예치일(시작일) 당일 인증을 수행일로 치지 않는다 — 포함하면 진행률이 100%를 넘을 수 있다.
+     * startDate/endDate는 파티원 전체의 MIN이 아니라 본인(:userId)의 Participation 기준(PartyService.generatePartyHomeItem과 동일).
+     * 정렬(HOME-09)은 "오늘 나의 인증 상태" 같은 계산값 기준이라 DB가 아닌 서비스 계층에서 전체를 가져와 처리한다.
      */
     @Query("""
         SELECT
