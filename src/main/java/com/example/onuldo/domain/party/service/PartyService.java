@@ -524,7 +524,7 @@ public class PartyService {
 
     // 홈 상단 "정산이 완료됐어요!" 배너: 아직 확인하지 않은 정산 전부 노출 (결과 조회 시 confirm 처리되어 사라짐)
     private List<PartySettlementBannerResDto> resolveSettlementBanners(Long userId) {
-        return settlementRepository.findAllByParticipation_User_IdAndConfirmedFalseOrderByProcessedAtDesc(userId)
+        return settlementRepository.findUnconfirmedPartySettlementsByUserId(userId)
                 .stream()
                 .map(settlement -> {
                     Party party = settlement.getParticipation().getParty();
