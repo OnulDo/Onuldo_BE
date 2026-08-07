@@ -1,13 +1,16 @@
 package com.example.onuldo.domain.party.service;
 
+import com.example.onuldo.domain.challenge.support.ParticipationValidator;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.domain.party.entity.Party;
+import com.example.onuldo.domain.party.entity.PartyChallenge;
 import com.example.onuldo.domain.party.entity.PartyMember;
 import com.example.onuldo.domain.party.entity.PartyMemberId;
 import com.example.onuldo.domain.party.enums.PartyMemberRole;
 import com.example.onuldo.domain.party.enums.PartyStatus;
+import com.example.onuldo.domain.party.repository.PartyChallengeRepository;
 import com.example.onuldo.domain.party.repository.PartyMemberRepository;
 import com.example.onuldo.domain.party.repository.PartyRepository;
 import com.example.onuldo.domain.user.entity.User;
@@ -29,8 +32,10 @@ public class PartyMemberService {
 
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
+    private final PartyChallengeRepository partyChallengeRepository;
     private final UserRepository userRepository;
     private final TimeService timeService;
+    private final ParticipationValidator participationValidator;
 
     // 동시성 방어: 초대코드 조회 시점에 바로 비관적 락을 걸어, 상태 확인부터 저장까지를 하나의 조회로 직렬화한다.
     // (락 없이 조회 → 락 걸고 재조회하는 2단계 방식은 그 사이에 다른 트랜잭션이 파티를 시작시켜도
@@ -59,6 +64,10 @@ public class PartyMemberService {
         if (partyMemberRepository.existsByParty_IdAndUser_Id(party.getId(), userId)) {
             throw new RestApiException(GlobalErrorStatus._ALREADY_PARTY_MEMBER);
         }
+
+        PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(party.getId())
+                .orElseThrow();
+        participationValidator.validateNotOngoing(userId, partyChallenge.getChallenge().getId());
 
         int currentMembers = partyMemberRepository.countByParty_Id(party.getId());
         if (currentMembers >= party.getMaxMembers()) {
