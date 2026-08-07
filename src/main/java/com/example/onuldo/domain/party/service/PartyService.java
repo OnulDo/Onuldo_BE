@@ -10,6 +10,7 @@ import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.domain.challenge.support.ParticipationValidator;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
@@ -89,6 +90,7 @@ public class PartyService {
     private final VerificationRepository verificationRepository;
     private final SettlementRepository settlementRepository;
     private final TimeService timeService;
+    private final ParticipationValidator participationValidator;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
         if (!PARTY_NAME_PATTERN.matcher(request.name()).matches()) {
@@ -104,6 +106,8 @@ public class PartyService {
 
         Challenge challenge = challengeRepository.findById(request.challengeId())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+
+        participationValidator.validateNotOngoing(userId, challenge.getId());
 
         challenge.validateDurationOption(request.durationWeeks());
         challenge.validateDepositOption(request.depositAmount());

@@ -88,6 +88,8 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
             "INSUFFICIENT_POINT_FOR_CHALLENGE", "보유 포인트가 부족합니다."),
     _ALREADY_PARTICIPATING_CHALLENGE(HttpStatus.CONFLICT,
             "ALREADY_PARTICIPATING_CHALLENGE", "이미 참여 중인 챌린지입니다."),
+    _CHALLENGE_PARTY_ALREADY_WAITING(HttpStatus.CONFLICT,
+            "CHALLENGE_PARTY_ALREADY_WAITING", "이미 이 챌린지로 만든 파티에서 대기 중이에요."),
     _DUPLICATE_VERIFICATION_PHOTO(HttpStatus.CONFLICT,
             "DUPLICATE_VERIFICATION_PHOTO", "이미 인증에 사용한 사진입니다."),
     _ALREADY_VERIFIED_TODAY(HttpStatus.CONFLICT, "ALREADY_VERIFIED_TODAY", "오늘은 이미 인증했습니다."),

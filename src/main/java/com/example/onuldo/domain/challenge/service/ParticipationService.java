@@ -19,6 +19,7 @@ import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.PartyCountProjection;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.domain.challenge.support.ParticipationValidator;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
@@ -59,6 +60,7 @@ public class ParticipationService {
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final TimeService timeService;
+    private final ParticipationValidator participationValidator;
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,
@@ -74,7 +76,7 @@ public class ParticipationService {
 
         challenge.validateDurationOption(request.durationWeeks());
         challenge.validateDepositOption(request.depositAmount());
-        validateAlreadyParticipating(userId, challengeId);
+        participationValidator.validateNotOngoing(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
 
         // durationWeeks*7일은 시작일·종료일을 포함한 총 수행일수 (ParticipationRecordService.calculateInclusiveDays와 동일 기준)
@@ -238,12 +240,6 @@ public class ParticipationService {
                 PartyCountProjection::partyId,
                 PartyCountProjection::count
         ));
-    }
-
-    private void validateAlreadyParticipating(Long userId, Long challengeId) {
-        if (participationRepository.existsByUser_IdAndChallenge_Id(userId, challengeId)) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_PARTICIPATING_CHALLENGE);
-        }
     }
 
     private void validatePointBalance(User user, Integer depositAmount) {
