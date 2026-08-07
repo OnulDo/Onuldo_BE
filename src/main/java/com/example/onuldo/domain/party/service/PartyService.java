@@ -436,7 +436,6 @@ public class PartyService {
                   : PartySettlementResultType.PARTIAL_SUCCESS;
 
         Settlement mySettlement = settlementByUserId.get(userId);
-        mySettlement.confirm();
         PartyMemberResultResDto myResult = members.stream()
                 .filter(m -> m.userId().equals(userId))
                 .findFirst()

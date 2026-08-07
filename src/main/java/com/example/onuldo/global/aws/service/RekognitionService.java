@@ -27,10 +27,10 @@ public class RekognitionService {
 
     public List<RekognitionLabelResDto> detectLabelsByFileId(String bucket, String fileId) {
         if (bucket == null || bucket.isBlank()) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "S3 bucket 정보가 필요합니다.");
+            throw new RestApiException(GlobalErrorStatus._S3_BUCKET_REQUIRED);
         }
         if (fileId == null || fileId.isBlank()) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "S3 file Id가 필요합니다.");
+            throw new RestApiException(GlobalErrorStatus._S3_FILE_ID_REQUIRED);
         }
 
         return detectLabels(bucket, fileId);
@@ -96,7 +96,7 @@ public class RekognitionService {
     private String resolveBucket() {
         String bucket = awsProperties.s3().bucket();
         if (bucket == null || bucket.isBlank()) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "AWS S3 버킷 설정이 필요합니다.");
+            throw new RestApiException(GlobalErrorStatus._S3_BUCKET_NOT_CONFIGURED);
         }
 
         return bucket;

@@ -34,7 +34,7 @@ public class TermService {
                     .content(term.getContent())
                     .build();
         } catch (Exception e) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "약관 content JSON 변환에 실패했습니다.");
+            throw new RestApiException(GlobalErrorStatus._TERM_CONTENT_PARSING_FAILED);
         }
     }
 }

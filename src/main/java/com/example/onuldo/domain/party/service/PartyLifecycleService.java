@@ -144,11 +144,11 @@ public class PartyLifecycleService {
 
     private void validateParticipationState(Participation participation) {
         if (participation.getParticipationType() == ParticipationType.PERSONAL && participation.getParty() != null) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "개인 참여에는 party가 연결되면 안 됩니다.");
+            throw new RestApiException(GlobalErrorStatus._PARTICIPATION_PARTY_NOT_ALLOWED);
         }
 
         if (participation.getParticipationType() == ParticipationType.PARTY && participation.getParty() == null) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "party 참여에는 party가 필요합니다.");
+            throw new RestApiException(GlobalErrorStatus._PARTICIPATION_PARTY_REQUIRED);
         }
     }
 }

@@ -34,14 +34,14 @@ public class CursorKeyCodec {
             String raw = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
             return raw.split(DELIMITER);
         } catch (IllegalArgumentException e) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+            throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
         }
     }
 
     public static String[] decodeParts(String cursor, int expectedPartCount) {
         String[] parts = decode(cursor);
         if (parts.length != expectedPartCount) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+            throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
         }
         return parts;
     }
@@ -56,7 +56,7 @@ public class CursorKeyCodec {
             }
             return values;
         } catch (NumberFormatException e) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+            throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
         }
     }
 
@@ -68,7 +68,7 @@ public class CursorKeyCodec {
         try {
             return Math.toIntExact(value);
         } catch (ArithmeticException e) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+            throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
         }
     }
 }
