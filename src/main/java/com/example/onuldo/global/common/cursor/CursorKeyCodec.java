@@ -61,6 +61,10 @@ public class CursorKeyCodec {
     }
 
     public static int toIntCursorValue(long value) {
+        if (value < 0) {
+            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "cursor 형식이 올바르지 않습니다.");
+        }
+
         try {
             return Math.toIntExact(value);
         } catch (ArithmeticException e) {
