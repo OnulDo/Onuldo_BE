@@ -33,7 +33,6 @@ public class PartyFeedService {
     private final VerificationRepository verificationRepository;
     private final TimeService timeService;
 
-    // 파티 진행 피드: 팀 진행률(오늘 인증 완료 비율)과 파티원별 오늘 인증 현황 조회
     public PartyFeedResDto getPartyFeed(Long partyId, Long userId) {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));

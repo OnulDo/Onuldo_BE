@@ -35,7 +35,6 @@ import java.util.List;
 @Transactional
 public class PartyLifecycleService {
 
-    // PAR-05: [시작하기] 활성화를 위한 최소 인원 (방장 포함 2인 이상)
     private static final int MIN_MEMBERS_TO_START = 2;
 
     // 파티 진행 기간은 2/4/8/12주 단위(일수 14/28/56/84)로만 생성되어 7로 나누어떨어짐
@@ -49,7 +48,6 @@ public class PartyLifecycleService {
     private final PointTransactionRepository pointTransactionRepository;
     private final TimeService timeService;
 
-    // PAR-05: 파티 시작 (방장만 가능, 2인 이상 + 전원 준비완료 시 활성화, 전원 도전금 일괄 예치)
     public PartyStartResDto startParty(Long partyId, Long userId) {
         Party party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
@@ -69,7 +67,7 @@ public class PartyLifecycleService {
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
 
-        // PAR-05: 모집 최대 인원 도달 여부와 무관하게, 2인 이상 + 현재 참여 파티원 전원 준비완료 시 시작 가능
+        // 모집 최대 인원 도달 여부와 무관하게, 2인 이상 + 현재 참여 파티원 전원 준비완료 시 시작 가능
         boolean allMembersReady = partyMembers.stream()
                 .filter(member -> member.getRole() == PartyMemberRole.MEMBER)
                 .allMatch(PartyMember::isReady);
@@ -82,8 +80,7 @@ public class PartyLifecycleService {
         Challenge challenge = partyChallenge.getChallenge();
         String challengeName = challenge.getName();
 
-        // PAR-05: 시작 시 파티원 전원 도전금 일괄 예치
-        // (부족한 파티원이 있으면 예외 발생 → @Transactional에 의해 그 전에 차감된 파티원분까지 전부 롤백됨)
+        // 부족한 파티원이 있으면 예외 발생 → @Transactional에 의해 그 전에 차감된 파티원분까지 전부 롤백됨
         List<Long> memberUserIds = partyMembers.stream()
                 .map(member -> member.getUser().getId())
                 .sorted()
@@ -115,7 +112,6 @@ public class PartyLifecycleService {
             );
         }
 
-        // PAR-05: 시작 시 상태 전환 + 초대코드 만료 (시작 후 초대코드 만료·파티원 추가 불가)
         LocalDateTime now = timeService.nowKst();
         party.updateStatus(PartyStatus.ONGOING);
         party.updateStartTriggeredAt(now);

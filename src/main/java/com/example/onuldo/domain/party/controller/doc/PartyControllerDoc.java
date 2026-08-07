@@ -4,7 +4,7 @@ import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
-import com.example.onuldo.domain.party.dto.response.PartyHomeItemResDto;
+import com.example.onuldo.domain.party.dto.response.PartyHomeResDto;
 import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
 import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
@@ -21,8 +21,6 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
-
-import java.util.List;
 
 @Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작, 진행 피드, 정산 결과, 홈 화면 관련 API")
 public interface PartyControllerDoc {
@@ -42,8 +40,13 @@ public interface PartyControllerDoc {
 
     @Operation(
             summary = "나의 파티 목록 조회",
-            description = "로그인한 사용자가 속한 파티 목록을 커서 기반으로 조회합니다. "
-                    + "모집 중(WAITING)인 파티는 목록에서 제외되며, 진행 중/종료된 파티만 반환합니다."
+            description = """
+                    커서 기반 페이지네이션으로 로그인한 사용자가 속한 파티 목록을 조회합니다.
+                    모집 중(WAITING)인 파티는 목록에서 제외되며, 진행 중/종료된 파티만 반환합니다.
+                    파티 카드 UI(목표 문구, D-day, 마감 시각, 파티원별 오늘 인증 여부 아바타)를 그대로 그릴 수 있도록
+                    goal, dDay, members(파티원별 isVerifiedToday) 필드를 함께 반환합니다.
+                    카드의 상태(myStatus)와 정렬 순서는 홈 "함께하는 파티" 섹션(HOME-09: 상태 우선순위 → 마감 시각 → D-day → 챌린지ID)과 동일한 정책을 따릅니다.
+                    """
     )
     @ApiResponse(responseCode = "200")
     CursorPageResponse<PartyListResDto> getMyParties(
@@ -138,6 +141,7 @@ public interface PartyControllerDoc {
                     전원 성공/전원 실패/일부 성공 여부와 나의 정산 결과, 파티원별 정산 결과를 반환합니다.
                     정산 계산 및 처리는 별도 도메인에서 수행되며, 아직 정산이 완료되지 않은 파티는 조회할 수 없습니다.
                     요청자가 해당 파티의 파티원이 아니면 조회할 수 없습니다.
+                    이 API를 호출하면 홈 화면의 "정산이 완료됐어요!" 배너에서 해당 파티가 확인 처리되어 사라집니다.
                     """
     )
     @ApiResponse(responseCode = "200")
@@ -152,10 +156,13 @@ public interface PartyControllerDoc {
                     로그인한 사용자가 참여 중인(ONGOING) 파티 목록을 홈 화면 "함께하는 파티" 섹션용으로 조회합니다.
                     파티별 D-day, 마감 시각, 오늘 나의 인증 상태(미인증/검토대기/성공/실패), 파티원별 오늘 인증 여부를 반환합니다.
                     HOME-09 정렬 규칙(상태 우선순위 → 마감 시각 → D-day → 챌린지ID)에 따라 정렬되어 반환됩니다.
+                    settlementBanners는 아직 확인하지 않은 정산 완료 파티 목록(파티ID, 파티명)이며,
+                    파티 정산 결과 조회(GET /api/parties/{partyId}/results) 응답을 받으면 해당 건은 확인 처리되어 이후 배너에서 사라집니다.
                     """
     )
     @ApiResponse(responseCode = "200")
-    BaseResponse<List<PartyHomeItemResDto>> getHomeParties(
-            @AuthUser Long userId
+    BaseResponse<PartyHomeResDto> getHomeParties(
+            @AuthUser
+            Long userId
     );
 }

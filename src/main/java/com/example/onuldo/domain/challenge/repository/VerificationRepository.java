@@ -7,11 +7,19 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
+
+    // POI-08: 파티 정산 전 직접검토(MANUAL_REVIEW) 유예 여부 판단용 — verifiedAt은 검토 "요청" 시각
+    boolean existsByParticipation_IdInAndReviewAndVerifiedAtAfter(
+            Collection<Long> participationIds,
+            VerificationReviewStatus review,
+            LocalDateTime cutoff
+    );
 
     // 파티 진행 피드: 오늘 PASS 처리된 인증만 "인증 완료"로 집계
     @Query("""
@@ -25,6 +33,37 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             """)
     List<Verification> findTodayAutoPassVerificationsByPartyId(
             @Param("partyId") Long partyId,
+            @Param("date") LocalDate date
+    );
+
+    // 나의 파티 목록: 파티원별 오늘 인증 배지 표시를 위한 배치 조회 (findTodayAutoPassVerificationsByPartyId의 IN 버전)
+    @Query("""
+            SELECT v
+            FROM Verification v
+            JOIN FETCH v.participation p
+            JOIN FETCH p.user u
+            WHERE p.party.id IN :partyIds
+            AND v.verificationDate = :date
+            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
+            """)
+    List<Verification> findTodayAutoPassVerificationsByPartyIdIn(
+            @Param("partyIds") Collection<Long> partyIds,
+            @Param("date") LocalDate date
+    );
+
+    // 나의 파티 목록: 파티 카드별 "오늘 나의 인증 상태" 판단용 — PASS 여부와 무관하게 본인 인증 전체 조회
+    @Query("""
+            SELECT v
+            FROM Verification v
+            JOIN FETCH v.participation p
+            JOIN FETCH p.party
+            WHERE p.party.id IN :partyIds
+            AND p.user.id = :userId
+            AND v.verificationDate = :date
+            """)
+    List<Verification> findTodayVerificationsByPartyIdInAndUserId(
+            @Param("partyIds") Collection<Long> partyIds,
+            @Param("userId") Long userId,
             @Param("date") LocalDate date
     );
 

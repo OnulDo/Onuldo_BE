@@ -275,32 +275,32 @@ FROM `user` u, challenge c, party p
 WHERE u.email = '도윤-dummy@test.com' AND c.name = '매일 6시 기상' AND p.name = '정산 데모 파티'
   AND NOT EXISTS (SELECT 1 FROM participation WHERE user_id = u.user_id AND party_id = p.party_id);
 
-INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, bonus_amount, party_share_amount, status, processed_at)
-SELECT pt.participation_id, 30000, 1.33, 30000, 0, 10000, 'COMPLETED', NOW()
+INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, deposit_refund_amount, bonus_amount, party_share_amount, status, processed_at, confirmed)
+SELECT pt.participation_id, 30000, 1.33, 30000, 20000, 0, 10000, 'COMPLETED', NOW(), true
 FROM participation pt
          JOIN `user` u ON pt.user_id = u.user_id
          JOIN party p ON pt.party_id = p.party_id
 WHERE u.email = '오늘두-dummy@test.com' AND p.name = '정산 데모 파티'
   AND NOT EXISTS (SELECT 1 FROM settlement s WHERE s.participation_id = pt.participation_id);
 
-INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, bonus_amount, party_share_amount, status, processed_at)
-SELECT pt.participation_id, 30000, 1.33, 30000, 0, 10000, 'COMPLETED', NOW()
+INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, deposit_refund_amount, bonus_amount, party_share_amount, status, processed_at, confirmed)
+SELECT pt.participation_id, 30000, 1.33, 30000, 20000, 0, 10000, 'COMPLETED', NOW(), true
 FROM participation pt
          JOIN `user` u ON pt.user_id = u.user_id
          JOIN party p ON pt.party_id = p.party_id
 WHERE u.email = '지호-dummy@test.com' AND p.name = '정산 데모 파티'
   AND NOT EXISTS (SELECT 1 FROM settlement s WHERE s.participation_id = pt.participation_id);
 
-INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, bonus_amount, party_share_amount, status, processed_at)
-SELECT pt.participation_id, 30000, 1.33, 30000, 0, 10000, 'COMPLETED', NOW()
+INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, deposit_refund_amount, bonus_amount, party_share_amount, status, processed_at, confirmed)
+SELECT pt.participation_id, 30000, 1.33, 30000, 20000, 0, 10000, 'COMPLETED', NOW(), true
 FROM participation pt
          JOIN `user` u ON pt.user_id = u.user_id
          JOIN party p ON pt.party_id = p.party_id
 WHERE u.email = '수아-dummy@test.com' AND p.name = '정산 데모 파티'
   AND NOT EXISTS (SELECT 1 FROM settlement s WHERE s.participation_id = pt.participation_id);
 
-INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, bonus_amount, party_share_amount, status, processed_at)
-SELECT pt.participation_id, 30000, 0.60, 18000, 0, 0, 'COMPLETED', NOW()
+INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, deposit_refund_amount, bonus_amount, party_share_amount, status, processed_at, confirmed)
+SELECT pt.participation_id, 30000, 0.60, 18000, 18000, 0, 0, 'COMPLETED', NOW(), true
 FROM participation pt
          JOIN `user` u ON pt.user_id = u.user_id
          JOIN party p ON pt.party_id = p.party_id

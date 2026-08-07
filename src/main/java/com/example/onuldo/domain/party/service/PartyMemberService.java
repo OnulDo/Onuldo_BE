@@ -32,7 +32,6 @@ public class PartyMemberService {
     private final UserRepository userRepository;
     private final TimeService timeService;
 
-    // PAR-04, PAR-ERR-01: 초대코드 검증 후 파티 참여
     // 동시성 방어: 초대코드 조회 시점에 바로 비관적 락을 걸어, 상태 확인부터 저장까지를 하나의 조회로 직렬화한다.
     // (락 없이 조회 → 락 걸고 재조회하는 2단계 방식은 그 사이에 다른 트랜잭션이 파티를 시작시켜도
     //  먼저 읽은 상태값으로 통과해버리는 레이스 컨디션이 있어 단일 조회 방식으로 변경)
@@ -78,8 +77,6 @@ public class PartyMemberService {
         return PartyWaitingResDto.of(party, partyMembers, userId);
     }
 
-    // PAR-07: 대기방 이탈(뒤로가기 포함) 시 자동 탈퇴 처리. 방장 이탈 시 가장 먼저 입장한 파티원에게 승계,
-    // 남은 파티원이 없으면 파티 해체 + 초대코드 즉시 만료. 진행 중/종료된 파티는 대기방 이탈 대상이 아니므로 제외.
     public PartyLeaveResDto leaveParty(Long partyId, Long userId) {
         Party party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
@@ -123,7 +120,7 @@ public class PartyMemberService {
                     .build();
         }
 
-        // PAR-07: 방장 승계 — 역할을 HOST로 올리고, 승계 대상은 준비완료 대상이 아니므로 대기 상태로 초기화
+        // 승계 대상은 준비완료 대상이 아니므로 대기 상태로 초기화
         PartyMember newHost = remainingMembers.get(0);
         newHost.updateRole(PartyMemberRole.HOST);
         newHost.waiting();
@@ -138,8 +135,6 @@ public class PartyMemberService {
                 .build();
     }
 
-    // 준비완료 전환 API는 파티 API 목록(7개)에 명시되어 있지 않았으나 PAR-05, PAR-ERR-03 근거로 추가함 (BE 확인 필요)
-    // PAR-05, PAR-ERR-03: 파티원 준비완료/대기 상태 토글
     public PartyWaitingResDto togglePartyMemberReady(Long partyId, Long userId) {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
@@ -147,7 +142,6 @@ public class PartyMemberService {
         PartyMember member = partyMemberRepository.findById(new PartyMemberId(partyId, userId))
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._NOT_PARTY_MEMBER));
 
-        // PAR-05: 방장은 준비완료 대상 아님
         if (member.getRole() == PartyMemberRole.HOST) {
             throw new RestApiException(GlobalErrorStatus._HOST_CANNOT_READY);
         }
@@ -155,7 +149,6 @@ public class PartyMemberService {
         if (member.isReady()) {
             member.waiting();
         } else {
-            // PAR-ERR-03: 준비완료 클릭 시점에 보유 포인트 < 도전금이면 전환 불가
             User user = member.getUser();
             if (user.getPointBalance() < party.getDepositAmount()) {
                 throw new InsufficientPointException(
