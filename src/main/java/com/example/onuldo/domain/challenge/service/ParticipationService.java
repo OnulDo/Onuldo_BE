@@ -47,7 +47,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -138,8 +137,9 @@ public class ParticipationService {
     public DailyChallengeListResDto getDailyChallenges(Long userId) {
         List<Participation> participations = participationRepository
                 .findAllWithChallengeByUserIdAndStatusOrderByIdDesc(userId, ParticipationStatus.ONGOING);
-        LocalDate today = timeService.todayKst();
-        LocalTime currentTime = timeService.nowKst().toLocalTime();
+        LocalDateTime now = timeService.nowKst();
+        LocalDate today = now.toLocalDate();
+        LocalTime currentTime = now.toLocalTime();
         Map<Long, Verification> latestVerificationByParticipationId = findLatestVerificationByParticipationId(
                 participations.stream().map(Participation::getId).toList(),
                 today
@@ -323,7 +323,7 @@ public class ParticipationService {
         Challenge challenge = participation.getChallenge();
         DailyChallengeStatus dailyStatus = resolveDailyChallengeStatus(
                 participation,
-                Optional.ofNullable(latestVerification),
+                latestVerification,
                 today,
                 currentTime
         );
@@ -371,7 +371,7 @@ public class ParticipationService {
 
     private DailyChallengeStatus resolveDailyChallengeStatus(
             Participation participation,
-            Optional<Verification> latestVerification,
+            Verification latestVerification,
             LocalDate today,
             LocalTime currentTime
     ) {
@@ -379,9 +379,11 @@ public class ParticipationService {
             return DailyChallengeStatus.UNAVAILABLE;
         }
 
-        return latestVerification
-                .map(verification -> toDailyChallengeStatus(verification, participation.getChallenge(), currentTime))
-                .orElseGet(() -> resolveUnverifiedDailyStatus(participation.getChallenge(), currentTime));
+        if (latestVerification == null) {
+            return resolveUnverifiedDailyStatus(participation.getChallenge(), currentTime);
+        }
+
+        return toDailyChallengeStatus(latestVerification, participation.getChallenge(), currentTime);
     }
 
     private boolean isOutsideParticipationDates(Participation participation, LocalDate today) {
