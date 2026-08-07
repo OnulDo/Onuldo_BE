@@ -102,47 +102,63 @@ public class PartyLifecycleService {
                 .toList();
 
         for (Long memberUserId : memberUserIds) {
-            User user = userRepository.findByIdForUpdate(memberUserId)
-                    .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
-
-            participationValidator.validateNotOngoing(memberUserId, challenge.getId());
-
-            if (user.getPointBalance() < party.getDepositAmount()) {
-                throw new InsufficientPointException(
-                        GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
-                        user.getPointBalance(),
-                        party.getDepositAmount()
-                );
-            }
-
-            long balanceAfter = user.getPointBalance() - party.getDepositAmount();
-            user.setPointBalance(balanceAfter);
-            userRepository.save(user);
-
-            pointTransactionRepository.save(PointTransaction.builder()
-                    .user(user)
-                    .type(PointTransactionType.DEPOSIT)
-                    .amount(-party.getDepositAmount())
-                    .balanceAfter(balanceAfter)
-                    .description(challengeName)
-                    .build()
-            );
-
-            Participation participation = Participation.builder()
-                    .user(user)
-                    .challenge(challenge)
-                    .party(party)
-                    .participationType(ParticipationType.PARTY)
-                    .depositAmount(party.getDepositAmount())
-                    .durationWeeks(durationWeeks)
-                    .startDate(startDate)
-                    .endDate(endDate)
-                    .build();
-            validateParticipationState(participation);
-            participationRepository.save(participation);
+            createPartyParticipation(memberUserId, party, challenge, challengeName, durationWeeks, startDate, endDate);
         }
 
         return PartyStartResDto.of(party);
+    }
+
+    // participatePersonalChallenge와 동일하게 사용자 행을 먼저 잠근 뒤 검증·차감·저장을
+    // 한 트랜잭션 안에서 원자적으로 수행해, 파티 시작과 동시에 이뤄지는 다른 참여 시도와의
+    // 경합에서도 중복 Participation이 생기지 않도록 한다.
+    // 호출부(startParty)에서 정렬된 memberUserIds 순서로 호출해야 락 획득 순서(데드락 방지)가 유지된다.
+    private void createPartyParticipation(
+            Long memberUserId,
+            Party party,
+            Challenge challenge,
+            String challengeName,
+            int durationWeeks,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        User user = userRepository.findByIdForUpdate(memberUserId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+        participationValidator.validateNotOngoing(memberUserId, challenge.getId());
+
+        if (user.getPointBalance() < party.getDepositAmount()) {
+            throw new InsufficientPointException(
+                    GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+                    user.getPointBalance(),
+                    party.getDepositAmount()
+            );
+        }
+
+        long balanceAfter = user.getPointBalance() - party.getDepositAmount();
+        user.setPointBalance(balanceAfter);
+        userRepository.save(user);
+
+        pointTransactionRepository.save(PointTransaction.builder()
+                .user(user)
+                .type(PointTransactionType.DEPOSIT)
+                .amount(-party.getDepositAmount())
+                .balanceAfter(balanceAfter)
+                .description(challengeName)
+                .build()
+        );
+
+        Participation participation = Participation.builder()
+                .user(user)
+                .challenge(challenge)
+                .party(party)
+                .participationType(ParticipationType.PARTY)
+                .depositAmount(party.getDepositAmount())
+                .durationWeeks(durationWeeks)
+                .startDate(startDate)
+                .endDate(endDate)
+                .build();
+        validateParticipationState(participation);
+        participationRepository.save(participation);
     }
 
     private void validateParticipationState(Participation participation) {
