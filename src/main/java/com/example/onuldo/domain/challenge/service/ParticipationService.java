@@ -38,6 +38,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -61,6 +63,8 @@ public class ParticipationService {
     private final PointTransactionRepository pointTransactionRepository;
     private final TimeService timeService;
     private final ParticipationValidator participationValidator;
+
+    private static final BigDecimal BONUS_RATE = BigDecimal.valueOf(0.025);
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,
@@ -102,13 +106,19 @@ public class ParticipationService {
                 .build()
         );
 
+        int bonusAmount = BigDecimal.valueOf(request.depositAmount())
+                .multiply(BONUS_RATE)
+                .setScale(0, RoundingMode.HALF_UP)
+                .intValue();
+        int expectedRefundAmount = request.depositAmount() + bonusAmount;
+
         return ParticipationResDto.builder()
                 .startDate(startDate)
                 .endDate(endDate)
                 .durationWeeks(request.durationWeeks())
                 .durationDays(durationDays)
                 .depositAmount(request.depositAmount())
-                .expectedRefundAmount(request.depositAmount())
+                .expectedRefundAmount(expectedRefundAmount)
                 .build();
     }
 
