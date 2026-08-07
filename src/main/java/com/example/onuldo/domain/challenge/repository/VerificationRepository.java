@@ -137,14 +137,22 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             LocalDate verificationDate
     );
 
+    @Query("""
+            SELECT v
+            FROM Verification v
+            JOIN FETCH v.participation p
+            WHERE p.id IN :participationIds
+            AND v.verificationDate = :date
+            ORDER BY p.id ASC, v.verifiedAt DESC, v.id DESC
+            """)
+    List<Verification> findAllByParticipationIdInAndVerificationDateOrderByLatest(
+            @Param("participationIds") Collection<Long> participationIds,
+            @Param("date") LocalDate date
+    );
+
     Optional<Verification> findByParticipation_IdAndVerificationDateAndReview(
             Long participationId,
             LocalDate verificationDate,
             VerificationReviewStatus review
-    );
-
-    Optional<Verification> findTopByParticipation_IdAndVerificationDateOrderByVerifiedAtDescIdDesc(
-            Long participationId,
-            LocalDate verificationDate
     );
 }

@@ -44,6 +44,7 @@ import java.time.LocalTime;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -137,10 +138,21 @@ public class ParticipationService {
     public DailyChallengeListResDto getDailyChallenges(Long userId) {
         List<Participation> participations = participationRepository
                 .findAllWithChallengeByUserIdAndStatusOrderByIdDesc(userId, ParticipationStatus.ONGOING);
+        LocalDate today = timeService.todayKst();
+        LocalTime currentTime = timeService.nowKst().toLocalTime();
+        Map<Long, Verification> latestVerificationByParticipationId = findLatestVerificationByParticipationId(
+                participations.stream().map(Participation::getId).toList(),
+                today
+        );
 
         return DailyChallengeListResDto.builder()
                 .challenges(participations.stream()
-                        .map(this::toDailyChallengeResDto)
+                        .map(participation -> toDailyChallengeResDto(
+                                participation,
+                                latestVerificationByParticipationId.get(participation.getId()),
+                                today,
+                                currentTime
+                        ))
                         .toList())
                 .build();
     }
@@ -302,9 +314,19 @@ public class ParticipationService {
                 .build();
     }
 
-    private DailyChallengeResDto toDailyChallengeResDto(Participation participation) {
+    private DailyChallengeResDto toDailyChallengeResDto(
+            Participation participation,
+            Verification latestVerification,
+            LocalDate today,
+            LocalTime currentTime
+    ) {
         Challenge challenge = participation.getChallenge();
-        DailyChallengeStatus dailyStatus = resolveDailyChallengeStatus(participation);
+        DailyChallengeStatus dailyStatus = resolveDailyChallengeStatus(
+                participation,
+                Optional.ofNullable(latestVerification),
+                today,
+                currentTime
+        );
 
         return DailyChallengeResDto.builder()
                 .participationId(participation.getId())
@@ -328,36 +350,55 @@ public class ParticipationService {
                 .build();
     }
 
-    private DailyChallengeStatus resolveDailyChallengeStatus(Participation participation) {
-        LocalDate today = timeService.todayKst();
+    private Map<Long, Verification> findLatestVerificationByParticipationId(
+            List<Long> participationIds,
+            LocalDate date
+    ) {
+        if (participationIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return verificationRepository
+                .findAllByParticipationIdInAndVerificationDateOrderByLatest(participationIds, date)
+                .stream()
+                .collect(Collectors.toMap(
+                        verification -> verification.getParticipation().getId(),
+                        verification -> verification,
+                        (latest, ignored) -> latest,
+                        LinkedHashMap::new
+                ));
+    }
+
+    private DailyChallengeStatus resolveDailyChallengeStatus(
+            Participation participation,
+            Optional<Verification> latestVerification,
+            LocalDate today,
+            LocalTime currentTime
+    ) {
         if (isOutsideParticipationDates(participation, today)) {
             return DailyChallengeStatus.UNAVAILABLE;
         }
 
-        return findLatestVerification(participation, today)
-                .map(this::toDailyChallengeStatus)
-                .orElseGet(() -> resolveUnverifiedDailyStatus(participation.getChallenge(), timeService.nowKst().toLocalTime()));
+        return latestVerification
+                .map(verification -> toDailyChallengeStatus(verification, participation.getChallenge(), currentTime))
+                .orElseGet(() -> resolveUnverifiedDailyStatus(participation.getChallenge(), currentTime));
     }
 
     private boolean isOutsideParticipationDates(Participation participation, LocalDate today) {
         return today.isBefore(participation.getStartDate()) || today.isAfter(participation.getEndDate());
     }
 
-    private Optional<Verification> findLatestVerification(Participation participation, LocalDate date) {
-        return verificationRepository
-                .findTopByParticipation_IdAndVerificationDateOrderByVerifiedAtDescIdDesc(participation.getId(), date);
-    }
-
-    private DailyChallengeStatus toDailyChallengeStatus(Verification verification) {
+    private DailyChallengeStatus toDailyChallengeStatus(
+            Verification verification,
+            Challenge challenge,
+            LocalTime currentTime
+    ) {
         VerificationReviewStatus review = verification.getReview();
         return switch (review) {
             case PASS -> DailyChallengeStatus.SUCCESS;
             case AUTO_FAIL -> DailyChallengeStatus.FAIL;
             case MANUAL_REVIEW -> DailyChallengeStatus.REVIEW_PENDING;
-            case PENDING -> resolveUnverifiedDailyStatus(
-                    verification.getParticipation().getChallenge(),
-                    timeService.nowKst().toLocalTime()
-            );
+            case PENDING -> resolveUnverifiedDailyStatus(challenge, currentTime);
         };
     }
 
