@@ -1,6 +1,7 @@
 package com.example.onuldo.domain.challenge.controller;
 
 import com.example.onuldo.domain.challenge.controller.doc.ChallengeControllerDoc;
+import com.example.onuldo.domain.challenge.dto.response.ChallengeManualReviewResDto;
 import com.example.onuldo.domain.challenge.dto.response.ChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.ChallengeVerificationResDto;
 import com.example.onuldo.domain.challenge.dto.request.ChallengeVerificationReqDto;
@@ -59,5 +60,15 @@ public class ChallengeController implements ChallengeControllerDoc {
             ChallengeVerificationReqDto request
     ) {
         return BaseResponse.onSuccess(challengeService.verifyChallenge(userId, challengeId, request));
+    }
+
+    @PostMapping("/{challengeId}/verification/manual-review")
+    public BaseResponse<ChallengeManualReviewResDto> manualReviewVerification(
+            @AuthUser
+            Long userId,
+            @PathVariable
+            Long challengeId
+    ) {
+        return BaseResponse.onSuccess(challengeService.manualReviewVerification(userId, challengeId));
     }
 }

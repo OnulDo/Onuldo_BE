@@ -58,7 +58,6 @@ public class PartyMember {
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt = TimeService.nowKstStatic();
 
-    // PAR-05: 파티원은 대기방에서 [준비완료]로 상태 전환
     public void ready() {
         this.status = PartyMemberStatus.READY;
     }
@@ -69,5 +68,9 @@ public class PartyMember {
 
     public boolean isReady() {
         return this.status == PartyMemberStatus.READY;
+    }
+
+    public void updateRole(PartyMemberRole role) {
+        this.role = role;
     }
 }

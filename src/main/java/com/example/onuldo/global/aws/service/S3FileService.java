@@ -45,7 +45,7 @@ public class S3FileService {
                     RequestBody.fromBytes(payload.bytes())
             );
         } catch (RuntimeException e) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "S3 업로드에 실패했습니다.");
+            throw new RestApiException(GlobalErrorStatus._S3_UPLOAD_FAILED);
         }
 
         return S3UploadResDto.builder()
@@ -71,12 +71,12 @@ public class S3FileService {
 
     private ImageUploadPayload readAndValidateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "업로드할 이미지 파일이 필요합니다.");
+            throw new RestApiException(GlobalErrorStatus._IMAGE_FILE_REQUIRED);
         }
 
         String contentType = normalizeImageContentType(file.getContentType());
         if (contentType == null) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "JPEG 또는 PNG 이미지만 업로드할 수 있습니다.");
+            throw new RestApiException(GlobalErrorStatus._UNSUPPORTED_IMAGE_TYPE);
         }
 
         try {
@@ -85,27 +85,27 @@ public class S3FileService {
             boolean png = isPng(bytes);
 
             if (!jpeg && !png) {
-                throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "실제 파일 형식이 JPEG 또는 PNG여야 합니다.");
+                throw new RestApiException(GlobalErrorStatus._INVALID_IMAGE_FORMAT);
             }
 
             if (jpeg && !"image/jpeg".equals(contentType)) {
-                throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "JPEG 파일은 image/jpeg 형식이어야 합니다.");
+                throw new RestApiException(GlobalErrorStatus._JPEG_CONTENT_TYPE_MISMATCH);
             }
 
             if (png && !"image/png".equals(contentType)) {
-                throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "PNG 파일은 image/png 형식이어야 합니다.");
+                throw new RestApiException(GlobalErrorStatus._PNG_CONTENT_TYPE_MISMATCH);
             }
 
             return new ImageUploadPayload(contentType, bytes);
         } catch (IOException e) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "업로드 이미지를 읽는 중 오류가 발생했습니다.");
+            throw new RestApiException(GlobalErrorStatus._IMAGE_READ_FAILED);
         }
     }
 
     private String resolveBucket() {
         String bucket = awsProperties.s3().bucket();
         if (bucket == null || bucket.isBlank()) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "AWS S3 버킷 설정이 필요합니다.");
+            throw new RestApiException(GlobalErrorStatus._S3_BUCKET_NOT_CONFIGURED);
         }
 
         return bucket;
@@ -113,7 +113,7 @@ public class S3FileService {
 
     private void validateFileId(String fileId) {
         if (fileId == null || fileId.isBlank()) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "fileId는 필수입니다.");
+            throw new RestApiException(GlobalErrorStatus._FILE_ID_REQUIRED);
         }
     }
 
@@ -131,9 +131,9 @@ public class S3FileService {
             if (e.statusCode() == HttpStatus.NOT_FOUND.value()) {
                 throw new RestApiException(GlobalErrorStatus._FILE_NOT_FOUND);
             }
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "파일 존재 여부 확인에 실패했습니다.");
+            throw new RestApiException(GlobalErrorStatus._FILE_EXISTENCE_CHECK_FAILED);
         } catch (SdkException | IllegalArgumentException e) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "파일 존재 여부 확인에 실패했습니다.");
+            throw new RestApiException(GlobalErrorStatus._FILE_EXISTENCE_CHECK_FAILED);
         }
     }
 
@@ -152,7 +152,7 @@ public class S3FileService {
     private String createAccessUrl(String bucket, String key) {
         String publicBaseUrl = awsProperties.s3().publicBaseUrl();
         if (publicBaseUrl == null || publicBaseUrl.isBlank()) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "AWS S3 publicBaseUrl 설정이 필요합니다.");
+            throw new RestApiException(GlobalErrorStatus._S3_PUBLIC_BASE_URL_NOT_CONFIGURED);
         }
 
         return publicBaseUrl.replaceAll("/+$", "") + "/" + key;

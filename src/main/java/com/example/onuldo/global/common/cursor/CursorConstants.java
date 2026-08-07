@@ -13,7 +13,7 @@ public class CursorConstants {
 
     public static int resolveSize(int size) {
         if (size <= 0) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "size는 1 이상이어야 합니다.");
+            throw new RestApiException(GlobalErrorStatus._CURSOR_SIZE_INVALID);
         }
         return Math.min(size, MAX_SIZE);
     }

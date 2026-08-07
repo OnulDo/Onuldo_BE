@@ -2,13 +2,17 @@ package com.example.onuldo.domain.user.controller.doc;
 
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
-import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
+import com.example.onuldo.domain.user.dto.request.UpdateProfileReqDto;
+import com.example.onuldo.domain.user.dto.request.WithdrawPointReqDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
+import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
 import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
+import com.example.onuldo.domain.user.dto.response.UpdateProfileResDto;
+import com.example.onuldo.domain.user.dto.response.WithdrawPointResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
@@ -41,6 +45,23 @@ public interface UserControllerDoc {
     BaseResponse<GetMyPageResDto> getMyPage(
             @AuthUser
             Long userId
+    );
+
+    @Operation(
+            summary = "프로필 사진/닉네임 변경",
+            description = """
+                    로그인한 유저의 프로필 정보(사진, 닉네임)를 변경합니다.
+
+                    nickname, profileImageUrl 중 변경할 값만 채워서 요청하면 됩니다.
+                    - 값을 채운 필드만 변경되고, null로 보낸 필드는 기존 값이 유지됩니다.
+                    - 두 필드를 모두 채워 보내면 둘 다 한 번에 변경됩니다.
+                    """
+    )
+    BaseResponse<UpdateProfileResDto> updateProfile(
+            @AuthUser
+            Long userId,
+            @RequestBody
+            UpdateProfileReqDto request
     );
 
     @Operation(
@@ -79,7 +100,7 @@ public interface UserControllerDoc {
 
     @Operation(
             summary = "포인트 충전",
-            description = "결제 수단을 통해 포인트를 충전하고 충전된 금액과 충전 후 잔액을 반환합니다."
+            description = "포인트를 충전하고 충전된 금액과 충전 후 잔액을 반환합니다."
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
@@ -95,20 +116,33 @@ public interface UserControllerDoc {
     );
 
     @Operation(
-            summary = "신규 회원 가입 포인트 지급",
-            description = "회원가입 직후 클라이언트가 호출하여 신규 회원 가입 포인트를 지급받고, 지급된 금액과 지급 후 잔액을 반환합니다."
+            summary = "포인트 출금",
+            description = "포인트를 출금하고 출금된 금액과 출금 후 잔액을 반환합니다."
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
     )
     @ApiResponse(responseCode = "200")
-    BaseResponse<ChargePointResDto> grantSignupBonus(
+    BaseResponse<WithdrawPointResDto> withdrawPoint(
             @AuthUser
             Long userId,
 
             @Valid
             @RequestBody
-            ChargePointReqDto request
+            WithdrawPointReqDto request
+    );
+
+    @Operation(
+            summary = "신규 회원 가입 포인트 지급",
+            description = """
+                    회원가입 직후 클라이언트가 호출하면 서버가 신규 회원 가입 포인트 100,000P를 지급하고,
+                    지급된 금액과 지급 후 잔액을 반환합니다.
+                    """
+    )
+    @ApiResponse(responseCode = "200")
+    BaseResponse<ChargePointResDto> grantSignupBonus(
+            @AuthUser
+            Long userId
     );
 
     @Operation(
@@ -117,6 +151,16 @@ public interface UserControllerDoc {
     )
     @ApiResponse(responseCode = "200")
     BaseResponse<PointWalletSummaryResDto> getPointWalletSummary(
+            @AuthUser
+            Long userId
+    );
+
+    @Operation(
+            summary = "회원 탈퇴",
+            description = "현재 로그인한 사용자의 계정을 탈퇴 처리합니다. 탈퇴 후에는 기존 토큰으로 API 접근이 차단됩니다."
+    )
+    @ApiResponse(responseCode = "200")
+    BaseResponse<Void> withdraw(
             @AuthUser
             Long userId
     );

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -21,12 +22,13 @@ public record PartyCreateReqDto(
         @NotNull(message = "챌린지 ID는 필수입니다.")
         Long challengeId,
 
-        @Schema(example = "28")
+        @Schema(example = "4")
         @NotNull(message = "진행 기간은 필수입니다.")
-        Integer durationDays,
+        Integer durationWeeks,
 
         @Schema(example = "30000")
         @NotNull(message = "도전금은 필수입니다.")
+        @Positive(message = "도전금은 0보다 커야 합니다.")
         Integer depositAmount,
 
         @Schema(example = "4")

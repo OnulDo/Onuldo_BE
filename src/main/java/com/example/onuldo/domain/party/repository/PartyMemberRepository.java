@@ -10,6 +10,8 @@ public interface PartyMemberRepository extends JpaRepository<PartyMember, PartyM
 
     List<PartyMember> findByParty_IdOrderByJoinedAtAsc(Long partyId);
 
+    List<PartyMember> findByParty_IdInOrderByJoinedAtAsc(List<Long> partyIds);
+
     int countByParty_Id(Long partyId);
 
     boolean existsByParty_IdAndUser_Id(Long partyId, Long userId);

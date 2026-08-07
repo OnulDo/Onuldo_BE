@@ -82,11 +82,11 @@ public class Participation {
     @PreUpdate
     private void validateParticipationType() {
         if (participationType == ParticipationType.PERSONAL && party != null) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "개인 참여에는 party가 연결되면 안 됩니다.");
+            throw new RestApiException(GlobalErrorStatus._PARTICIPATION_PARTY_NOT_ALLOWED);
         }
 
         if (participationType == ParticipationType.PARTY && party == null) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "party 참여에는 party가 필요합니다.");
+            throw new RestApiException(GlobalErrorStatus._PARTICIPATION_PARTY_REQUIRED);
         }
     }
 }
