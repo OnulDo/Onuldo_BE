@@ -4,6 +4,7 @@ import com.example.onuldo.domain.user.controller.doc.UserControllerDoc;
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateProfileReqDto;
+import com.example.onuldo.domain.user.dto.request.WithdrawPointReqDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
@@ -12,6 +13,7 @@ import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateProfileResDto;
+import com.example.onuldo.domain.user.dto.response.WithdrawPointResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.service.PointService;
 import com.example.onuldo.domain.user.service.UserService;
@@ -93,6 +95,18 @@ public class UserController implements UserControllerDoc {
             ChargePointReqDto request
     ) {
         return BaseResponse.onSuccess(pointService.chargePoint(userId, request));
+    }
+
+    @PostMapping("/wallet/withdraw")
+    public BaseResponse<WithdrawPointResDto> withdrawPoint(
+            @AuthUser
+            Long userId,
+
+            @Valid
+            @RequestBody
+            WithdrawPointReqDto request
+    ) {
+        return BaseResponse.onSuccess(pointService.withdrawPoint(userId, request));
     }
 
     @PostMapping("/wallet/signup-bonuses")

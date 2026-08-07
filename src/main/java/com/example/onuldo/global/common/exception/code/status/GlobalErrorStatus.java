@@ -45,6 +45,9 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _AUTO_FAIL_VERIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTO_FAIL_VERIFICATION_NOT_FOUND", "오늘 자동 실패 처리된 인증 기록을 찾을 수 없습니다."),
     _ALREADY_MANUALLY_REVIEWED(HttpStatus.CONFLICT, "ALREADY_MANUALLY_REVIEWED", "오늘 이미 수동 검토 처리되었습니다."),
 
+    // 포인트 출금 에러
+    _INSUFFICIENT_POINT_FOR_WITHDRAW(HttpStatus.BAD_REQUEST, "INSUFFICIENT_POINT_FOR_WITHDRAW", "보유 포인트가 출금 요청 금액보다 부족합니다."),
+
     // Party 관련 에러
     _INSUFFICIENT_POINT_FOR_PARTY(HttpStatus.CONFLICT, "INSUFFICIENT_POINT_FOR_PARTY", "보유 포인트가 도전금보다 부족합니다."),
     _INVITE_CODE_GENERATION_FAILED(

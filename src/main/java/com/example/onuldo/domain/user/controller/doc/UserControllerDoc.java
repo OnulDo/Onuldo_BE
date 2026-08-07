@@ -3,6 +3,7 @@ package com.example.onuldo.domain.user.controller.doc;
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateProfileReqDto;
+import com.example.onuldo.domain.user.dto.request.WithdrawPointReqDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
@@ -11,6 +12,7 @@ import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateProfileResDto;
+import com.example.onuldo.domain.user.dto.response.WithdrawPointResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
@@ -98,7 +100,7 @@ public interface UserControllerDoc {
 
     @Operation(
             summary = "포인트 충전",
-            description = "결제 수단을 통해 포인트를 충전하고 충전된 금액과 충전 후 잔액을 반환합니다."
+            description = "포인트를 충전하고 충전된 금액과 충전 후 잔액을 반환합니다."
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
@@ -111,6 +113,23 @@ public interface UserControllerDoc {
             @Valid
             @RequestBody
             ChargePointReqDto request
+    );
+
+    @Operation(
+            summary = "포인트 출금",
+            description = "포인트를 출금하고 출금된 금액과 출금 후 잔액을 반환합니다."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(mediaType = "application/json")
+    )
+    @ApiResponse(responseCode = "200")
+    BaseResponse<WithdrawPointResDto> withdrawPoint(
+            @AuthUser
+            Long userId,
+
+            @Valid
+            @RequestBody
+            WithdrawPointReqDto request
     );
 
     @Operation(
