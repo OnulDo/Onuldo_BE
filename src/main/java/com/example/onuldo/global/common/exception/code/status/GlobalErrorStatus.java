@@ -108,11 +108,6 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     // 파티 관련 에러
     _INSUFFICIENT_POINT_FOR_PARTY(HttpStatus.CONFLICT,
             "INSUFFICIENT_POINT_FOR_PARTY", "보유 포인트가 도전금보다 부족합니다."),
-    // 포인트 출금 에러
-    _INSUFFICIENT_POINT_FOR_WITHDRAW(HttpStatus.BAD_REQUEST, "INSUFFICIENT_POINT_FOR_WITHDRAW", "보유 포인트가 출금 요청 금액보다 부족합니다."),
-
-    // Party 관련 에러
-    _INSUFFICIENT_POINT_FOR_PARTY(HttpStatus.CONFLICT, "INSUFFICIENT_POINT_FOR_PARTY", "보유 포인트가 도전금보다 부족합니다."),
     _INVITE_CODE_GENERATION_FAILED(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "INVITE_CODE_GENERATION_FAILED",
@@ -155,7 +150,6 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
             "SETTLEMENT_NOT_COMPLETED",
             "아직 정산이 완료되지 않은 파티입니다."
     ),
-    _SETTLEMENT_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "SETTLEMENT_NOT_COMPLETED", "아직 정산이 완료되지 않은 파티입니다."),
     // 파티 정산 시 시작일=종료일 등으로 수행일이 0 이하가 되어 일 지분 계산이 불가능한 데이터 이상 상태
     _SETTLEMENT_INVALID_PERIOD(HttpStatus.INTERNAL_SERVER_ERROR, "SETTLEMENT_INVALID_PERIOD", "정산 대상 기간이 올바르지 않습니다."),
 
@@ -174,6 +168,7 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
             "RETURN_RATE_OUT_OF_RANGE",
             "평균 환급률이 허용 범위를 초과했습니다."
     ),
+    _INSUFFICIENT_POINT_FOR_WITHDRAW(HttpStatus.BAD_REQUEST, "INSUFFICIENT_POINT_FOR_WITHDRAW", "보유 포인트가 출금 요청 금액보다 부족합니다."),
 
     // 커서 페이지네이션 관련 에러
     _CURSOR_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "CURSOR_INVALID_FORMAT", "cursor 형식이 올바르지 않습니다."),
