@@ -4,6 +4,7 @@ import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
+import com.example.onuldo.domain.challenge.support.ParticipationValidator;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.party.entity.PartyChallenge;
@@ -47,6 +48,7 @@ public class PartyLifecycleService {
     private final ParticipationRepository participationRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final TimeService timeService;
+    private final ParticipationValidator participationValidator;
 
     public PartyStartResDto startParty(Long partyId, Long userId) {
         Party party = partyRepository.findByIdForUpdate(partyId)
@@ -80,7 +82,20 @@ public class PartyLifecycleService {
         Challenge challenge = partyChallenge.getChallenge();
         String challengeName = challenge.getName();
 
-        // 부족한 파티원이 있으면 예외 발생 → @Transactional에 의해 그 전에 차감된 파티원분까지 전부 롤백됨
+        LocalDateTime now = timeService.nowKst();
+        party.updateStatus(PartyStatus.ONGOING);
+        party.updateStartTriggeredAt(now);
+        party.updateInviteExpiresAt(now);
+        partyRepository.save(party);
+
+        // #94: 참여 시작일은 시작 처리 다음 날부터 (당일 시작 금지, 시작 전 인증 방지)
+        // durationDays는 시작일·종료일을 포함한 총 수행일수 (ParticipationRecordService.calculateInclusiveDays와 동일 기준)
+        LocalDate startDate = now.toLocalDate().plusDays(1);
+        LocalDate endDate = startDate.plusDays(party.getDurationDays() - 1);
+        int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
+
+        // 부족한 파티원이 있거나 이미 다른 곳에서 해당 챌린지를 진행 중인 파티원이 있으면 예외 발생
+        // → @Transactional에 의해 그 전에 차감·생성된 파티원분(및 위 party 상태 변경)까지 전부 롤백됨
         List<Long> memberUserIds = partyMembers.stream()
                 .map(member -> member.getUser().getId())
                 .sorted()
@@ -89,6 +104,8 @@ public class PartyLifecycleService {
         for (Long memberUserId : memberUserIds) {
             User user = userRepository.findByIdForUpdate(memberUserId)
                     .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+            participationValidator.validateNotOngoing(memberUserId, challenge.getId());
 
             if (user.getPointBalance() < party.getDepositAmount()) {
                 throw new InsufficientPointException(
@@ -110,23 +127,9 @@ public class PartyLifecycleService {
                     .description(challengeName)
                     .build()
             );
-        }
 
-        LocalDateTime now = timeService.nowKst();
-        party.updateStatus(PartyStatus.ONGOING);
-        party.updateStartTriggeredAt(now);
-        party.updateInviteExpiresAt(now);
-        partyRepository.save(party);
-
-        // #94: 참여 시작일은 시작 처리 다음 날부터 (당일 시작 금지, 시작 전 인증 방지)
-        // durationDays는 시작일·종료일을 포함한 총 수행일수 (ParticipationRecordService.calculateInclusiveDays와 동일 기준)
-        LocalDate startDate = now.toLocalDate().plusDays(1);
-        LocalDate endDate = startDate.plusDays(party.getDurationDays() - 1);
-        int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
-
-        for (PartyMember member : partyMembers) {
             Participation participation = Participation.builder()
-                    .user(member.getUser())
+                    .user(user)
                     .challenge(challenge)
                     .party(party)
                     .participationType(ParticipationType.PARTY)

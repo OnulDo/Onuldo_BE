@@ -66,7 +66,7 @@ public class PartyMemberService {
         }
 
         PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(party.getId())
-                .orElseThrow();
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
         participationValidator.validateNotOngoing(userId, partyChallenge.getChallenge().getId());
 
         int currentMembers = partyMemberRepository.countByParty_Id(party.getId());
