@@ -70,7 +70,7 @@ public class ParticipationRecordService {
                 );
 
         Map<Long, Map<LocalDate, BigDecimal>> dayScoreByParticipationId = collectDayScores(completedParticipations);
-        Map<Long, Integer> refundAmountByParticipationId = getRefundAmountByParticipationId(completedParticipations);
+        Map<Long, Settlement> settlementByParticipationId = getSettlementByParticipationId(completedParticipations);
 
         List<CompletedChallengeRecordResDto> completedChallengeRecords = completedParticipations.stream()
                 .map(participation -> toCompletedChallengeRecordResDto(
@@ -79,14 +79,14 @@ public class ParticipationRecordService {
                                 participation,
                                 dayScoreByParticipationId.getOrDefault(participation.getId(), Map.of())
                         ),
-                        refundAmountByParticipationId.getOrDefault(participation.getId(), 0)
+                        settlementByParticipationId.get(participation.getId())
                 ))
                 .toList();
 
         return CompletedChallengeRecordSummaryResDto.builder()
                 .totalCompletedCount(completedChallengeRecords.size())
                 .successRate(calculateSuccessRate(completedParticipations))
-                .totalSavedAmount(calculateTotalSavedAmount(refundAmountByParticipationId))
+                .totalSavedAmount(calculateTotalSavedAmount(settlementByParticipationId))
                 .completedChallenges(completedChallengeRecords)
                 .build();
     }
@@ -114,16 +114,19 @@ public class ParticipationRecordService {
     private CompletedChallengeRecordResDto toCompletedChallengeRecordResDto(
             Participation participation,
             Integer achievementRate,
-            Integer refundAmount
+            Settlement settlement
     ) {
         var challenge = participation.getChallenge();
+        int depositAmount = settlement != null ? settlement.getDepositAmount() : 0;
+        int adjustmentAmount = settlement != null ? settlement.getRefundAmount() - depositAmount : 0;
 
         return CompletedChallengeRecordResDto.builder()
                 .participationId(participation.getId())
                 .challengeId(challenge.getId())
                 .challengeTitle(challenge.getName())
                 .resultStatus(participation.getStatus())
-                .refundAmount(refundAmount)
+                .depositAmount(depositAmount)
+                .adjustmentAmount(adjustmentAmount)
                 .endedDate(participation.getEndDate())
                 .achievementRate(achievementRate)
                 .build();
@@ -194,7 +197,7 @@ public class ParticipationRecordService {
         return BigDecimal.ZERO;
     }
 
-    private Map<Long, Integer> getRefundAmountByParticipationId(List<Participation> completedParticipations) {
+    private Map<Long, Settlement> getSettlementByParticipationId(List<Participation> completedParticipations) {
         if (completedParticipations.isEmpty()) {
             return Map.of();
         }
@@ -206,14 +209,14 @@ public class ParticipationRecordService {
         return settlementRepository.findAllByParticipation_IdInOrderByIdDesc(participationIds).stream()
                 .collect(Collectors.toMap(
                         settlement -> settlement.getParticipation().getId(),
-                        Settlement::getRefundAmount,
+                        settlement -> settlement,
                         (first, second) -> first
                 ));
     }
 
-    private long calculateTotalSavedAmount(Map<Long, Integer> refundAmountByParticipationId) {
-        return refundAmountByParticipationId.values().stream()
-                .mapToLong(Integer::longValue)
+    private long calculateTotalSavedAmount(Map<Long, Settlement> settlementByParticipationId) {
+        return settlementByParticipationId.values().stream()
+                .mapToLong(Settlement::getRefundAmount)
                 .sum();
     }
 
