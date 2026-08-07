@@ -142,4 +142,9 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             LocalDate verificationDate,
             VerificationReviewStatus review
     );
+
+    Optional<Verification> findTopByParticipation_IdAndVerificationDateOrderByVerifiedAtDescIdDesc(
+            Long participationId,
+            LocalDate verificationDate
+    );
 }
