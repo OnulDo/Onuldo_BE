@@ -22,6 +22,7 @@ import com.example.onuldo.domain.user.enums.SocialProvider;
 import com.example.onuldo.domain.user.enums.UserStatus;
 import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.aws.service.S3FileService;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
@@ -65,6 +66,7 @@ public class AuthService {
     private final OAuthService oAuthService;
     private final TimeService timeService;
     private final NicknameValidator nicknameValidator;
+    private final S3FileService s3FileService;
 
     @Transactional
     public AuthResDto signup(EmailSignupReqDto request) {
@@ -75,6 +77,7 @@ public class AuthService {
         nicknameValidator.validate(request.nickname());
         validateRequiredTerms(request.termAgreements());
         validatePassword(request.password());
+        s3FileService.verifyPublicUrlExists(request.profileImageUrl());
 
         User user = User.builder()
                 .email(request.email())
@@ -172,6 +175,7 @@ public class AuthService {
 
         nicknameValidator.validate(request.nickname());
         validateRequiredTerms(request.termAgreements());
+        s3FileService.verifyPublicUrlExists(request.profileImageUrl());
 
         User user = userRepository.save(User.builder()
                 .email(info.email())

@@ -69,6 +69,28 @@ public class S3FileService {
                 .build();
     }
 
+    // 클라이언트가 통째로 URL을 보내는 요청(예: 회원가입 프로필 이미지)에서, 우리 버킷이 아닌 임의의 URL이나
+    // 존재하지 않는 객체를 가리키는 URL이 그대로 저장되는 것을 막기 위한 검증
+    public void verifyPublicUrlExists(String url) {
+        String bucket = resolveBucket();
+        String fileId = extractFileIdFromPublicUrl(url);
+        verifyObjectExists(bucket, fileId);
+    }
+
+    private String extractFileIdFromPublicUrl(String url) {
+        String publicBaseUrl = awsProperties.s3().publicBaseUrl();
+        if (publicBaseUrl == null || publicBaseUrl.isBlank()) {
+            throw new RestApiException(GlobalErrorStatus._S3_PUBLIC_BASE_URL_NOT_CONFIGURED);
+        }
+
+        String prefix = publicBaseUrl.replaceAll("/+$", "") + "/";
+        if (url == null || !url.startsWith(prefix) || url.length() == prefix.length()) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_FILE_URL);
+        }
+
+        return url.substring(prefix.length());
+    }
+
     private ImageUploadPayload readAndValidateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new RestApiException(GlobalErrorStatus._IMAGE_FILE_REQUIRED);
