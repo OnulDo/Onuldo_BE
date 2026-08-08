@@ -69,8 +69,6 @@ public class S3FileService {
                 .build();
     }
 
-    // 클라이언트가 통째로 URL을 보내는 요청(예: 회원가입 프로필 이미지)에서, 우리 버킷이 아닌 임의의 URL이나
-    // 존재하지 않는 객체를 가리키는 URL이 그대로 저장되는 것을 막기 위한 검증
     public void verifyPublicUrlExists(String url) {
         String bucket = resolveBucket();
         String fileId = extractFileIdFromPublicUrl(url);
