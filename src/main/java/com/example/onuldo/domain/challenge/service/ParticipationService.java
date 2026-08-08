@@ -383,24 +383,19 @@ public class ParticipationService {
             return resolveUnverifiedDailyStatus(participation.getChallenge(), currentTime);
         }
 
-        return toDailyChallengeStatus(latestVerification, participation.getChallenge(), currentTime);
+        return toDailyChallengeStatus(latestVerification);
     }
 
     private boolean isOutsideParticipationDates(Participation participation, LocalDate today) {
         return today.isBefore(participation.getStartDate()) || today.isAfter(participation.getEndDate());
     }
 
-    private DailyChallengeStatus toDailyChallengeStatus(
-            Verification verification,
-            Challenge challenge,
-            LocalTime currentTime
-    ) {
+    private DailyChallengeStatus toDailyChallengeStatus(Verification verification) {
         VerificationReviewStatus review = verification.getReview();
         return switch (review) {
             case PASS -> DailyChallengeStatus.SUCCESS;
             case AUTO_FAIL -> DailyChallengeStatus.FAIL;
-            case MANUAL_REVIEW -> DailyChallengeStatus.REVIEW_PENDING;
-            case PENDING -> resolveUnverifiedDailyStatus(challenge, currentTime);
+            case MANUAL_REVIEW, PENDING -> DailyChallengeStatus.REVIEW_PENDING;
         };
     }
 
