@@ -58,7 +58,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -489,8 +488,10 @@ public class PartyService {
     public PartyHomeResDto getHomeParties(Long userId) {
         List<Party> ongoingParties = partyRepository.findOngoingPartiesByUserId(userId);
 
+        Map<Long, Participation> myParticipationByPartyId = findMyPartyParticipationsByPartyId(ongoingParties, userId);
+
         List<HomeItemWithChallengeId> wrappedItems = ongoingParties.stream()
-                .map(party -> generatePartyHomeItem(party, userId))
+                .map(party -> generatePartyHomeItem(party, userId, myParticipationByPartyId.get(party.getId())))
                 .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 
@@ -515,6 +516,21 @@ public class PartyService {
                 .settlementBanners(resolveSettlementBanners(userId))
                 .parties(parties)
                 .build();
+    }
+
+    private Map<Long, Participation> findMyPartyParticipationsByPartyId(List<Party> parties, Long userId) {
+        if (parties.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> partyIds = parties.stream().map(Party::getId).toList();
+        return participationRepository
+                .findAllByParty_IdInAndUser_IdAndParticipationType(partyIds, userId, ParticipationType.PARTY)
+                .stream()
+                .collect(Collectors.toMap(
+                        participation -> participation.getParty().getId(),
+                        participation -> participation
+                ));
     }
 
     // 아직 확인하지 않은 정산 전부 노출 — 결과 조회 시 confirm 처리되어 다음 응답부터 사라짐
@@ -544,7 +560,7 @@ public class PartyService {
         };
     }
 
-    private HomeItemWithChallengeId generatePartyHomeItem(Party party, Long userId) {
+    private HomeItemWithChallengeId generatePartyHomeItem(Party party, Long userId, Participation myParticipation) {
         PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(party.getId())
                 .orElse(null);
         if (partyChallenge == null) {
@@ -613,10 +629,8 @@ public class PartyService {
 
         // startDate/endDate는 startParty()에서 생성된 Participation을 단일 원본으로 사용한다
         // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 날짜가 하루 어긋남)
-        Optional<Participation> myPartyParticipation = participationRepository
-                .findByParty_IdAndUser_IdAndParticipationType(party.getId(), userId, ParticipationType.PARTY);
-        LocalDate startDate = myPartyParticipation.map(Participation::getStartDate).orElse(null);
-        LocalDate endDate = myPartyParticipation.map(Participation::getEndDate).orElse(null);
+        LocalDate startDate = myParticipation != null ? myParticipation.getStartDate() : null;
+        LocalDate endDate = myParticipation != null ? myParticipation.getEndDate() : null;
 
         PartyHomeItemResDto item = PartyHomeItemResDto.builder()
                 .partyId(party.getId())

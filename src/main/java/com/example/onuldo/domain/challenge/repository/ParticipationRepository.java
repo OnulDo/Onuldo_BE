@@ -188,4 +188,10 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             Long userId,
             ParticipationType participationType
     );
+
+    List<Participation> findAllByParty_IdInAndUser_IdAndParticipationType(
+            Collection<Long> partyIds,
+            Long userId,
+            ParticipationType participationType
+    );
 }
