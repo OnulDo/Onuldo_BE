@@ -24,8 +24,8 @@ ON DUPLICATE KEY UPDATE
 
 
 -- 개인 챌린지 몰수금 pot 싱글톤 행 (challenge_pot_id = 1 고정)
-INSERT INTO challenge_pot (challenge_pot_id, balance, total_forfeited, total_bonus_paid, updated_at)
-SELECT 1, 0, 0, 0, NOW()
+INSERT INTO challenge_pot (challenge_pot_id, balance, total_forfeited, total_bonus_paid, current_bonus_rate, updated_at)
+SELECT 1, 0, 0, 0, 0.0250, NOW()
     WHERE NOT EXISTS (SELECT 1 FROM challenge_pot WHERE challenge_pot_id = 1);
 
 INSERT INTO challenge (

@@ -25,6 +25,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -59,6 +60,11 @@ public class Participation {
 
     @Column(name = "deposit_amount", nullable = false)
     private Integer depositAmount;
+
+    // 참가 생성 시점의 ChallengePot.currentBonusRate 스냅샷 — 이후 β가 재조정돼도 이 참가는 가입 시점 값으로 정산된다.
+    // PARTY 참가·이 기능 이전에 생성된 레거시 PERSONAL 참가는 null.
+    @Column(name = "applied_bonus_rate", precision = 5, scale = 4)
+    private BigDecimal appliedBonusRate;
 
     @Column(name = "duration_weeks", nullable = false)
     private Integer durationWeeks;

@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -40,9 +41,20 @@ public class ChallengePot {
     @Column(name = "total_bonus_paid", nullable = false)
     private Long totalBonusPaid = 0L;
 
+    // 자립유지식으로 매주 재계산되는 현재 운영 β. 신규 참가는 생성 시점에 이 값을 스냅샷해서 고정한다.
+    @Builder.Default
+    @Column(name = "current_bonus_rate", nullable = false, precision = 5, scale = 4)
+    private BigDecimal currentBonusRate = BigDecimal.valueOf(0.025);
+
     @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = TimeService.nowKstStatic();
+
+    // 자립유지식 주간 재계산 결과로 운영 β를 갱신 (신규 참가부터만 적용, 기존 진행 중인 참가는 영향 없음)
+    public void updateCurrentBonusRate(BigDecimal rate) {
+        this.currentBonusRate = rate;
+        this.updatedAt = TimeService.nowKstStatic();
+    }
 
     // 개인 챌린지 실패자 몰수금(도전금 - 환급액)을 pot 잔액에 적립
     public void accumulateForfeiture(long amount) {

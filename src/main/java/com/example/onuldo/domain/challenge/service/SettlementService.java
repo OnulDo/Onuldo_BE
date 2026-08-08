@@ -35,7 +35,8 @@ public class SettlementService {
     private static final BigDecimal SUCCESS_THRESHOLD = BigDecimal.valueOf(0.85);
     private static final BigDecimal FAILURE_REFUND_BASE = SUCCESS_THRESHOLD;
     private static final BigDecimal FAILURE_REFUND_EXPONENT = BigDecimal.ONE;
-    private static final BigDecimal BONUS_RATE = BigDecimal.valueOf(0.025);
+    // Participation.appliedBonusRate가 null인 레거시 참가(이 기능 도입 전 생성)에 쓰는 폴백 β
+    private static final BigDecimal LEGACY_BONUS_RATE_FALLBACK = BigDecimal.valueOf(0.025);
     // 개인 챌린지 몰수금 pot은 싱글톤 행 하나로 운용한다.
     private static final Long CHALLENGE_POT_ID = 1L;
 
@@ -104,7 +105,10 @@ public class SettlementService {
     }
 
     private void settleSuccess(Participation participation, BigDecimal rValue) {
-        int bonusAmount = calculateBonusAmount(participation.getDepositAmount());
+        BigDecimal bonusRate = participation.getAppliedBonusRate() != null
+                ? participation.getAppliedBonusRate()
+                : LEGACY_BONUS_RATE_FALLBACK;
+        int bonusAmount = calculateBonusAmount(participation.getDepositAmount(), bonusRate);
         int depositRefundAmount = participation.getDepositAmount();
         int refundAmount = depositRefundAmount + bonusAmount;
 
@@ -236,9 +240,9 @@ public class SettlementService {
         return "%s %s".formatted(challengeName, status == ParticipationStatus.SUCCESS ? "성공" : "실패");
     }
 
-    private int calculateBonusAmount(int depositAmount) {
+    private int calculateBonusAmount(int depositAmount, BigDecimal bonusRate) {
         return BigDecimal.valueOf(depositAmount)
-                .multiply(BONUS_RATE)
+                .multiply(bonusRate)
                 .setScale(0, RoundingMode.HALF_UP)
                 .intValue();
     }
