@@ -23,6 +23,11 @@ ON DUPLICATE KEY UPDATE
                      content = new.content;
 
 
+-- 개인 챌린지 몰수금 pot 싱글톤 행 (challenge_pot_id = 1 고정)
+INSERT INTO challenge_pot (challenge_pot_id, balance, total_forfeited, total_bonus_paid, updated_at)
+SELECT 1, 0, 0, 0, NOW()
+    WHERE NOT EXISTS (SELECT 1 FROM challenge_pot WHERE challenge_pot_id = 1);
+
 INSERT INTO challenge (
     name,
     explain_content,
