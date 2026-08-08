@@ -50,6 +50,7 @@ public class PartySettlementService {
     private final UserRepository userRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final TimeService timeService;
+    private final ChallengeNotificationService challengeNotificationService;
 
     /**
      * 파티 단위 1회 정산. 마지막 수행일 인증 마감 후에만 처리
@@ -193,6 +194,7 @@ public class PartySettlementService {
                 .status(SettlementStatus.COMPLETED)
                 .processedAt(timeService.nowKst())
                 .build());
+        challengeNotificationService.notifySettlementCompleted(participation, payoutAmount);
     }
 
     // 지갑 잔액 반영 + 원장 기록(REFUND, net) — 개인 환급과 동일한 방식으로 통일해 이중 지급 방어를 단순화
