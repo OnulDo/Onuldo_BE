@@ -9,6 +9,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.ErrorResponse;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -102,9 +103,20 @@ public class ExceptionAdvice {
         e.printStackTrace(); //예외 정보 출력
 
         // 처리되지 않은 진짜 500 에러만 디스코드로 알림 (비즈니스 예외/검증 오류는 위에서 이미 처리됨)
-        discordAlertSender.sendServerError(request.getRequestURI(), e);
+        // Spring이 던지는 4xx 예외(405, 415 등)까지 이 핸들러로 떨어지므로 서버 에러만 걸러서 알림한다.
+        if (isServerError(e)) {
+            discordAlertSender.sendServerError(request.getRequestURI(), e);
+        }
 
         return handleExceptionInternalFalse(GlobalErrorStatus._INTERNAL_SERVER_ERROR.getCode(), e.getMessage());
+    }
+
+    // 예외가 4xx 클라이언트 오류로 명시된 경우가 아니면 서버 에러(5xx)로 간주한다.
+    private boolean isServerError(Exception e) {
+        if (e instanceof ErrorResponse errorResponse) {
+            return errorResponse.getStatusCode().is5xxServerError();
+        }
+        return true;
     }
 
     private ResponseEntity<BaseResponse<String>> handleExceptionInternal(BaseCodeDto errorCode) {
