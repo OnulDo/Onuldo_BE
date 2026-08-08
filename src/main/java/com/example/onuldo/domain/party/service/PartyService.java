@@ -58,6 +58,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -610,17 +611,19 @@ public class PartyService {
             }
         }
 
-        // endDate는 startParty()에서 생성된 Participation.endDate를 단일 원본으로 사용한다
-        // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 종료일이 하루 어긋남)
-        LocalDate endDate = participationRepository
-                .findByParty_IdAndUser_IdAndParticipationType(party.getId(), userId, ParticipationType.PARTY)
-                .map(Participation::getEndDate)
-                .orElse(null);
+        // startDate/endDate는 startParty()에서 생성된 Participation을 단일 원본으로 사용한다
+        // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 날짜가 하루 어긋남)
+        Optional<Participation> myPartyParticipation = participationRepository
+                .findByParty_IdAndUser_IdAndParticipationType(party.getId(), userId, ParticipationType.PARTY);
+        LocalDate startDate = myPartyParticipation.map(Participation::getStartDate).orElse(null);
+        LocalDate endDate = myPartyParticipation.map(Participation::getEndDate).orElse(null);
 
         PartyHomeItemResDto item = PartyHomeItemResDto.builder()
                 .partyId(party.getId())
                 .name(party.getName())
                 .challengeTitle(challenge.getName())
+                .challengeId(challenge.getId())
+                .startDate(startDate)
                 .endDate(endDate)
                 .verificationDeadline(deadline)
                 .showRemainingTime(showRemainingTime)
