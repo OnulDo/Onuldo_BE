@@ -59,7 +59,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -71,9 +70,6 @@ public class PartyService {
     private static final String INVITE_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int MAX_INVITE_CODE_RETRY = 10;
     private static final SecureRandom RANDOM = new SecureRandom();
-
-    // PAR-03: 파티 이름은 2~20자 한글·영문·숫자·공백만 허용
-    private static final Pattern PARTY_NAME_PATTERN = Pattern.compile("^[가-힣a-zA-Z0-9\\s]{2,20}$");
 
     // PAR-02: 모집 인원은 2~5명 (방장 포함)
     private static final int MIN_MEMBERS = 2;
@@ -93,10 +89,6 @@ public class PartyService {
     private final ParticipationValidator participationValidator;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
-        if (!PARTY_NAME_PATTERN.matcher(request.name()).matches()) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_PARTY_NAME);
-        }
-
         if (request.maxMembers() < MIN_MEMBERS || request.maxMembers() > MAX_MEMBERS) {
             throw new RestApiException(GlobalErrorStatus._INVALID_MAX_MEMBERS);
         }
