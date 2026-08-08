@@ -7,6 +7,7 @@ import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Settlement;
 import com.example.onuldo.domain.challenge.entity.Verification;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
+import com.example.onuldo.domain.challenge.enums.SettlementStatus;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
@@ -117,7 +118,7 @@ public class ParticipationRecordService {
             Settlement settlement
     ) {
         var challenge = participation.getChallenge();
-        int depositAmount = settlement != null ? settlement.getDepositAmount() : 0;
+        int depositAmount = settlement != null ? settlement.getDepositAmount() : participation.getDepositAmount();
         int adjustmentAmount = settlement != null ? settlement.getRefundAmount() - depositAmount : 0;
 
         return CompletedChallengeRecordResDto.builder()
@@ -206,7 +207,8 @@ public class ParticipationRecordService {
                 .map(Participation::getId)
                 .toList();
 
-        return settlementRepository.findAllByParticipation_IdInOrderByIdDesc(participationIds).stream()
+        // COMPLETED만 조회하므로 여러 행이 남아있어도(유니크 제약 없음) id 내림차순 첫 행이 가장 최근 완료 정산임이 보장된다.
+        return settlementRepository.findAllByParticipation_IdInAndStatusOrderByIdDesc(participationIds, SettlementStatus.COMPLETED).stream()
                 .collect(Collectors.toMap(
                         settlement -> settlement.getParticipation().getId(),
                         settlement -> settlement,
