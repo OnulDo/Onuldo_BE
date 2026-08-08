@@ -4,6 +4,7 @@ import com.example.onuldo.domain.challenge.entity.Challenge;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Settlement;
 import com.example.onuldo.domain.challenge.entity.Verification;
+import com.example.onuldo.domain.challenge.enums.DailyChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
@@ -323,6 +324,15 @@ public class PartyService {
         };
     }
 
+    private PartyHomeCardStatus toPartyHomeCardStatus(DailyChallengeStatus dailyStatus) {
+        return switch (dailyStatus) {
+            case SUCCESS -> PartyHomeCardStatus.SUCCESS;
+            case FAIL -> PartyHomeCardStatus.FAIL;
+            case REVIEW_PENDING -> PartyHomeCardStatus.PENDING;
+            case UNAVAILABLE, WAITING -> PartyHomeCardStatus.NOT_VERIFIED;
+        };
+    }
+
     private int calculateDDay(LocalDate endDate, LocalDate today) {
         if (endDate == null) {
             return 0;
@@ -594,32 +604,25 @@ public class PartyService {
                 && !now.isBefore(deadlineAt.minusHours(1))
                 && now.isBefore(deadlineAt);
 
-        Verification myVerification = verificationByUserId.get(userId);
-        PartyHomeCardStatus status;
-        LocalDateTime verifiedAt = null;
-
-        if (myVerification == null) {
-            // HOME-04: 오늘 인증 미완료 + 마감 시각 전이면 [인증하기] 노출
-            // 마감 후 미인증은 오늘 하루치 실패로 표시함 (챌린지 전체 SUCCESS/FAIL과는 무관, 화면 표시용 판단)
-            boolean beforeDeadline = deadlineAt == null || now.isBefore(deadlineAt);
-            status = beforeDeadline ? PartyHomeCardStatus.NOT_VERIFIED : PartyHomeCardStatus.FAIL;
-        } else {
-            status = switch (myVerification.getReview()) {
-                case PASS -> PartyHomeCardStatus.SUCCESS;
-                case AUTO_FAIL -> PartyHomeCardStatus.FAIL;
-                case PENDING, MANUAL_REVIEW -> PartyHomeCardStatus.PENDING;
-            };
-            if (status == PartyHomeCardStatus.SUCCESS) {
-                verifiedAt = myVerification.getVerifiedAt();
-            }
-        }
-
         // endDate는 startParty()에서 생성된 Participation.endDate를 단일 원본으로 사용한다
         // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 종료일이 하루 어긋남)
-        LocalDate endDate = participationRepository
+        Participation participation = participationRepository
                 .findByParty_IdAndUser_IdAndParticipationType(party.getId(), userId, ParticipationType.PARTY)
-                .map(Participation::getEndDate)
                 .orElse(null);
+        LocalDate endDate = participation != null ? participation.getEndDate() : null;
+
+        Verification myVerification = verificationByUserId.get(userId);
+        DailyChallengeStatus dailyStatus = resolveDailyChallengeStatus(
+                participation,
+                challenge,
+                myVerification,
+                today,
+                now.toLocalTime()
+        );
+        PartyHomeCardStatus status = toPartyHomeCardStatus(dailyStatus);
+        LocalDateTime verifiedAt = dailyStatus == DailyChallengeStatus.SUCCESS
+                ? myVerification.getVerifiedAt()
+                : null;
 
         PartyHomeItemResDto item = PartyHomeItemResDto.builder()
                 .partyId(party.getId())
@@ -629,11 +632,61 @@ public class PartyService {
                 .verificationDeadline(deadline)
                 .showRemainingTime(showRemainingTime)
                 .status(status)
+                .dailyStatus(dailyStatus)
                 .verifiedAt(verifiedAt)
                 .members(members)
                 .build();
 
         return new HomeItemWithChallengeId(item, challenge.getId());
+    }
+
+    private DailyChallengeStatus resolveDailyChallengeStatus(
+            Participation participation,
+            Challenge challenge,
+            Verification latestVerification,
+            LocalDate today,
+            LocalTime currentTime
+    ) {
+        if (participation == null || isOutsideParticipationDates(participation, today)) {
+            return DailyChallengeStatus.UNAVAILABLE;
+        }
+
+        if (latestVerification == null) {
+            return resolveUnverifiedDailyStatus(challenge, currentTime);
+        }
+
+        return toDailyChallengeStatus(latestVerification);
+    }
+
+    private boolean isOutsideParticipationDates(Participation participation, LocalDate today) {
+        LocalDate startDate = participation.getStartDate();
+        LocalDate endDate = participation.getEndDate();
+        return (startDate != null && today.isBefore(startDate))
+                || (endDate != null && today.isAfter(endDate));
+    }
+
+    private DailyChallengeStatus toDailyChallengeStatus(Verification verification) {
+        VerificationReviewStatus review = verification.getReview();
+        return switch (review) {
+            case PASS -> DailyChallengeStatus.SUCCESS;
+            case AUTO_FAIL -> DailyChallengeStatus.FAIL;
+            case MANUAL_REVIEW, PENDING -> DailyChallengeStatus.REVIEW_PENDING;
+        };
+    }
+
+    private DailyChallengeStatus resolveUnverifiedDailyStatus(Challenge challenge, LocalTime currentTime) {
+        LocalTime timeStart = challenge.getTimeStart();
+        LocalTime timeEnd = challenge.getTimeEnd();
+
+        if (timeStart != null && currentTime.isBefore(timeStart)) {
+            return DailyChallengeStatus.UNAVAILABLE;
+        }
+
+        if (timeEnd != null && currentTime.isAfter(timeEnd)) {
+            return DailyChallengeStatus.FAIL;
+        }
+
+        return DailyChallengeStatus.WAITING;
     }
 
 }
