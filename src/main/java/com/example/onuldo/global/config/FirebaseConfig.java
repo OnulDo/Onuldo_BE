@@ -18,7 +18,7 @@ public class FirebaseConfig {
 
     private final ResourceLoader resourceLoader;
 
-    @Value("${firebase.service-account-path:}")
+    @Value("${fcm.service-account-path:}")
     private String serviceAccountPath;
 
     public FirebaseConfig(ResourceLoader resourceLoader) {
