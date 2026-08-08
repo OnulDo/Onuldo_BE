@@ -37,11 +37,11 @@ public class NotificationDispatchService {
 
     // 알림함 기록을 만들고 푸시 발송 대기열에 NotificationDispatch를 등록하는 메서드
     @Transactional
-    public NotificationDispatch enqueue(NotificationDispatchCommand command) {
+    public void enqueue(NotificationDispatchCommand command) {
         User user = userRepository.findById(command.getUserId())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
-        Notification notification = notificationCreateService.createIfAbsent(
+        var notification = notificationCreateService.createIfAbsent(
                 command.getUserId(),
                 command.getType(),
                 command.getTitle(),
@@ -49,15 +49,20 @@ public class NotificationDispatchService {
                 command.getRefType(),
                 command.getRefId()
         );
-        if (notificationDispatchRepository.existsByNotification_Id(notification.getId())) {
-            return notificationDispatchRepository.findFirstByNotification_IdOrderByIdDesc(notification.getId())
-                    .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR));
+
+        if (notification.isEmpty()) {
+            return;
         }
 
-        return notificationDispatchRepository.save(
+        Notification savedNotification = notification.get();
+        if (notificationDispatchRepository.existsByNotification_Id(savedNotification.getId())) {
+            return;
+        }
+
+        notificationDispatchRepository.save(
                 NotificationDispatch.builder()
                         .user(user)
-                        .notification(notification)
+                        .notification(savedNotification)
                         .type(command.getType())
                         .scheduledAt(command.getScheduledAt())
                         .build()

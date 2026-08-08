@@ -68,4 +68,18 @@ public class NotificationSetting {
             default -> throw new RestApiException(GlobalErrorStatus._BAD_REQUEST);
         }
     }
+
+    public boolean isEnabled(NotificationType type) {
+        if (!allEnabled) {
+            return false;
+        }
+
+        return switch (type) {
+            case CHALLENGE_START -> challengeStart;
+            case VERIFICATION_DEADLINE, CHALLENGE_END_REMINDER -> verificationDeadline;
+            case VERIFICATION_RESULT, PARTY_MEMBER_VERIFIED -> verificationResult;
+            case REFUND_COMPLETE, PARTY_SETTLEMENT_COMPLETE, PARTY_DAILY_SETTLEMENT -> refundComplete;
+            case DEDUCTION_ALERT -> deductionAlert;
+        };
+    }
 }
