@@ -1,9 +1,12 @@
 package com.example.onuldo.global.common.exception;
 
+import com.example.onuldo.global.common.alert.DiscordAlertSender;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.exception.code.BaseCodeDto;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -19,8 +22,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
+@RequiredArgsConstructor
 @RestControllerAdvice
 public class ExceptionAdvice {
+
+    private final DiscordAlertSender discordAlertSender;
+
     /*
      * 포인트 부족 예외 처리 (errorDetail에 현재 포인트, 부족 금액 포함)
      */
@@ -91,8 +98,11 @@ public class ExceptionAdvice {
      * 일반적인 서버 에러에 대한 예외 처리
      */
     @ExceptionHandler
-    public ResponseEntity<BaseResponse<String>> handleException(Exception e) {
+    public ResponseEntity<BaseResponse<String>> handleException(Exception e, HttpServletRequest request) {
         e.printStackTrace(); //예외 정보 출력
+
+        // 처리되지 않은 진짜 500 에러만 디스코드로 알림 (비즈니스 예외/검증 오류는 위에서 이미 처리됨)
+        discordAlertSender.sendServerError(request.getRequestURI(), e);
 
         return handleExceptionInternalFalse(GlobalErrorStatus._INTERNAL_SERVER_ERROR.getCode(), e.getMessage());
     }
