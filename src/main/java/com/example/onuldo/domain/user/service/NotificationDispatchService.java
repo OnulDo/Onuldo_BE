@@ -8,6 +8,7 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.NotificationDispatchStatus;
 import com.example.onuldo.domain.user.enums.NotificationType;
 import com.example.onuldo.domain.user.repository.NotificationDispatchRepository;
+import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
@@ -31,6 +32,7 @@ public class NotificationDispatchService {
     private final NotificationDispatchRepository notificationDispatchRepository;
     private final UserRepository userRepository;
     private final NotificationCreateService notificationCreateService;
+    private final NotificationSettingRepository notificationSettingRepository;
     private final DeviceLogRepository deviceLogRepository;
     private final FcmPushService fcmPushService;
     private final TimeService timeService;
@@ -50,11 +52,11 @@ public class NotificationDispatchService {
                 command.getRefId()
         );
 
-        if (notification.isEmpty()) {
+        Notification savedNotification = notification.get();
+        if (!isPushEnabled(command.getUserId(), command.getType())) {
             return;
         }
 
-        Notification savedNotification = notification.get();
         if (notificationDispatchRepository.existsByNotification_Id(savedNotification.getId())) {
             return;
         }
@@ -127,6 +129,13 @@ public class NotificationDispatchService {
         dispatch.setLastAttemptAt(attemptedAt);
         dispatch.setFailedReason(reason);
         dispatch.setAttemptCount(dispatch.getAttemptCount() + 1);
+    }
+
+    // 사용자 알림 설정에 따라 푸시 발송 대기열 등록 여부를 판단하는 메서드
+    private boolean isPushEnabled(Long userId, NotificationType type) {
+        return notificationSettingRepository.findById(userId)
+                .map(setting -> setting.isEnabled(type))
+                .orElse(true);
     }
 
     // 현재 시간이 푸시 발송 제한 시간대인지 확인하는 메서드
