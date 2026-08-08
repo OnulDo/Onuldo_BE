@@ -34,6 +34,10 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(
                         name = "uk_verification_photo_url",
                         columnNames = {"photo_url"}
+                ),
+                @UniqueConstraint(
+                        name = "uk_verification_participation_date_review",
+                        columnNames = {"participation_id", "verification_date", "review"}
                 )
         }
 )
@@ -48,10 +52,14 @@ public class Verification {
     @JoinColumn(name = "participation_id", nullable = false)
     private Participation participation;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "original_verification_id")
+    private Verification originalVerification;
+
     @Column(name = "verification_date", nullable = false)
     private LocalDate verificationDate;
 
-    @Column(name = "photo_url", nullable = false, length = 255)
+    @Column(name = "photo_url", nullable = true, length = 255)
     private String photoUrl;
 
     @Column(name = "exif_data", columnDefinition = "TEXT")

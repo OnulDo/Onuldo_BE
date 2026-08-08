@@ -1,5 +1,6 @@
 package com.example.onuldo.domain.challenge.controller.doc;
 
+import com.example.onuldo.domain.challenge.dto.response.ChallengeManualReviewResDto;
 import com.example.onuldo.domain.challenge.dto.response.ChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.ChallengeVerificationResDto;
 import com.example.onuldo.domain.challenge.dto.request.ChallengeVerificationReqDto;
@@ -75,5 +76,22 @@ public interface ChallengeControllerDoc {
             @Valid
             @RequestBody
             ChallengeVerificationReqDto request
+    );
+
+    @Operation(
+            summary = "인증 재검토 요청",
+            description = """
+                    오늘 자동 실패(AUTO_FAIL) 처리된 본인의 인증 기록에 대해 재검토를 요청합니다.
+                    그 값을 복제한 MANUAL_REVIEW 상태의 인증 기록을 새로 추가합니다.
+                    정산/달성률 계산에는 반영되지 않으며, 재검토가 요청되었다는 기록만 남깁니다.
+                    """
+    )
+    BaseResponse<ChallengeManualReviewResDto> manualReviewVerification(
+            @AuthUser
+            Long userId,
+
+            @Parameter(description = "챌린지 ID", example = "1")
+            @PathVariable
+            Long challengeId
     );
 }

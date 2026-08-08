@@ -3,6 +3,7 @@ package com.example.onuldo.domain.challenge.service;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Settlement;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
+import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.enums.SettlementStatus;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
@@ -34,6 +35,7 @@ public class SettlementService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final SettlementRepository settlementRepository;
+    private final PartySettlementService partySettlementService;
     private final UserRepository userRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final ChallengeNotificationService challengeNotificationService;
@@ -47,6 +49,19 @@ public class SettlementService {
      * */
     @Transactional
     public void settleParticipatedChallenge(Long participationId) {
+        Participation participation = participationRepository.findById(participationId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+
+        // 파티 참여는 개인 공식이 아니라 파티 단위(POI-07/08)로 정산한다.
+        if (participation.getParticipationType() == ParticipationType.PARTY) {
+            partySettlementService.settleParty(participation.getParty().getId());
+            return;
+        }
+
+        settlePersonalChallenge(participationId);
+    }
+
+    private void settlePersonalChallenge(Long participationId) {
         Participation lockedParticipation = participationRepository.findByIdForUpdate(participationId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
@@ -82,11 +97,12 @@ public class SettlementService {
 
     private void settleSuccess(Participation participation, BigDecimal rValue) {
         int bonusAmount = calculateBonusAmount(participation.getDepositAmount());
-        int refundAmount = participation.getDepositAmount() + bonusAmount;
+        int depositRefundAmount = participation.getDepositAmount();
+        int refundAmount = depositRefundAmount + bonusAmount;
 
         refundPoint(participation, refundAmount, bonusAmount);
 
-        Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, bonusAmount);
+        Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, depositRefundAmount, bonusAmount);
         settlementRepository.save(resultSettlement);
         challengeNotificationService.notifySettlementCompleted(participation, refundAmount);
     }
@@ -97,7 +113,8 @@ public class SettlementService {
 
         refundPoint(participation, refundAmount, -penaltyAmount);
 
-        Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, 0);
+        // 개인 실패 정산엔 보너스·분배금 개념이 없어 전액이 곧 예치금 환급분이다.
+        Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, refundAmount, 0);
 
         settlementRepository.save(resultSettlement);
         challengeNotificationService.notifySettlementCompleted(participation, refundAmount);
@@ -107,6 +124,7 @@ public class SettlementService {
             Participation participation,
             BigDecimal rValue,
             int refundAmount,
+            int depositRefundAmount,
             int bonusAmount
     ) {
         return Settlement.builder()
@@ -114,6 +132,7 @@ public class SettlementService {
                 .depositAmount(participation.getDepositAmount())
                 .rValue(rValue)
                 .refundAmount(refundAmount)
+                .depositRefundAmount(depositRefundAmount)
                 .bonusAmount(bonusAmount)
                 .partyShareAmount(0)
                 .status(SettlementStatus.COMPLETED)
@@ -133,6 +152,7 @@ public class SettlementService {
 
         user.setPointBalance(balanceAfter);
 
+        ParticipationStatus resultStatus = participation.getStatus();
         pointTransactionRepository.save(
             PointTransaction.builder()
                 .user(user)
@@ -141,11 +161,17 @@ public class SettlementService {
                 .depositAmount(participation.getDepositAmount())
                 .adjustmentAmount(adjustmentAmount)
                 .balanceAfter(balanceAfter)
-                .description(participation.getChallenge().getName())
+                .description(describeSettlementResult(participation.getChallenge().getName(), resultStatus))
+                .resultStatus(resultStatus)
                 .refType("SETTLEMENT")
                 .refId(participation.getId())
                 .build()
         );
+    }
+
+    // 포인트 트랜잭션 description에 챌린지명 + 성공/실패를 함께 남겨 사람이 봐도 결과를 바로 알 수 있게 한다.
+    private String describeSettlementResult(String challengeName, ParticipationStatus status) {
+        return "%s %s".formatted(challengeName, status == ParticipationStatus.SUCCESS ? "성공" : "실패");
     }
 
     private int calculateBonusAmount(int depositAmount) {

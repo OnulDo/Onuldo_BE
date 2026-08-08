@@ -1,5 +1,6 @@
 package com.example.onuldo.domain.challenge.service;
 
+import com.example.onuldo.domain.challenge.dto.response.ChallengeManualReviewResDto;
 import com.example.onuldo.domain.challenge.dto.response.ChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.ChallengeVerificationResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
@@ -100,6 +101,10 @@ public class ChallengeService {
                 .findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
+        if (timeService.todayKst().isBefore(participation.getStartDate())) {
+            throw new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_STARTED);
+        }
+
         if (verificationRepository.existsByPhotoUrl(s3FileService.getFileUrl(request.fileId()).url())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
         }
@@ -127,7 +132,7 @@ public class ChallengeService {
                     .verifiedAt(timeService.nowKst())
                     .build());
         } catch (DataIntegrityViolationException e) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY, "오늘은 이미 인증했습니다.");
+            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
         }
 
         // 인증 성공 시 정산 트리거 호출
@@ -144,6 +149,56 @@ public class ChallengeService {
                 .verificationDate(verification.getVerificationDate())
                 .verifiedAt(verification.getVerifiedAt())
                 .review(verification.getReview())
+                .build();
+    }
+
+    @Transactional
+    public ChallengeManualReviewResDto manualReviewVerification(Long userId, Long challengeId) {
+        challengeRepository.findById(challengeId)
+                .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+
+        Participation participation = participationRepository
+                .findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+
+        LocalDate today = timeService.todayKst();
+
+        if (verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
+                participation.getId(), today, VerificationReviewStatus.MANUAL_REVIEW).isPresent()) {
+            throw new RestApiException(GlobalErrorStatus._ALREADY_MANUALLY_REVIEWED);
+        }
+
+        if (verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
+                participation.getId(), today, VerificationReviewStatus.PASS).isPresent()) {
+            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
+        }
+
+        Verification autoFail = verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
+                        participation.getId(), today, VerificationReviewStatus.AUTO_FAIL)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._AUTO_FAIL_VERIFICATION_NOT_FOUND));
+
+        Verification manualReview;
+        try{
+            manualReview = verificationRepository.save(Verification.builder()
+                    .participation(participation)
+                    .originalVerification(autoFail)
+                    .verificationDate(autoFail.getVerificationDate())
+                    .photoUrl(null)
+                    .exifData(autoFail.getExifData())
+                    .rekognitionResult(autoFail.getRekognitionResult())
+                    .aiScore(autoFail.getAiScore())
+                    .review(VerificationReviewStatus.MANUAL_REVIEW)
+                    .dayScore(autoFail.getDayScore())
+                    .verifiedAt(timeService.nowKst())
+                    .build());
+        } catch(DataIntegrityViolationException e) {
+            throw new RestApiException(GlobalErrorStatus._ALREADY_MANUALLY_REVIEWED);
+        }
+
+
+        return ChallengeManualReviewResDto.builder()
+                .manualReviewRequestedAt(manualReview.getVerifiedAt())
                 .build();
     }
 
@@ -208,7 +263,7 @@ public class ChallengeService {
         try {
             return objectMapper.writeValueAsString(detectedLabelNames);
         } catch (JsonProcessingException e) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "인증 결과 저장 중 JSON 변환에 실패했습니다.");
+            throw new RestApiException(GlobalErrorStatus._VERIFICATION_RESULT_SERIALIZATION_FAILED);
         }
     }
 }

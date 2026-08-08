@@ -3,9 +3,11 @@ package com.example.onuldo.domain.user.service;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
+import com.example.onuldo.domain.user.dto.request.WithdrawPointReqDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
+import com.example.onuldo.domain.user.dto.response.WithdrawPointResDto;
 import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
@@ -31,6 +33,7 @@ public class PointService {
 
     private static final int PERCENT_MULTIPLIER = 100;
     private static final String SIGNUP_BONUS_DESCRIPTION = "신규 회원 가입 포인트 지급";
+    private static final int SIGNUP_BONUS = 100000;
 
     private final UserRepository userRepository;
     private final PointTransactionRepository pointTransactionRepository;
@@ -61,7 +64,36 @@ public class PointService {
     }
 
     @Transactional
-    public ChargePointResDto grantSignupBonus(Long userId, ChargePointReqDto request) {
+    public WithdrawPointResDto withdrawPoint(Long userId, WithdrawPointReqDto request) {
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+        if (user.getPointBalance() < request.point()) {
+            throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_WITHDRAW);
+        }
+
+        long balanceAfter = user.getPointBalance() - request.point();
+        user.setPointBalance(balanceAfter);
+        userRepository.save(user);
+
+        pointTransactionRepository.save(PointTransaction.builder()
+                .user(user)
+                .type(PointTransactionType.WITHDRAW)
+                .amount(request.point())
+                .balanceAfter(balanceAfter)
+                .description("포인트 출금")
+                .build()
+        );
+
+        return WithdrawPointResDto.builder()
+                .amount(request.point())
+                .balanceAfter(balanceAfter)
+                .build();
+
+    }
+
+    @Transactional
+    public ChargePointResDto grantSignupBonus(Long userId) {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
@@ -69,21 +101,21 @@ public class PointService {
             throw new RestApiException(GlobalErrorStatus._SIGNUP_BONUS_ALREADY_GRANTED);
         }
 
-        long balanceAfter = user.getPointBalance() + request.point();
+        long balanceAfter = user.getPointBalance() + SIGNUP_BONUS;
         user.setPointBalance(balanceAfter);
         userRepository.save(user);
 
         pointTransactionRepository.save(PointTransaction.builder()
                 .user(user)
                 .type(PointTransactionType.CHARGE)
-                .amount(request.point())
+                .amount(SIGNUP_BONUS)
                 .balanceAfter(balanceAfter)
                 .description(SIGNUP_BONUS_DESCRIPTION)
                 .build()
         );
 
         return ChargePointResDto.builder()
-                .amount(request.point())
+                .amount(SIGNUP_BONUS)
                 .balanceAfter(balanceAfter)
                 .build();
     }
@@ -150,7 +182,7 @@ public class PointService {
         try {
             return averageReturnRate.intValueExact();
         } catch (ArithmeticException e) {
-            throw new RestApiException(GlobalErrorStatus._INTERNAL_SERVER_ERROR, "평균 환급률이 허용 범위를 초과했습니다.");
+            throw new RestApiException(GlobalErrorStatus._RETURN_RATE_OUT_OF_RANGE);
         }
     }
 

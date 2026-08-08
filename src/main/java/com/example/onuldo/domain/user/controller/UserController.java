@@ -3,6 +3,8 @@ package com.example.onuldo.domain.user.controller;
 import com.example.onuldo.domain.user.controller.doc.UserControllerDoc;
 import com.example.onuldo.domain.user.dto.request.ChargePointReqDto;
 import com.example.onuldo.domain.user.dto.request.UpdateNotificationReqDto;
+import com.example.onuldo.domain.user.dto.request.UpdateProfileReqDto;
+import com.example.onuldo.domain.user.dto.request.WithdrawPointReqDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
@@ -11,6 +13,8 @@ import com.example.onuldo.domain.user.dto.response.NotificationListItemResDto;
 import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
+import com.example.onuldo.domain.user.dto.response.UpdateProfileResDto;
+import com.example.onuldo.domain.user.dto.response.WithdrawPointResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.service.NotificationQueryService;
 import com.example.onuldo.domain.user.service.PointService;
@@ -28,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 @RestController
 @RequiredArgsConstructor
@@ -52,6 +57,16 @@ public class UserController implements UserControllerDoc {
             Long userId
     ) {
         return BaseResponse.onSuccess("마이페이지 메인 조회에 성공했습니다.", userService.getMyPage(userId));
+    }
+
+    @PatchMapping ("/profile")
+    public BaseResponse<UpdateProfileResDto> updateProfile(
+            @AuthUser
+            Long userId,
+            @RequestBody
+            UpdateProfileReqDto request
+    ) {
+        return BaseResponse.onSuccess(userService.updateProfile(userId, request));
     }
 
     @GetMapping("/notification-settings")
@@ -99,16 +114,24 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(pointService.chargePoint(userId, request));
     }
 
-    @PostMapping("/wallet/signup-bonuses")
-    public BaseResponse<ChargePointResDto> grantSignupBonus(
+    @PostMapping("/wallet/withdraw")
+    public BaseResponse<WithdrawPointResDto> withdrawPoint(
             @AuthUser
             Long userId,
 
             @Valid
             @RequestBody
-            ChargePointReqDto request
+            WithdrawPointReqDto request
     ) {
-        return BaseResponse.onSuccess(pointService.grantSignupBonus(userId, request));
+        return BaseResponse.onSuccess(pointService.withdrawPoint(userId, request));
+    }
+
+    @PostMapping("/wallet/signup-bonuses")
+    public BaseResponse<ChargePointResDto> grantSignupBonus(
+            @AuthUser
+            Long userId
+    ) {
+        return BaseResponse.onSuccess(pointService.grantSignupBonus(userId));
     }
 
     @GetMapping("/wallet/summary")
@@ -117,6 +140,15 @@ public class UserController implements UserControllerDoc {
             Long userId
     ) {
         return BaseResponse.onSuccess(pointService.getPointWalletSummary(userId));
+    }
+
+    @DeleteMapping
+    public BaseResponse<Void> withdraw(
+            @AuthUser
+            Long userId
+    ) {
+        userService.withdraw(userId);
+        return BaseResponse.onSuccess("회원 탈퇴가 완료되었습니다.", null);
     }
 
     @GetMapping("/wallet/transactions")

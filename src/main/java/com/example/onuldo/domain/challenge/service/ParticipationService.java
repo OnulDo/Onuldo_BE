@@ -19,6 +19,7 @@ import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.PartyCountProjection;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.domain.challenge.support.ParticipationValidator;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
@@ -29,6 +30,7 @@ import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
+import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
@@ -36,6 +38,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -59,6 +63,9 @@ public class ParticipationService {
     private final PointTransactionRepository pointTransactionRepository;
     private final ChallengeNotificationService challengeNotificationService;
     private final TimeService timeService;
+    private final ParticipationValidator participationValidator;
+
+    private static final BigDecimal BONUS_RATE = BigDecimal.valueOf(0.025);
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,
@@ -72,12 +79,14 @@ public class ParticipationService {
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
-        validateDepositOption(challenge, request.depositAmount());
-        validateAlreadyParticipating(userId, challengeId);
+        challenge.validateDurationOption(request.durationWeeks());
+        challenge.validateDepositOption(request.depositAmount());
+        participationValidator.validateNotOngoing(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
 
-        LocalDate startDate = timeService.todayKst();
-        LocalDate endDate = startDate.plusWeeks(request.durationWeeks());
+        // durationWeeks*7일은 시작일·종료일을 포함한 총 수행일수 (ParticipationRecordService.calculateInclusiveDays와 동일 기준)
+        LocalDate startDate = timeService.todayKst().plusDays(1);
+        LocalDate endDate = startDate.plusWeeks(request.durationWeeks()).minusDays(1);
         Integer durationDays = request.durationWeeks() * 7;
 
         long balanceAfter = user.getPointBalance() - request.depositAmount();
@@ -99,13 +108,19 @@ public class ParticipationService {
                 .build()
         );
 
+        int bonusAmount = BigDecimal.valueOf(request.depositAmount())
+                .multiply(BONUS_RATE)
+                .setScale(0, RoundingMode.HALF_UP)
+                .intValue();
+        int expectedRefundAmount = request.depositAmount() + bonusAmount;
+
         return ParticipationResDto.builder()
                 .startDate(startDate)
                 .endDate(endDate)
                 .durationWeeks(request.durationWeeks())
                 .durationDays(durationDays)
                 .depositAmount(request.depositAmount())
-                .expectedRefundAmount(request.depositAmount())
+                .expectedRefundAmount(expectedRefundAmount)
                 .build();
     }
 
@@ -239,24 +254,13 @@ public class ParticipationService {
         ));
     }
 
-    private void validateDepositOption(Challenge challenge, Integer depositAmount) {
-        if (challenge.getDepositOptionList() == null || !challenge.getDepositOptionList().contains(depositAmount)) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_DEPOSIT_OPTION);
-        }
-    }
-
-    private void validateAlreadyParticipating(Long userId, Long challengeId) {
-        if (participationRepository.existsByUser_IdAndChallenge_Id(userId, challengeId)) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_PARTICIPATING_CHALLENGE);
-        }
-    }
-
     private void validatePointBalance(User user, Integer depositAmount) {
-        long shortage = depositAmount.longValue() - user.getPointBalance();
-        if (shortage > 0) {
-            throw new RestApiException(
+        long currentPoint = user.getPointBalance();
+        if (depositAmount > currentPoint) {
+            throw new InsufficientPointException(
                     GlobalErrorStatus._INSUFFICIENT_POINT_FOR_CHALLENGE,
-                    "보유 포인트가 " + shortage + "P 부족합니다."
+                    currentPoint,
+                    depositAmount
             );
         }
     }
@@ -285,11 +289,11 @@ public class ParticipationService {
 
     private void validateParticipationState(Participation participation) {
         if (participation.getParticipationType() == ParticipationType.PERSONAL && participation.getParty() != null) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "개인 참여에는 party가 연결되면 안 됩니다.");
+            throw new RestApiException(GlobalErrorStatus._PARTICIPATION_PARTY_NOT_ALLOWED);
         }
 
         if (participation.getParticipationType() == ParticipationType.PARTY && participation.getParty() == null) {
-            throw new RestApiException(GlobalErrorStatus._BAD_REQUEST, "party 참여에는 party가 필요합니다.");
+            throw new RestApiException(GlobalErrorStatus._PARTICIPATION_PARTY_REQUIRED);
         }
     }
 

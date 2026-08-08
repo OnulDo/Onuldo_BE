@@ -15,7 +15,7 @@ import com.example.onuldo.domain.auth.enums.TermType;
 import com.example.onuldo.domain.auth.repository.TermAgreementRepository;
 import com.example.onuldo.domain.auth.repository.TermRepository;
 import com.example.onuldo.domain.auth.service.client.dto.OAuthUserInfo;
-import com.example.onuldo.domain.auth.support.NicknameBannedWords;
+import com.example.onuldo.domain.auth.support.NicknameValidator;
 import com.example.onuldo.domain.user.entity.NotificationSetting;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.SocialProvider;
@@ -33,7 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -46,12 +45,9 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class AuthService {
 
-    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]+$");
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
             "^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*\\p{Punct})[a-zA-Z0-9\\p{Punct}]+$"
     );
-    private static final int MIN_NICKNAME_LENGTH = 2;
-    private static final int MAX_NICKNAME_LENGTH = 8;
     private static final int MIN_PASSWORD_LENGTH = 8;
     private static final int MAX_PASSWORD_LENGTH = 20;
     private static final int DEFAULT_PROFILE_IMAGE_MIN_NUMBER = 1;
@@ -71,6 +67,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final OAuthService oAuthService;
     private final TimeService timeService;
+    private final NicknameValidator nicknameValidator;
 
     @Transactional
     public AuthResDto signup(EmailSignupReqDto request) {
@@ -78,7 +75,7 @@ public class AuthService {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
         }
 
-        validateNickname(request.nickname());
+        nicknameValidator.validate(request.nickname());
         validateRequiredTerms(request.termAgreements());
         validatePassword(request.password());
 
@@ -101,7 +98,7 @@ public class AuthService {
 
     @Transactional
     public AuthResDto login(EmailLoginReqDto request) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmailForUpdate(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
         LocalDateTime now = timeService.nowKst();
@@ -127,8 +124,12 @@ public class AuthService {
 
     public AuthResDto refresh(RefreshTokenReqDto request) {
         Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
+        }
 
         return createAuthResponse(user);
     }
@@ -144,9 +145,14 @@ public class AuthService {
                     .build();
         }
 
-        User user = existingUser.get();
+        User user = userRepository.findByIdForUpdate(existingUser.get().getId())
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
         if (user.getSocialProvider() != info.provider()) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
         user.setLastLoginAt(timeService.nowKst());
@@ -167,7 +173,7 @@ public class AuthService {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
         }
 
-        validateNickname(request.nickname());
+        nicknameValidator.validate(request.nickname());
         validateRequiredTerms(request.termAgreements());
 
         User user = userRepository.save(User.builder()
@@ -205,26 +211,6 @@ public class AuthService {
 
         if (!PASSWORD_PATTERN.matcher(password).matches()) {
             throw new RestApiException(GlobalErrorStatus._INVALID_PASSWORD);
-        }
-    }
-
-    private void validateNickname(String nickname) {
-        if (nickname.length() < MIN_NICKNAME_LENGTH) {
-            throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_SHORT);
-        }
-
-        if (nickname.length() > MAX_NICKNAME_LENGTH) {
-            throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_LONG);
-        }
-
-        if (!NICKNAME_PATTERN.matcher(nickname).matches()) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_NICKNAME);
-        }
-
-        for (String bannedWord : NicknameBannedWords.VALUES) {
-            if (nickname.contains(bannedWord.toLowerCase(Locale.ROOT))) {
-                throw new RestApiException(GlobalErrorStatus._INVALID_NICKNAME);
-            }
         }
     }
 

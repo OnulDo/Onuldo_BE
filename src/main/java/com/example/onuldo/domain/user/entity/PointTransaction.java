@@ -1,5 +1,6 @@
 package com.example.onuldo.domain.user.entity;
 
+import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -56,6 +57,12 @@ public class PointTransaction {
 
     @Column(name = "description", nullable = false)
     private String description;
+
+    // 정산(REFUND) 결과 성공/실패 — FE가 문자열 파싱 없이 색상을 분기할 수 있도록 별도 필드로 기록.
+    // 정산 외 거래(충전/출금/예치)에는 해당 없어 null.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "result_status", length = 20)
+    private ParticipationStatus resultStatus;
 
     @Column(name = "ref_type", length = 50)
     private String refType;

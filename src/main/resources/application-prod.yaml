@@ -7,7 +7,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
   servlet:
     multipart:
@@ -44,8 +44,8 @@ aws:
     public-base-url: ${AWS_S3_PUBLIC_BASE_URL}
     upload-prefix: ${AWS_S3_UPLOAD_PREFIX:uploads}
   rekognition:
-    max-labels: ${AWS_REKOGNITION_MAX_LABELS:10}
-    min-confidence: ${AWS_REKOGNITION_MIN_CONFIDENCE:80}
+    max-labels: ${AWS_REKOGNITION_MAX_LABELS:30}
+    min-confidence: ${AWS_REKOGNITION_MIN_CONFIDENCE:40}
 
 fcm:
   service-account-path: 'classpath:firebase-service-key.json'
