@@ -2,11 +2,11 @@ package com.example.onuldo.domain.user.repository;
 
 import com.example.onuldo.domain.user.entity.NotificationDispatch;
 import com.example.onuldo.domain.user.enums.NotificationDispatchStatus;
+import com.example.onuldo.domain.user.enums.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 public interface NotificationDispatchRepository extends JpaRepository<NotificationDispatch, Long> {
 
@@ -15,7 +15,10 @@ public interface NotificationDispatchRepository extends JpaRepository<Notificati
             LocalDateTime scheduledAt
     );
 
-    boolean existsByNotification_Id(Long notificationId);
-
-    Optional<NotificationDispatch> findFirstByNotification_IdOrderByIdDesc(Long notificationId);
+    boolean existsByUser_IdAndTypeAndRefTypeAndRefId(
+            Long userId,
+            NotificationType type,
+            String refType,
+            Long refId
+    );
 }

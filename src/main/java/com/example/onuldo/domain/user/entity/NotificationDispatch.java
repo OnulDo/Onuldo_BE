@@ -42,6 +42,7 @@ public class NotificationDispatch extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "notification_id")
+    @Setter
     private Notification notification;
 
     @Enumerated(EnumType.STRING)
@@ -56,6 +57,18 @@ public class NotificationDispatch extends BaseEntity {
 
     @Column(name = "scheduled_at", nullable = false)
     private LocalDateTime scheduledAt;
+
+    @Column(nullable = false, length = 100)
+    private String title;
+
+    @Column(nullable = false, length = 255)
+    private String content;
+
+    @Column(name = "ref_type", length = 50)
+    private String refType;
+
+    @Column(name = "ref_id")
+    private Long refId;
 
     @Column(name = "sent_at")
     @Setter

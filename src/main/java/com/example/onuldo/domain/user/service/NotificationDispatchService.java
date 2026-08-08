@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,36 +38,31 @@ public class NotificationDispatchService {
     private final FcmPushService fcmPushService;
     private final TimeService timeService;
 
-    // 알림함 기록을 만들고 푸시 발송 대기열에 NotificationDispatch를 등록하는 메서드
+    // 발송 시점에 알림함 기록을 만들 수 있도록 푸시 발송 대기열에 예약 정보만 등록하는 메서드
     @Transactional
     public void enqueue(NotificationDispatchCommand command) {
         User user = userRepository.findById(command.getUserId())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
-        var notification = notificationCreateService.createIfAbsent(
+        if (command.getRefType() != null && command.getRefId() != null
+                && notificationDispatchRepository.existsByUser_IdAndTypeAndRefTypeAndRefId(
                 command.getUserId(),
                 command.getType(),
-                command.getTitle(),
-                command.getContent(),
                 command.getRefType(),
                 command.getRefId()
-        );
-
-        Notification savedNotification = notification.get();
-        if (!isPushEnabled(command.getUserId(), command.getType())) {
-            return;
-        }
-
-        if (notificationDispatchRepository.existsByNotification_Id(savedNotification.getId())) {
+        )) {
             return;
         }
 
         notificationDispatchRepository.save(
                 NotificationDispatch.builder()
                         .user(user)
-                        .notification(savedNotification)
                         .type(command.getType())
                         .scheduledAt(command.getScheduledAt())
+                        .title(command.getTitle())
+                        .content(command.getContent())
+                        .refType(command.getRefType())
+                        .refId(command.getRefId())
                         .build()
         );
     }
@@ -96,6 +92,14 @@ public class NotificationDispatchService {
 
     private void sendOne(NotificationDispatch dispatch, LocalDateTime now) {
         try {
+            Notification notification = createNotificationIfAbsent(dispatch);
+            dispatch.setNotification(notification);
+
+            if (!isPushEnabled(dispatch.getUser().getId(), dispatch.getType())) {
+                markCanceled(dispatch, now, "사용자 알림 설정이 꺼져 있습니다.");
+                return;
+            }
+
             List<DeviceLog> deviceLogs = deviceLogRepository.findAllByUserIdAndFcmTokenIsNotNull(dispatch.getUser().getId());
 
             if (deviceLogs.isEmpty()) {
@@ -103,11 +107,8 @@ public class NotificationDispatchService {
                 return;
             }
 
-            String title = dispatch.getNotification() != null ? dispatch.getNotification().getTitle() : dispatch.getType().name();
-            String body = dispatch.getNotification() != null ? dispatch.getNotification().getContent() : dispatch.getType().name();
-
             for (DeviceLog deviceLog : deviceLogs) {
-                fcmPushService.send(deviceLog, title, body);
+                fcmPushService.send(deviceLog, notification.getTitle(), notification.getContent());
             }
 
             markSent(dispatch, now);
@@ -129,6 +130,27 @@ public class NotificationDispatchService {
         dispatch.setLastAttemptAt(attemptedAt);
         dispatch.setFailedReason(reason);
         dispatch.setAttemptCount(dispatch.getAttemptCount() + 1);
+    }
+
+    private void markCanceled(NotificationDispatch dispatch, LocalDateTime attemptedAt, String reason) {
+        dispatch.setStatus(NotificationDispatchStatus.CANCELED);
+        dispatch.setLastAttemptAt(attemptedAt);
+        dispatch.setFailedReason(reason);
+        dispatch.setAttemptCount(dispatch.getAttemptCount() + 1);
+    }
+
+    // 발송 처리 시점에 알림함용 Notification을 중복 없이 생성하는 메서드
+    private Notification createNotificationIfAbsent(NotificationDispatch dispatch) {
+        return Optional.ofNullable(dispatch.getNotification())
+                .orElseGet(() -> notificationCreateService.createIfAbsent(
+                                dispatch.getUser().getId(),
+                                dispatch.getType(),
+                                dispatch.getTitle(),
+                                dispatch.getContent(),
+                                dispatch.getRefType(),
+                                dispatch.getRefId()
+                        )
+                        .orElseThrow());
     }
 
     // 사용자 알림 설정에 따라 푸시 발송 대기열 등록 여부를 판단하는 메서드
