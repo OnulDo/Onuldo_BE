@@ -7,10 +7,12 @@ import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
+import com.example.onuldo.domain.user.dto.response.NotificationListItemResDto;
 import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
+import com.example.onuldo.domain.user.service.NotificationQueryService;
 import com.example.onuldo.domain.user.service.PointService;
 import com.example.onuldo.domain.user.service.UserService;
 import com.example.onuldo.global.common.base.BaseResponse;
@@ -34,6 +36,7 @@ public class UserController implements UserControllerDoc {
 
     private final PointService pointService;
     private final UserService userService;
+    private final NotificationQueryService notificationQueryService;
 
     @GetMapping("/profile")
     public BaseResponse<GetProfileResDto> getProfile(
@@ -68,6 +71,20 @@ public class UserController implements UserControllerDoc {
             UpdateNotificationReqDto request
     ) {
         return BaseResponse.onSuccess(userService.updateNotification(userId, request));
+    }
+
+    @GetMapping("/notifications")
+    public CursorPageResponse<NotificationListItemResDto> getNotifications(
+            @AuthUser
+            Long userId,
+
+            @RequestParam(required = false)
+            String cursor,
+
+            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
+            int size
+    ) {
+        return notificationQueryService.getNotifications(userId, cursor, size);
     }
 
     @PostMapping("/wallet/charges")

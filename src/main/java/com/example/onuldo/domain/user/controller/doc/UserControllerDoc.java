@@ -6,6 +6,7 @@ import com.example.onuldo.domain.user.dto.response.GetMyPageResDto;
 import com.example.onuldo.domain.user.dto.response.ChargePointResDto;
 import com.example.onuldo.domain.user.dto.response.GetNotificationResDto;
 import com.example.onuldo.domain.user.dto.response.GetProfileResDto;
+import com.example.onuldo.domain.user.dto.response.NotificationListItemResDto;
 import com.example.onuldo.domain.user.dto.response.PointTransactionResDto;
 import com.example.onuldo.domain.user.dto.response.PointWalletSummaryResDto;
 import com.example.onuldo.domain.user.dto.response.UpdateNotificationResDto;
@@ -75,6 +76,29 @@ public interface UserControllerDoc {
             @Valid
             @RequestBody
             UpdateNotificationReqDto request
+    );
+
+    @Operation(
+            summary = "알림 목록 조회",
+            description = """
+                    로그인한 유저의 알림함 목록을 최신순 커서 기반 스크롤로 조회합니다.
+
+                    응답에는 알림 카드 화면 구성을 위한 제목, 본문, 상대 시간, 읽음 여부와 이동에 필요한 challengeId/partyId가 포함됩니다.
+                    알림 보관 기간은 30일이며, 생성 후 30일이 지난 알림은 조회되지 않습니다.
+                    """
+    )
+    @ApiResponse(responseCode = "200")
+    CursorPageResponse<NotificationListItemResDto> getNotifications(
+            @AuthUser
+            Long userId,
+
+            @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력")
+            @RequestParam(required = false)
+            String cursor,
+
+            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
+            @RequestParam(defaultValue = "10")
+            int size
     );
 
     @Operation(
