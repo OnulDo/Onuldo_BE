@@ -76,6 +76,21 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     @Query("""
             SELECT p
             FROM Participation p
+            JOIN FETCH p.user
+            JOIN FETCH p.challenge
+            LEFT JOIN FETCH p.party
+            WHERE p.status = :status
+            AND p.startDate <= :date
+            AND p.endDate >= :date
+            """)
+    List<Participation> findAllActiveOnDate(
+            @Param("status") ParticipationStatus status,
+            @Param("date") LocalDate date
+    );
+
+    @Query("""
+            SELECT p
+            FROM Participation p
             JOIN FETCH p.challenge
             WHERE p.user.id = :userId
             AND p.status = :status
@@ -136,6 +151,19 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     Optional<Participation> findByIdForUpdate(@Param("id") Long id);
 
     List<Participation> findAllByIdIn(Collection<Long> ids);
+
+    @Query("""
+            SELECT p
+            FROM Participation p
+            JOIN FETCH p.user
+            JOIN FETCH p.challenge
+            WHERE p.party.id = :partyId
+            AND p.status = :status
+            """)
+    List<Participation> findAllByPartyIdAndStatusWithUserAndChallenge(
+            @Param("partyId") Long partyId,
+            @Param("status") ParticipationStatus status
+    );
 
     @Query("""
         SELECT new com.example.onuldo.domain.challenge.repository.PartyCountProjection(p.party.id, COUNT(DISTINCT p.user.id))

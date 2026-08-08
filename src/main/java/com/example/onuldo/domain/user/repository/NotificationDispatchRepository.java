@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface NotificationDispatchRepository extends JpaRepository<NotificationDispatch, Long> {
 
@@ -13,4 +14,8 @@ public interface NotificationDispatchRepository extends JpaRepository<Notificati
             NotificationDispatchStatus status,
             LocalDateTime scheduledAt
     );
+
+    boolean existsByNotification_Id(Long notificationId);
+
+    Optional<NotificationDispatch> findFirstByNotification_IdOrderByIdDesc(Long notificationId);
 }

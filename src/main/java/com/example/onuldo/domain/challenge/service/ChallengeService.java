@@ -42,6 +42,7 @@ public class ChallengeService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final SettlementService settlementService;
+    private final ChallengeNotificationService challengeNotificationService;
     private final TimeService timeService;
     private final RekognitionService rekognitionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -131,6 +132,7 @@ public class ChallengeService {
 
         // 인증 성공 시 정산 트리거 호출
         if (verification.getReview() == VerificationReviewStatus.PASS) {
+            challengeNotificationService.notifyPartyMemberVerified(verification);
             triggerSettlementIfLastDay(participation, today);
         }
 

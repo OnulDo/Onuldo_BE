@@ -7,6 +7,7 @@ import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.domain.challenge.service.ChallengeNotificationService;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
@@ -81,6 +82,7 @@ public class PartyService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final ChallengeNotificationService challengeNotificationService;
     private final TimeService timeService;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
@@ -348,6 +350,7 @@ public class PartyService {
                     .build();
             validateParticipationState(participation);
             participationRepository.save(participation);
+            challengeNotificationService.scheduleChallengeLifecycleNotifications(participation);
         }
 
         return PartyStartResDto.of(party);

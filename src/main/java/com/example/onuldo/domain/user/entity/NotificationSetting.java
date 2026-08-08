@@ -61,9 +61,9 @@ public class NotificationSetting {
     public void apply(NotificationType type, boolean enabled) {
         switch (type) {
             case CHALLENGE_START -> challengeStart = enabled;
-            case VERIFICATION_DEADLINE -> verificationDeadline = enabled;
-            case VERIFICATION_RESULT -> verificationResult = enabled;
-            case REFUND_COMPLETE -> refundComplete = enabled;
+            case VERIFICATION_DEADLINE, CHALLENGE_END_REMINDER -> verificationDeadline = enabled;
+            case VERIFICATION_RESULT, PARTY_MEMBER_VERIFIED -> verificationResult = enabled;
+            case REFUND_COMPLETE, PARTY_SETTLEMENT_COMPLETE, PARTY_DAILY_SETTLEMENT -> refundComplete = enabled;
             case DEDUCTION_ALERT -> deductionAlert = enabled;
             default -> throw new RestApiException(GlobalErrorStatus._BAD_REQUEST);
         }

@@ -36,6 +36,7 @@ public class SettlementService {
     private final SettlementRepository settlementRepository;
     private final UserRepository userRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final ChallengeNotificationService challengeNotificationService;
     private final TimeService timeService;
 
     /** 챌린지 정산 처리. <br>
@@ -87,6 +88,7 @@ public class SettlementService {
 
         Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, bonusAmount);
         settlementRepository.save(resultSettlement);
+        challengeNotificationService.notifySettlementCompleted(participation, refundAmount);
     }
 
     private void settleFailure(Participation participation, BigDecimal rValue) {
@@ -98,6 +100,7 @@ public class SettlementService {
         Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, 0);
 
         settlementRepository.save(resultSettlement);
+        challengeNotificationService.notifySettlementCompleted(participation, refundAmount);
     }
 
     private Settlement createSettlement(

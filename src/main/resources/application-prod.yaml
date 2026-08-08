@@ -48,4 +48,4 @@ aws:
     min-confidence: ${AWS_REKOGNITION_MIN_CONFIDENCE:80}
 
 fcm:
-  service-account-path: 'classpath:firebase/firebase-service-key.json'
+  service-account-path: 'classpath:firebase-service-key.json'

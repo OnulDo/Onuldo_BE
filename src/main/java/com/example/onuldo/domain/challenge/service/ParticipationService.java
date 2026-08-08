@@ -57,6 +57,7 @@ public class ParticipationService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final ChallengeNotificationService challengeNotificationService;
     private final TimeService timeService;
 
     public ParticipationResDto participatePersonalChallenge(
@@ -87,6 +88,7 @@ public class ParticipationService {
                 user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate
         );
         participationRepository.save(participation);
+        challengeNotificationService.scheduleChallengeLifecycleNotifications(participation);
 
         pointTransactionRepository.save(PointTransaction.builder()
                 .user(user)
