@@ -10,6 +10,7 @@ import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.domain.challenge.support.ParticipationValidator;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
@@ -58,7 +59,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -70,9 +70,6 @@ public class PartyService {
     private static final String INVITE_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int MAX_INVITE_CODE_RETRY = 10;
     private static final SecureRandom RANDOM = new SecureRandom();
-
-    // PAR-03: 파티 이름은 2~20자 한글·영문·숫자·공백만 허용
-    private static final Pattern PARTY_NAME_PATTERN = Pattern.compile("^[가-힣a-zA-Z0-9\\s]{2,20}$");
 
     // PAR-02: 모집 인원은 2~5명 (방장 포함)
     private static final int MIN_MEMBERS = 2;
@@ -89,12 +86,9 @@ public class PartyService {
     private final VerificationRepository verificationRepository;
     private final SettlementRepository settlementRepository;
     private final TimeService timeService;
+    private final ParticipationValidator participationValidator;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
-        if (!PARTY_NAME_PATTERN.matcher(request.name()).matches()) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_PARTY_NAME);
-        }
-
         if (request.maxMembers() < MIN_MEMBERS || request.maxMembers() > MAX_MEMBERS) {
             throw new RestApiException(GlobalErrorStatus._INVALID_MAX_MEMBERS);
         }
@@ -104,6 +98,8 @@ public class PartyService {
 
         Challenge challenge = challengeRepository.findById(request.challengeId())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+
+        participationValidator.validateNotOngoing(userId, challenge.getId());
 
         challenge.validateDurationOption(request.durationWeeks());
         challenge.validateDepositOption(request.depositAmount());
@@ -492,8 +488,10 @@ public class PartyService {
     public PartyHomeResDto getHomeParties(Long userId) {
         List<Party> ongoingParties = partyRepository.findOngoingPartiesByUserId(userId);
 
+        Map<Long, Participation> myParticipationByPartyId = findMyPartyParticipationsByPartyId(ongoingParties, userId);
+
         List<HomeItemWithChallengeId> wrappedItems = ongoingParties.stream()
-                .map(party -> generatePartyHomeItem(party, userId))
+                .map(party -> generatePartyHomeItem(party, userId, myParticipationByPartyId.get(party.getId())))
                 .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 
@@ -518,6 +516,21 @@ public class PartyService {
                 .settlementBanners(resolveSettlementBanners(userId))
                 .parties(parties)
                 .build();
+    }
+
+    private Map<Long, Participation> findMyPartyParticipationsByPartyId(List<Party> parties, Long userId) {
+        if (parties.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> partyIds = parties.stream().map(Party::getId).toList();
+        return participationRepository
+                .findAllByParty_IdInAndUser_IdAndParticipationType(partyIds, userId, ParticipationType.PARTY)
+                .stream()
+                .collect(Collectors.toMap(
+                        participation -> participation.getParty().getId(),
+                        participation -> participation
+                ));
     }
 
     // 아직 확인하지 않은 정산 전부 노출 — 결과 조회 시 confirm 처리되어 다음 응답부터 사라짐
@@ -547,7 +560,7 @@ public class PartyService {
         };
     }
 
-    private HomeItemWithChallengeId generatePartyHomeItem(Party party, Long userId) {
+    private HomeItemWithChallengeId generatePartyHomeItem(Party party, Long userId, Participation myParticipation) {
         PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(party.getId())
                 .orElse(null);
         if (partyChallenge == null) {
@@ -614,17 +627,17 @@ public class PartyService {
             }
         }
 
-        // endDate는 startParty()에서 생성된 Participation.endDate를 단일 원본으로 사용한다
-        // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 종료일이 하루 어긋남)
-        LocalDate endDate = participationRepository
-                .findByParty_IdAndUser_IdAndParticipationType(party.getId(), userId, ParticipationType.PARTY)
-                .map(Participation::getEndDate)
-                .orElse(null);
+        // startDate/endDate는 startParty()에서 생성된 Participation을 단일 원본으로 사용한다
+        // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 날짜가 하루 어긋남)
+        LocalDate startDate = myParticipation != null ? myParticipation.getStartDate() : null;
+        LocalDate endDate = myParticipation != null ? myParticipation.getEndDate() : null;
 
         PartyHomeItemResDto item = PartyHomeItemResDto.builder()
                 .partyId(party.getId())
                 .name(party.getName())
                 .challengeTitle(challenge.getName())
+                .challengeId(challenge.getId())
+                .startDate(startDate)
                 .endDate(endDate)
                 .verificationDeadline(deadline)
                 .showRemainingTime(showRemainingTime)

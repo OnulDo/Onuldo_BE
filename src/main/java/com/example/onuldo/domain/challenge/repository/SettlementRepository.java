@@ -1,6 +1,7 @@
 package com.example.onuldo.domain.challenge.repository;
 
 import com.example.onuldo.domain.challenge.entity.Settlement;
+import com.example.onuldo.domain.challenge.enums.SettlementStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,7 +21,10 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
             """)
     List<Settlement> findByPartyId(@Param("partyId") Long partyId);
 
-    List<Settlement> findAllByParticipation_IdInOrderByIdDesc(Collection<Long> participationIds);
+    List<Settlement> findAllByParticipation_IdInAndStatusOrderByIdDesc(
+            Collection<Long> participationIds,
+            SettlementStatus status
+    );
 
     boolean existsByParticipation_Id(Long participationId);
 

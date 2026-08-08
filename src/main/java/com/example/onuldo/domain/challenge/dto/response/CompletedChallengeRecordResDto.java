@@ -17,7 +17,9 @@ public record CompletedChallengeRecordResDto(
         @Schema(example = "SUCCESS")
         ParticipationStatus resultStatus,
         @Schema(example = "30000")
-        Integer refundAmount,
+        Integer depositAmount,
+        @Schema(example = "2500")
+        Integer adjustmentAmount,
         @Schema(example = "2026-08-10")
         LocalDate endedDate,
         @Schema(example = "92")
