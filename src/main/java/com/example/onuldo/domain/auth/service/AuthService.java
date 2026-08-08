@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -50,8 +49,6 @@ public class AuthService {
     );
     private static final int MIN_PASSWORD_LENGTH = 8;
     private static final int MAX_PASSWORD_LENGTH = 20;
-    private static final int DEFAULT_PROFILE_IMAGE_MIN_NUMBER = 1;
-    private static final int DEFAULT_PROFILE_IMAGE_MAX_NUMBER_EXCLUSIVE = 13;
     private static final Set<TermType> REQUIRED_TERM_TYPES = Set.of(
             TermType.SERVICE,
             TermType.PRIVACY,
@@ -87,7 +84,7 @@ public class AuthService {
                 .emailVerified(false)
                 .pointBalance(0L)
                 .status(UserStatus.ACTIVE)
-                .profileImageUrl(resolveProfileImageUrl(request.profileImageUrl()))
+                .profileImageUrl(request.profileImageUrl())
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -179,7 +176,7 @@ public class AuthService {
         User user = userRepository.save(User.builder()
                 .email(info.email())
                 .nickname(request.nickname())
-                .profileImageUrl(resolveProfileImageUrl(request.profileImageUrl()))
+                .profileImageUrl(request.profileImageUrl())
                 .socialId(info.socialId())
                 .socialProvider(info.provider())
                 .emailVerified(true)
@@ -274,18 +271,6 @@ public class AuthService {
                 .term(term)
                 .agreed(agreed)
                 .build();
-    }
-
-    private String resolveProfileImageUrl(String profileImageUrl) {
-        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
-            return profileImageUrl;
-        }
-
-        int imageNumber = ThreadLocalRandom.current().nextInt(
-                DEFAULT_PROFILE_IMAGE_MIN_NUMBER,
-                DEFAULT_PROFILE_IMAGE_MAX_NUMBER_EXCLUSIVE
-        );
-        return "default_asset:" + imageNumber;
     }
 
     private boolean isLocked(User user, LocalDateTime now) {
