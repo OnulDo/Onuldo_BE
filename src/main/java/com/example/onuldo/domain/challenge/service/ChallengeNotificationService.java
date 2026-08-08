@@ -38,6 +38,7 @@ public class ChallengeNotificationService {
     private static final LocalTime END_REMINDER_TIME = LocalTime.of(20, 0);
     private static final int NOTIFICATION_CONTENT_MAX_LENGTH = 255;
     private static final DateTimeFormatter TIME_KEY_FORMATTER = DateTimeFormatter.ofPattern("HHmm");
+    private static final DateTimeFormatter TIME_TEXT_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
@@ -81,7 +82,7 @@ public class ChallengeNotificationService {
                             .userId(participation.getUser().getId())
                             .type(NotificationType.VERIFICATION_DEADLINE)
                             .title(reminderSlot.title())
-                            .content(reminderSlot.content(participation.getChallenge().getName()))
+                            .content(reminderSlot.content())
                             .scheduledAt(now)
                             .refType("DEADLINE:" + today + ":" + currentMinute.format(TIME_KEY_FORMATTER))
                             .refId(participation.getId())
@@ -115,11 +116,11 @@ public class ChallengeNotificationService {
                     NotificationDispatchCommand.builder()
                             .userId(target.getUser().getId())
                             .type(NotificationType.PARTY_MEMBER_VERIFIED)
-                            .title("파티원이 인증을 완료했어요")
-                            .content(verifierNickname + "님이 오늘의 인증을 완료했어요.")
+                            .title(verifierNickname + "님이 인증을 완료했어요 📸")
+                            .content(participation.getChallenge().getName() + " 파티 피드에서 확인해보세요")
                             .scheduledAt(timeService.nowKst())
                             .refType("PARTY_VERIFIED:" + verification.getId())
-                            .refId(target.getUser().getId())
+                            .refId(participation.getParty().getId())
                             .build()
             );
         }
@@ -135,11 +136,11 @@ public class ChallengeNotificationService {
                 NotificationDispatchCommand.builder()
                         .userId(participation.getUser().getId())
                         .type(NotificationType.VERIFICATION_RESULT)
-                        .title("인증이 승인됐어요")
-                        .content(participation.getChallenge().getName() + " 직접검토 인증이 통과됐어요.")
+                        .title("인증이 승인됐어요 ✅")
+                        .content(participation.getChallenge().getName() + " 인증이 검토를 통과했어요. 오늘도 성공!")
                         .scheduledAt(timeService.nowKst())
                         .refType("MANUAL_PASS:" + verification.getId())
-                        .refId(participation.getUser().getId())
+                        .refId(participation.getId())
                         .build()
         );
         notifyPartyMemberVerified(verification);
@@ -157,11 +158,11 @@ public class ChallengeNotificationService {
                 NotificationDispatchCommand.builder()
                         .userId(participation.getUser().getId())
                         .type(NotificationType.VERIFICATION_RESULT)
-                        .title("인증이 기각됐어요")
-                        .content(truncateContent(participation.getChallenge().getName() + " 인증이 기각됐어요. 사유: " + reason))
+                        .title("인증이 승인되지 않았어요")
+                        .content(truncateContent(participation.getChallenge().getName() + " 오늘 인증이 실패 처리됐어요. 사유: " + reason))
                         .scheduledAt(timeService.nowKst())
                         .refType("MANUAL_REJECT:" + verification.getId())
-                        .refId(participation.getUser().getId())
+                        .refId(participation.getId())
                         .build()
         );
     }
@@ -173,8 +174,10 @@ public class ChallengeNotificationService {
         NotificationType type = party
                 ? NotificationType.PARTY_SETTLEMENT_COMPLETE
                 : NotificationType.REFUND_COMPLETE;
-        String title = party ? "파티 정산이 완료됐어요" : "환급이 완료됐어요";
-        String content = String.format("%,dP가 지급됐어요.", refundAmount);
+        String title = party ? "파티 정산이 완료됐어요 💰" : "포인트가 지급됐어요 💰";
+        String content = party
+                ? String.format("%s 정산 결과 %,dP가 들어왔어요", participation.getChallenge().getName(), refundAmount)
+                : String.format("%s 정산 완료! %,dP가 들어왔어요", participation.getChallenge().getName(), refundAmount);
 
         enqueuePush(
                 NotificationDispatchCommand.builder()
@@ -184,7 +187,7 @@ public class ChallengeNotificationService {
                         .content(content)
                         .scheduledAt(timeService.nowKst())
                         .refType("SETTLEMENT:" + participation.getId())
-                        .refId(participation.getUser().getId())
+                        .refId(participation.getId())
                         .build()
         );
     }
@@ -202,8 +205,8 @@ public class ChallengeNotificationService {
                 NotificationDispatchCommand.builder()
                         .userId(participation.getUser().getId())
                         .type(NotificationType.CHALLENGE_START)
-                        .title("새 챌린지가 시작됐어요")
-                        .content(challenge.getName() + " 첫 인증 시간이 시작됐어요.")
+                        .title(challenge.getName() + ", 오늘부터 시작!")
+                        .content("1일차예요. 첫 인증으로 기분 좋게 출발해요")
                         .scheduledAt(scheduledAt)
                         .refType("CHALLENGE_START")
                         .refId(participation.getId())
@@ -224,8 +227,8 @@ public class ChallengeNotificationService {
                 NotificationDispatchCommand.builder()
                         .userId(participation.getUser().getId())
                         .type(NotificationType.CHALLENGE_END_REMINDER)
-                        .title("챌린지 종료가 가까워졌어요")
-                        .content(participation.getChallenge().getName() + " 종료 " + daysBefore + "일 전이에요.")
+                        .title(participation.getChallenge().getName() + " 종료까지 " + daysBefore + "일")
+                        .content("완주가 눈앞이에요. 마지막까지 함께해요!")
                         .scheduledAt(scheduledAt)
                         .refType("END_REMINDER:D" + daysBefore)
                         .refId(participation.getId())
@@ -258,8 +261,8 @@ public class ChallengeNotificationService {
             notificationCreateService.createIfAbsent(
                     target.getUser().getId(),
                     NotificationType.PARTY_DAILY_SETTLEMENT,
-                    "파티 일별 정산이 반영됐어요",
-                    sourceParticipation.getParty().getName() + " 일별 정산(±P)이 반영됐어요. 종료 시 지급됩니다.",
+                    "오늘의 파티 몫이 확정됐어요",
+                    sourceParticipation.getChallenge().getName() + " 오늘 몫이 확정됐어요 · 종료 시 지급",
                     "PARTY_DAILY:" + verificationDate,
                     sourceParticipation.getParty().getId()
             );
@@ -268,12 +271,13 @@ public class ChallengeNotificationService {
 
     // 현재 시각에 발송해야 할 인증 마감 리마인더 문구를 결정하는 메서드
     private ReminderSlot resolveReminderSlot(Challenge challenge, LocalTime currentMinute) {
+        String challengeName = challenge.getName();
         if (hasDesignatedVerificationTime(challenge)) {
             LocalTime start = resolveVerificationStart(challenge);
             if (start.equals(currentMinute)) {
                 return new ReminderSlot(
-                        "인증 시간이 시작됐어요",
-                        challengeName -> challengeName + " 인증 가능 시간이 시작됐어요."
+                        "지금 인증할 시간이에요 ⏰",
+                        challengeName + " 인증이 시작됐어요. " + resolveVerificationEnd(challenge).format(TIME_TEXT_FORMATTER) + "까지 완료해주세요!"
                 );
             }
             return null;
@@ -281,15 +285,15 @@ public class ChallengeNotificationService {
 
         if (DEFAULT_REMINDER_MORNING.equals(currentMinute) || DEFAULT_REMINDER_EVENING.equals(currentMinute)) {
             return new ReminderSlot(
-                    "오늘 인증을 잊지 마세요",
-                    challengeName -> challengeName + " 오늘 인증을 완료해 주세요."
+                    "오늘 인증, 잊지 않으셨죠?",
+                    challengeName + " 인증은 23시까지! 지금 완료해보세요"
             );
         }
 
         if (DEFAULT_REMINDER_WARNING.equals(currentMinute)) {
             return new ReminderSlot(
-                    "인증 마감 1시간 전이에요",
-                    challengeName -> challengeName + " 미인증 시 오늘 인증은 실패 처리돼요."
+                    "마감 1시간 전이에요 ⚠️",
+                    "23시까지 인증하지 않으면 오늘 " + challengeName + "는 실패 처리돼요"
             );
         }
 
@@ -330,14 +334,6 @@ public class ChallengeNotificationService {
         notificationDispatchService.enqueue(command);
     }
 
-    private record ReminderSlot(String title, ReminderContent contentFactory) {
-        private String content(String challengeName) {
-            return contentFactory.content(challengeName);
-        }
-    }
-
-    @FunctionalInterface
-    private interface ReminderContent {
-        String content(String challengeName);
+    private record ReminderSlot(String title, String content) {
     }
 }
