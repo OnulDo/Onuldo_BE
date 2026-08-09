@@ -96,6 +96,21 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             FROM Participation p
             JOIN FETCH p.challenge
             WHERE p.user.id = :userId
+            AND p.status = :status
+            AND p.participationType = :participationType
+            ORDER BY p.id DESC
+            """)
+    List<Participation> findAllWithChallengeByUserIdAndStatusAndParticipationTypeOrderByIdDesc(
+            @Param("userId") Long userId,
+            @Param("status") ParticipationStatus status,
+            @Param("participationType") ParticipationType participationType
+    );
+
+    @Query("""
+            SELECT p
+            FROM Participation p
+            JOIN FETCH p.challenge
+            WHERE p.user.id = :userId
             AND p.status IN :statuses
             ORDER BY p.endDate DESC, p.id DESC
             """)

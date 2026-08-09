@@ -3,7 +3,6 @@ package com.example.onuldo.domain.challenge.service;
 import com.example.onuldo.domain.challenge.dto.request.ParticipationReqDto;
 import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.CompletedPartyResDto;
-import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
@@ -154,9 +153,11 @@ public class ParticipationService {
 
     }
 
-    public DailyChallengeListResDto getDailyChallenges(Long userId) {
+    public List<DailyChallengeResDto> getDailyChallenges(Long userId) {
         List<Participation> participations = participationRepository
-                .findAllWithChallengeByUserIdAndStatusOrderByIdDesc(userId, ParticipationStatus.ONGOING);
+                .findAllWithChallengeByUserIdAndStatusAndParticipationTypeOrderByIdDesc(
+                        userId, ParticipationStatus.ONGOING, ParticipationType.PERSONAL
+                );
         LocalDateTime now = timeService.nowKst();
         LocalDate today = now.toLocalDate();
         LocalTime currentTime = now.toLocalTime();
@@ -169,17 +170,15 @@ public class ParticipationService {
                 today
         );
 
-        return DailyChallengeListResDto.builder()
-                .challenges(participations.stream()
-                        .map(participation -> toDailyChallengeResDto(
-                                participation,
-                                latestVerificationByParticipationId.get(participation.getId()),
-                                streakByParticipationId.getOrDefault(participation.getId(), 0),
-                                today,
-                                currentTime
-                        ))
-                        .toList())
-                .build();
+        return participations.stream()
+                .map(participation -> toDailyChallengeResDto(
+                        participation,
+                        latestVerificationByParticipationId.get(participation.getId()),
+                        streakByParticipationId.getOrDefault(participation.getId(), 0),
+                        today,
+                        currentTime
+                ))
+                .toList();
     }
 
     public DailyCompletedChallengeListResDto getDailyCompletedChallenges(Long userId) {
