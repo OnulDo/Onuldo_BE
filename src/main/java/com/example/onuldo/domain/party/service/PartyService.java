@@ -13,6 +13,7 @@ import com.example.onuldo.domain.challenge.repository.SettlementRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.challenge.support.ParticipationValidator;
 import com.example.onuldo.domain.challenge.service.DailyChallengeStatusResolver;
+import com.example.onuldo.domain.challenge.service.VerificationStreakService;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
@@ -90,6 +91,7 @@ public class PartyService {
     private final TimeService timeService;
     private final ParticipationValidator participationValidator;
     private final DailyChallengeStatusResolver dailyChallengeStatusResolver;
+    private final VerificationStreakService verificationStreakService;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
         if (request.maxMembers() < MIN_MEMBERS || request.maxMembers() > MAX_MEMBERS) {
@@ -501,9 +503,22 @@ public class PartyService {
         List<Party> ongoingParties = partyRepository.findOngoingPartiesByUserId(userId);
 
         Map<Long, Participation> myParticipationByPartyId = findMyPartyParticipationsByPartyId(ongoingParties, userId);
+        LocalDateTime now = timeService.nowKst();
+        LocalDate today = now.toLocalDate();
+        LocalTime currentTime = now.toLocalTime();
+        Map<Long, Integer> streakByParticipationId = verificationStreakService.calculateStreaks(
+                myParticipationByPartyId.values().stream().map(Participation::getId).toList(),
+                today
+        );
 
         List<HomeItemWithChallengeId> wrappedItems = ongoingParties.stream()
-                .map(party -> generatePartyHomeItem(party, userId, myParticipationByPartyId.get(party.getId())))
+                .map(party -> {
+                    Participation myParticipation = myParticipationByPartyId.get(party.getId());
+                    int streakDays = myParticipation == null
+                            ? 0
+                            : streakByParticipationId.getOrDefault(myParticipation.getId(), 0);
+                    return generatePartyHomeItem(party, userId, myParticipation, streakDays, now, today, currentTime);
+                })
                 .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 
@@ -572,7 +587,15 @@ public class PartyService {
         };
     }
 
-    private HomeItemWithChallengeId generatePartyHomeItem(Party party, Long userId, Participation myParticipation) {
+    private HomeItemWithChallengeId generatePartyHomeItem(
+            Party party,
+            Long userId,
+            Participation myParticipation,
+            int streakDays,
+            LocalDateTime now,
+            LocalDate today,
+            LocalTime currentTime
+    ) {
         PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(party.getId())
                 .orElse(null);
         if (partyChallenge == null) {
@@ -582,10 +605,6 @@ public class PartyService {
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(party.getId());
 
-        // 서버 시간대가 KST가 아닐 수 있으므로 now/today/currentTime 모두 TimeService 기준으로 통일
-        LocalDateTime now = timeService.nowKst();
-        LocalDate today = now.toLocalDate();
-        LocalTime currentTime = now.toLocalTime();
         List<Verification> todayVerifications =
                 verificationRepository.findTodayVerificationsByPartyId(party.getId(), today);
 
@@ -650,6 +669,7 @@ public class PartyService {
                 .status(status)
                 .dailyStatus(dailyStatus)
                 .verifiedAt(verifiedAt)
+                .streakDays(streakDays)
                 .members(members)
                 .build();
 

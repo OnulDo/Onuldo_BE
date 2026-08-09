@@ -35,6 +35,8 @@ public record PartyHomeItemResDto(
         DailyChallengeStatus dailyStatus,
         @Schema(example = "2026-07-23T09:00:00", nullable = true)
         LocalDateTime verifiedAt,
+        @Schema(description = "로그인 유저 기준 연속 인증 성공 일수", example = "3")
+        Integer streakDays,
         List<PartyHomeMemberResDto> members
 ) {
 }
