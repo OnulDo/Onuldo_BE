@@ -32,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -93,6 +95,9 @@ public class ChallengeService {
 
     @Transactional
     public ChallengeVerificationResDto verifyChallenge(Long userId, Long challengeId, ChallengeVerificationReqDto request) {
+        LocalDateTime nowKst = timeService.nowKst();
+        LocalDate today = nowKst.toLocalDate();
+
         Challenge challenge = challengeRepository.findById(challengeId)
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
@@ -101,9 +106,11 @@ public class ChallengeService {
                 .findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
-        if (timeService.todayKst().isBefore(participation.getStartDate())) {
+        if (today.isBefore(participation.getStartDate())) {
             throw new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_STARTED);
         }
+
+        validateVerificationAvailableTime(challenge, participation, today, nowKst.toLocalTime());
 
         if (verificationRepository.existsByPhotoUrl(s3FileService.getFileUrl(request.fileId()).url())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
@@ -118,7 +125,6 @@ public class ChallengeService {
 
         BigDecimal dayScore = matchedChallengeLabel ? BigDecimal.valueOf(100) : BigDecimal.ZERO;
         String rekognitionResult = toJson(detectedLabelNames);
-        LocalDate today = timeService.todayKst();
 
         Verification verification;
         try {
@@ -150,6 +156,25 @@ public class ChallengeService {
                 .verifiedAt(verification.getVerifiedAt())
                 .review(verification.getReview())
                 .build();
+    }
+
+    private void validateVerificationAvailableTime(
+            Challenge challenge,
+            Participation participation,
+            LocalDate today,
+            LocalTime currentTime
+    ) {
+        if (participation.getEndDate() != null && today.isAfter(participation.getEndDate())) {
+            throw new RestApiException(GlobalErrorStatus._CHALLENGE_PARTICIPATION_ENDED);
+        }
+
+        if (!ChallengeVerificationTimePolicy.isWithinVerificationTime(
+                challenge.getTimeStart(),
+                challenge.getTimeEnd(),
+                currentTime
+        )) {
+            throw new RestApiException(GlobalErrorStatus._CHALLENGE_VERIFICATION_TIME_UNAVAILABLE);
+        }
     }
 
     @Transactional
@@ -212,7 +237,7 @@ public class ChallengeService {
 
     private ChallengeResDto toChallengeResDto(Challenge challenge) {
         return ChallengeResDto.builder()
-                .id(challenge.getId())
+                .challengeId(challenge.getId())
                 .name(challenge.getName())
                 .explainContent(challenge.getExplainContent())
                 .description(challenge.getDescription())

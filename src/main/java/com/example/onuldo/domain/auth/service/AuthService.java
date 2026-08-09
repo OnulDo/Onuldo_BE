@@ -25,6 +25,7 @@ import com.example.onuldo.domain.user.enums.SocialProvider;
 import com.example.onuldo.domain.user.enums.UserStatus;
 import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.aws.service.S3FileService;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
@@ -44,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -58,8 +58,6 @@ public class AuthService {
     );
     private static final int MIN_PASSWORD_LENGTH = 8;
     private static final int MAX_PASSWORD_LENGTH = 20;
-    private static final int DEFAULT_PROFILE_IMAGE_MIN_NUMBER = 1;
-    private static final int DEFAULT_PROFILE_IMAGE_MAX_NUMBER_EXCLUSIVE = 13;
     private static final Set<TermType> REQUIRED_TERM_TYPES = Set.of(
             TermType.SERVICE,
             TermType.PRIVACY,
@@ -77,6 +75,7 @@ public class AuthService {
     private final OAuthService oAuthService;
     private final TimeService timeService;
     private final NicknameValidator nicknameValidator;
+    private final S3FileService s3FileService;
     private final PlatformTransactionManager transactionManager;
 
     @Transactional
@@ -88,6 +87,7 @@ public class AuthService {
         nicknameValidator.validate(request.nickname());
         validateRequiredTerms(request.termAgreements());
         validatePassword(request.password());
+        s3FileService.verifyDefaultProfileImageUrl(request.profileImageUrl());
 
         User user = User.builder()
                 .email(request.email())
@@ -97,7 +97,7 @@ public class AuthService {
                 .emailVerified(false)
                 .pointBalance(0L)
                 .status(UserStatus.ACTIVE)
-                .profileImageUrl(resolveProfileImageUrl(request.profileImageUrl()))
+                .profileImageUrl(request.profileImageUrl())
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -107,7 +107,7 @@ public class AuthService {
         return createAuthResponse(savedUser);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = RestApiException.class)
     public AuthResDto login(EmailLoginReqDto request) {
         User user = userRepository.findByEmailForUpdate(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
@@ -190,11 +190,12 @@ public class AuthService {
 
         nicknameValidator.validate(request.nickname());
         validateRequiredTerms(request.termAgreements());
+        s3FileService.verifyDefaultProfileImageUrl(request.profileImageUrl());
 
         User user = userRepository.save(User.builder()
                 .email(info.email())
                 .nickname(request.nickname())
-                .profileImageUrl(resolveProfileImageUrl(request.profileImageUrl()))
+                .profileImageUrl(request.profileImageUrl())
                 .socialId(info.socialId())
                 .socialProvider(info.provider())
                 .emailVerified(true)
@@ -341,18 +342,6 @@ public class AuthService {
                 .term(term)
                 .agreed(agreed)
                 .build();
-    }
-
-    private String resolveProfileImageUrl(String profileImageUrl) {
-        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
-            return profileImageUrl;
-        }
-
-        int imageNumber = ThreadLocalRandom.current().nextInt(
-                DEFAULT_PROFILE_IMAGE_MIN_NUMBER,
-                DEFAULT_PROFILE_IMAGE_MAX_NUMBER_EXCLUSIVE
-        );
-        return "default_asset:" + imageNumber;
     }
 
     private boolean isLocked(User user, LocalDateTime now) {

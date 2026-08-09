@@ -63,6 +63,7 @@ public class UserController implements UserControllerDoc {
     public BaseResponse<UpdateProfileResDto> updateProfile(
             @AuthUser
             Long userId,
+            @Valid
             @RequestBody
             UpdateProfileReqDto request
     ) {

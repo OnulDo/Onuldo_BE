@@ -21,7 +21,8 @@ public record OAuthSignupReqDto(
         @NotBlank(message = "닉네임은 필수입니다.")
         String nickname,
 
-        @Schema(example = "https://cdn.onuldo.com/profile/default.png", nullable = true)
+        @Schema(example = "https://cdn.onuldo.com/profile/default.png")
+        @NotBlank(message = "프로필 이미지 URL은 필수입니다.")
         String profileImageUrl,
 
         @Schema(

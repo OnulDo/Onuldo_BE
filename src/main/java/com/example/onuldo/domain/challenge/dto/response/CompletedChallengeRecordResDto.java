@@ -21,7 +21,7 @@ public record CompletedChallengeRecordResDto(
         @Schema(example = "2500")
         Integer adjustmentAmount,
         @Schema(example = "2026-08-10")
-        LocalDate endedDate,
+        LocalDate endDate,
         @Schema(example = "92")
         Integer achievementRate
 ) {

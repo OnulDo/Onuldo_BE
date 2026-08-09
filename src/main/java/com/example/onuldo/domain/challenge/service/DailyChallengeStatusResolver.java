@@ -51,14 +51,14 @@ public class DailyChallengeStatusResolver {
         LocalTime timeStart = challenge.getTimeStart();
         LocalTime timeEnd = challenge.getTimeEnd();
 
-        if (timeStart != null && currentTime.isBefore(timeStart)) {
+        if (ChallengeVerificationTimePolicy.isWithinVerificationTime(timeStart, timeEnd, currentTime)) {
+            return DailyChallengeStatus.WAITING;
+        }
+
+        if (ChallengeVerificationTimePolicy.isBeforeVerificationTime(timeStart, timeEnd, currentTime)) {
             return DailyChallengeStatus.UNAVAILABLE;
         }
 
-        if (timeEnd != null && currentTime.isAfter(timeEnd)) {
-            return DailyChallengeStatus.FAIL;
-        }
-
-        return DailyChallengeStatus.WAITING;
+        return DailyChallengeStatus.FAIL;
     }
 }
