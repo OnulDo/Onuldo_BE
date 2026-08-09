@@ -47,6 +47,8 @@ public record DailyChallengeResDto(
         @Schema(example = "WAITING")
         DailyChallengeStatus dailyStatus,
         @Schema(example = "true")
-        Boolean verifiedOnDate
+        Boolean verifiedOnDate,
+        @Schema(description = "기준일 포함 연속 인증 성공 일수", example = "3")
+        Integer streakDays
 ) {
 }

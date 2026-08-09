@@ -16,7 +16,6 @@ import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.DailyChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
-import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ChallengePotRepository;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
@@ -46,9 +45,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +64,7 @@ public class ParticipationService {
     private final ChallengePotRepository challengePotRepository;
     private final TimeService timeService;
     private final ParticipationValidator participationValidator;
+    private final VerificationStreakService verificationStreakService;
 
     // 개인 챌린지 몰수금 pot은 싱글톤 행 하나로 운용한다.
     private static final Long CHALLENGE_POT_ID = 1L;
@@ -166,12 +164,17 @@ public class ParticipationService {
                 participations.stream().map(Participation::getId).toList(),
                 today
         );
+        Map<Long, Integer> streakByParticipationId = verificationStreakService.calculateStreaks(
+                participations.stream().map(Participation::getId).toList(),
+                today
+        );
 
         return DailyChallengeListResDto.builder()
                 .challenges(participations.stream()
                         .map(participation -> toDailyChallengeResDto(
                                 participation,
                                 latestVerificationByParticipationId.get(participation.getId()),
+                                streakByParticipationId.getOrDefault(participation.getId(), 0),
                                 today,
                                 currentTime
                         ))
@@ -235,7 +238,7 @@ public class ParticipationService {
                 .filter(participation -> participation.getParticipationType() == ParticipationType.PERSONAL)
                 .toList();
 
-        Map<Long, Integer> streakByParticipationId = calculateStreaks(
+        Map<Long, Integer> streakByParticipationId = verificationStreakService.calculateStreaks(
                 completedChallenges.stream().map(Participation::getId).toList(),
                 date
         );
@@ -335,6 +338,7 @@ public class ParticipationService {
     private DailyChallengeResDto toDailyChallengeResDto(
             Participation participation,
             Verification latestVerification,
+            int streakDays,
             LocalDate today,
             LocalTime currentTime
     ) {
@@ -366,6 +370,7 @@ public class ParticipationService {
                 .endDate(participation.getEndDate())
                 .dailyStatus(dailyStatus)
                 .verifiedOnDate(dailyStatus == DailyChallengeStatus.SUCCESS)
+                .streakDays(streakDays)
                 .build();
     }
 
@@ -424,38 +429,4 @@ public class ParticipationService {
                 .build();
     }
 
-    private Map<Long, Integer> calculateStreaks(Collection<Long> participationIds, LocalDate date) {
-        if (participationIds.isEmpty()) {
-            return Map.of();
-        }
-
-        Map<Long, List<Verification>> historyByParticipationId = verificationRepository
-                .findAllByParticipation_IdIn(participationIds)
-                .stream()
-                .collect(Collectors.groupingBy(verification -> verification.getParticipation().getId()));
-
-        Map<Long, Integer> streakByParticipationId = new HashMap<>();
-        for (Long participationId : participationIds) {
-            List<Verification> history = historyByParticipationId
-                    .getOrDefault(participationId, List.of())
-                    .stream()
-                    .sorted(Comparator.comparing(Verification::getVerificationDate).reversed())
-                    .toList();
-
-            int streak = 0;
-            LocalDate expected = date;
-            for (Verification verification : history) {
-                if (verification.getReview() != VerificationReviewStatus.PASS) {
-                    break;
-                }
-                if (!verification.getVerificationDate().equals(expected)) {
-                    break;
-                }
-                streak++;
-                expected = expected.minusDays(1);
-            }
-            streakByParticipationId.put(participationId, streak);
-        }
-        return streakByParticipationId;
-    }
 }
