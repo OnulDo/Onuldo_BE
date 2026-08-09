@@ -11,7 +11,7 @@ import java.util.List;
 @Builder
 public record ChallengeResDto(
         @Schema(example = "1")
-        Long id,
+        Long challengeId,
         @Schema(example = "30일 걷기 챌린지")
         String name,
         @Schema(example = "하루 30분 걷기")

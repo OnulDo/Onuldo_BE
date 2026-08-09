@@ -129,7 +129,7 @@ public class ParticipationRecordService {
                 .resultStatus(participation.getStatus())
                 .depositAmount(depositAmount)
                 .adjustmentAmount(adjustmentAmount)
-                .endedDate(participation.getEndDate())
+                .endDate(participation.getEndDate())
                 .achievementRate(achievementRate)
                 .build();
     }

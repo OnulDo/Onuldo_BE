@@ -2,7 +2,7 @@ package com.example.onuldo.domain.challenge.controller.doc;
 
 import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeRecordSummaryResDto;
 import com.example.onuldo.domain.challenge.dto.response.OngoingChallengeRecordResDto;
-import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
@@ -53,13 +53,14 @@ public interface UserChallengeControllerDoc {
     @Operation(
             summary = "오늘 날짜의 챌린지 조회",
             description = """
-    오늘 날짜 기준으로 수행해야 하는 챌린지를 조회합니다.
-    조건은 `ONGOING` 상태이면서 startDate <= date <= endDate 입니다.
+    오늘 날짜 기준으로 수행해야 하는 개인 챌린지를 조회합니다.
+    조건은 참여 타입이 'PERSONAL'이고 `ONGOING` 상태이면서 startDate <= date <= endDate 입니다.
+    파티 챌린지는 이 API에 포함되지 않습니다.
 
     각 챌린지에는 해당 날짜 인증 기록이 있는지 여부(`verifiedOnDate`)가 포함됩니다.
     """
     )
-    BaseResponse<DailyChallengeListResDto> getDailyChallenges(
+    BaseResponse<List<DailyChallengeResDto>> getDailyChallenges(
             @AuthUser
             Long userId
     );
