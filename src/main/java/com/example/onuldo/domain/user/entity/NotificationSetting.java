@@ -63,7 +63,12 @@ public class NotificationSetting {
             case CHALLENGE_START -> challengeStart = enabled;
             case VERIFICATION_DEADLINE, CHALLENGE_END_REMINDER -> verificationDeadline = enabled;
             case VERIFICATION_RESULT, PARTY_MEMBER_VERIFIED -> verificationResult = enabled;
-            case REFUND_COMPLETE, PARTY_SETTLEMENT_COMPLETE, PARTY_DAILY_SETTLEMENT -> refundComplete = enabled;
+            case REFUND_COMPLETE, PARTY_SETTLEMENT_COMPLETE, PARTY_DAILY_SETTLEMENT -> {
+                if (!enabled) {
+                    throw new RestApiException(GlobalErrorStatus._REFUND_COMPLETE_NOTIFICATION_REQUIRED);
+                }
+                refundComplete = true;
+            }
             case DEDUCTION_ALERT -> deductionAlert = enabled;
             default -> throw new RestApiException(GlobalErrorStatus._BAD_REQUEST);
         }
