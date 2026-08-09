@@ -87,10 +87,11 @@ public class UserService {
         return GetNotificationResDto.builder()
                 .allEnabled(setting.getAllEnabled())
                 .verificationDeadline(setting.getVerificationDeadline())
-                .verificationResult(setting.getVerificationResult())
                 .challengeStart(setting.getChallengeStart())
-                .refundComplete(setting.getRefundComplete())
-                .deductionAlert(setting.getDeductionAlert())
+                .challengeEndReminder(setting.getChallengeEndReminder())
+                .verificationResult(setting.getVerificationResult())
+                .partyMemberVerified(setting.getPartyMemberVerified())
+                .settlementComplete(setting.getRefundComplete())
                 .build();
     }
 

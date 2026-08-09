@@ -9,14 +9,16 @@ public record GetNotificationResDto (
         Boolean allEnabled,
         @Schema(example = "true")
         Boolean verificationDeadline,
-        @Schema(example = "false")
-        Boolean verificationResult,
         @Schema(example = "true")
         Boolean challengeStart,
-        @Schema(example = "false")
-        Boolean refundComplete,
         @Schema(example = "true")
-        Boolean deductionAlert
+        Boolean challengeEndReminder,
+        @Schema(example = "true")
+        Boolean verificationResult,
+        @Schema(example = "true")
+        Boolean partyMemberVerified,
+        @Schema(example = "true")
+        Boolean settlementComplete
 ) {
 
 }

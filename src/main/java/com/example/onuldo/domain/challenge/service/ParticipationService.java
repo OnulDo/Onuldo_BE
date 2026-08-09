@@ -61,6 +61,7 @@ public class ParticipationService {
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final ChallengePotRepository challengePotRepository;
+    private final ChallengeNotificationService challengeNotificationService;
     private final TimeService timeService;
     private final ParticipationValidator participationValidator;
     private final VerificationStreakService verificationStreakService;
@@ -104,6 +105,7 @@ public class ParticipationService {
                 user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate, appliedBonusRate
         );
         participationRepository.save(participation);
+        challengeNotificationService.scheduleChallengeLifecycleNotifications(participation);
 
         pointTransactionRepository.save(PointTransaction.builder()
                 .user(user)

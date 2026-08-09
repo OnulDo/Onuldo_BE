@@ -1,5 +1,6 @@
 package com.example.onuldo.domain.user.entity;
 
+import com.example.onuldo.domain.user.enums.NotificationSettingType;
 import com.example.onuldo.domain.user.enums.NotificationType;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
@@ -43,6 +44,10 @@ public class NotificationSetting {
     private Boolean challengeStart = true;
 
     @Builder.Default
+    @Column(name = "challenge_end_reminder", nullable = false)
+    private Boolean challengeEndReminder = true;
+
+    @Builder.Default
     @Column(name = "verification_deadline", nullable = false)
     private Boolean verificationDeadline = true;
 
@@ -55,17 +60,57 @@ public class NotificationSetting {
     private Boolean refundComplete = true;
 
     @Builder.Default
-    @Column(name = "deduction_alert", nullable = false)
-    private Boolean deductionAlert = true;
+    @Column(name = "party_member_verified", nullable = false)
+    private Boolean partyMemberVerified = true;
 
-    public void apply(NotificationType type, boolean enabled) {
+    public void apply(NotificationSettingType type, boolean enabled) {
         switch (type) {
+            case ALL_ENABLED -> applyAll(enabled);
             case CHALLENGE_START -> challengeStart = enabled;
             case VERIFICATION_DEADLINE -> verificationDeadline = enabled;
+            case CHALLENGE_END_REMINDER -> challengeEndReminder = enabled;
             case VERIFICATION_RESULT -> verificationResult = enabled;
-            case REFUND_COMPLETE -> refundComplete = enabled;
-            case DEDUCTION_ALERT -> deductionAlert = enabled;
+            case PARTY_MEMBER_VERIFIED -> partyMemberVerified = enabled;
+            case SETTLEMENT_COMPLETE -> {
+                if (!enabled) {
+                    throwRequiredSettlementNotificationException();
+                }
+                refundComplete = true;
+            }
             default -> throw new RestApiException(GlobalErrorStatus._BAD_REQUEST);
         }
+    }
+
+    public boolean isEnabled(NotificationType type) {
+        if (type == NotificationType.REFUND_COMPLETE || type == NotificationType.PARTY_SETTLEMENT_COMPLETE) {
+            return refundComplete;
+        }
+
+        if (!allEnabled) {
+            return false;
+        }
+
+        return switch (type) {
+            case CHALLENGE_START -> challengeStart;
+            case VERIFICATION_DEADLINE -> verificationDeadline;
+            case CHALLENGE_END_REMINDER -> challengeEndReminder;
+            case VERIFICATION_RESULT -> verificationResult;
+            case PARTY_MEMBER_VERIFIED -> partyMemberVerified;
+            case REFUND_COMPLETE, PARTY_SETTLEMENT_COMPLETE -> refundComplete;
+        };
+    }
+
+    private void applyAll(boolean enabled) {
+        allEnabled = enabled;
+        challengeStart = enabled;
+        challengeEndReminder = enabled;
+        verificationDeadline = enabled;
+        verificationResult = enabled;
+        partyMemberVerified = enabled;
+        refundComplete = true;
+    }
+
+    private void throwRequiredSettlementNotificationException() {
+        throw new RestApiException(GlobalErrorStatus._SETTLEMENT_COMPLETE_NOTIFICATION_REQUIRED);
     }
 }

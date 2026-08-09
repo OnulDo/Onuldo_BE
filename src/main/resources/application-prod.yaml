@@ -46,3 +46,6 @@ aws:
   rekognition:
     max-labels: ${AWS_REKOGNITION_MAX_LABELS:30}
     min-confidence: ${AWS_REKOGNITION_MIN_CONFIDENCE:40}
+
+fcm:
+  service-account-path: 'classpath:firebase-service-key.json'

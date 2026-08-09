@@ -442,8 +442,8 @@ public class PartyService {
         PartySettlementResultType resultType = allSuccess
                 ? PartySettlementResultType.ALL_SUCCESS
                 : allFail
-                  ? PartySettlementResultType.ALL_FAIL
-                  : PartySettlementResultType.PARTIAL_SUCCESS;
+                ? PartySettlementResultType.ALL_FAIL
+                : PartySettlementResultType.PARTIAL_SUCCESS;
 
         Settlement mySettlement = settlementByUserId.get(userId);
         mySettlement.confirm();

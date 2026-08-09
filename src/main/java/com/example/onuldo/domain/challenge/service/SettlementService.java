@@ -48,6 +48,7 @@ public class SettlementService {
     private final PointTransactionRepository pointTransactionRepository;
     private final ChallengePotRepository challengePotRepository;
     private final PotTransactionRepository potTransactionRepository;
+    private final ChallengeNotificationService challengeNotificationService;
     private final TimeService timeService;
 
     /** 챌린지 정산 처리.
@@ -116,6 +117,7 @@ public class SettlementService {
 
         Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, depositRefundAmount, bonusAmount);
         settlementRepository.save(resultSettlement);
+        challengeNotificationService.notifySettlementCompleted(participation, refundAmount);
 
         payBonusFromPot(resultSettlement, bonusAmount);
     }
@@ -129,6 +131,7 @@ public class SettlementService {
         // 개인 실패 정산엔 보너스·분배금 개념이 없어 전액이 곧 예치금 환급분이다.
         Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, refundAmount, 0);
         settlementRepository.save(resultSettlement);
+        challengeNotificationService.notifySettlementCompleted(participation, refundAmount);
 
         accumulateForfeitureToPot(resultSettlement, penaltyAmount);
     }
