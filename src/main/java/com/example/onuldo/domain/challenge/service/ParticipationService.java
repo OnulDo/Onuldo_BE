@@ -97,7 +97,7 @@ public class ParticipationService {
         userRepository.save(user);
 
         // 이 순간의 pot 운영 β를 참가에 스냅샷 — 이후 β가 재조정돼도 이 참가는 이 값으로 정산된다.
-        ChallengePot pot = challengePotRepository.findById(CHALLENGE_POT_ID)
+        ChallengePot pot = challengePotRepository.findByIdForUpdate(CHALLENGE_POT_ID)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_POT_NOT_FOUND));
         BigDecimal appliedBonusRate = pot.getCurrentBonusRate();
 
