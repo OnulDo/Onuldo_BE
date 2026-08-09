@@ -2,7 +2,7 @@ package com.example.onuldo.domain.challenge.controller.doc;
 
 import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeRecordSummaryResDto;
 import com.example.onuldo.domain.challenge.dto.response.OngoingChallengeRecordResDto;
-import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
@@ -59,7 +59,7 @@ public interface UserChallengeControllerDoc {
     각 챌린지에는 해당 날짜 인증 기록이 있는지 여부(`verifiedOnDate`)가 포함됩니다.
     """
     )
-    BaseResponse<DailyChallengeListResDto> getDailyChallenges(
+    BaseResponse<List<DailyChallengeResDto>> getDailyChallenges(
             @AuthUser
             Long userId
     );

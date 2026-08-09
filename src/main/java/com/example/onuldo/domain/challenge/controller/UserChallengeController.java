@@ -3,7 +3,7 @@ package com.example.onuldo.domain.challenge.controller;
 import com.example.onuldo.domain.challenge.controller.doc.UserChallengeControllerDoc;
 import com.example.onuldo.domain.challenge.dto.response.CompletedChallengeRecordSummaryResDto;
 import com.example.onuldo.domain.challenge.dto.response.OngoingChallengeRecordResDto;
-import com.example.onuldo.domain.challenge.dto.response.DailyChallengeListResDto;
+import com.example.onuldo.domain.challenge.dto.response.DailyChallengeResDto;
 import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeListResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
@@ -44,7 +44,7 @@ public class UserChallengeController implements UserChallengeControllerDoc {
     }
 
     @GetMapping("/challenges/daily")
-    public BaseResponse<DailyChallengeListResDto> getDailyChallenges(
+    public BaseResponse<List<DailyChallengeResDto>> getDailyChallenges(
             @AuthUser
             Long userId
     ) {
