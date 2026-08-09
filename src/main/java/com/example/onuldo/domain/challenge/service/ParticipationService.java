@@ -156,7 +156,9 @@ public class ParticipationService {
 
     public DailyChallengeListResDto getDailyChallenges(Long userId) {
         List<Participation> participations = participationRepository
-                .findAllWithChallengeByUserIdAndStatusOrderByIdDesc(userId, ParticipationStatus.ONGOING);
+                .findAllWithChallengeByUserIdAndStatusAndParticipationTypeOrderByIdDesc(
+                        userId, ParticipationStatus.ONGOING, ParticipationType.PERSONAL
+                );
         LocalDateTime now = timeService.nowKst();
         LocalDate today = now.toLocalDate();
         LocalTime currentTime = now.toLocalTime();
