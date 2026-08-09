@@ -9,12 +9,14 @@ import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeL
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
+import com.example.onuldo.domain.challenge.entity.ChallengePot;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Verification;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
+import com.example.onuldo.domain.challenge.repository.ChallengePotRepository;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.PartyCountProjection;
@@ -61,10 +63,12 @@ public class ParticipationService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final ChallengePotRepository challengePotRepository;
     private final TimeService timeService;
     private final ParticipationValidator participationValidator;
 
-    private static final BigDecimal BONUS_RATE = BigDecimal.valueOf(0.025);
+    // 개인 챌린지 몰수금 pot은 싱글톤 행 하나로 운용한다.
+    private static final Long CHALLENGE_POT_ID = 1L;
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,
@@ -92,8 +96,13 @@ public class ParticipationService {
         user.setPointBalance(balanceAfter);
         userRepository.save(user);
 
+        // 이 순간의 pot 운영 β를 참가에 스냅샷 — 이후 β가 재조정돼도 이 참가는 이 값으로 정산된다.
+        ChallengePot pot = challengePotRepository.findByIdForUpdate(CHALLENGE_POT_ID)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_POT_NOT_FOUND));
+        BigDecimal appliedBonusRate = pot.getCurrentBonusRate();
+
         Participation participation = createPersonalParticipation(
-                user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate
+                user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate, appliedBonusRate
         );
         participationRepository.save(participation);
 
@@ -107,7 +116,7 @@ public class ParticipationService {
         );
 
         int bonusAmount = BigDecimal.valueOf(request.depositAmount())
-                .multiply(BONUS_RATE)
+                .multiply(appliedBonusRate)
                 .setScale(0, RoundingMode.HALF_UP)
                 .intValue();
         int expectedRefundAmount = request.depositAmount() + bonusAmount;
@@ -269,7 +278,8 @@ public class ParticipationService {
             Integer depositAmount,
             Integer durationWeeks,
             LocalDate startDate,
-            LocalDate endDate
+            LocalDate endDate,
+            BigDecimal appliedBonusRate
     ) {
         Participation participation = Participation.builder()
                 .user(user)
@@ -280,6 +290,7 @@ public class ParticipationService {
                 .durationWeeks(durationWeeks)
                 .startDate(startDate)
                 .endDate(endDate)
+                .appliedBonusRate(appliedBonusRate)
                 .build();
         validateParticipationState(participation);
         return participation;
