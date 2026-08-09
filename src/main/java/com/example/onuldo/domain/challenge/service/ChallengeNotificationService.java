@@ -124,8 +124,6 @@ public class ChallengeNotificationService {
                             .build()
             );
         }
-
-        createPartyDailySettlementNotificationIfAllVerified(participation, partyParticipations, verification.getVerificationDate());
     }
 
     // 직접검토 승인 결과 알림을 보내고 파티 인증 완료 알림도 함께 처리하는 메서드
@@ -234,39 +232,6 @@ public class ChallengeNotificationService {
                         .refId(participation.getId())
                         .build()
         );
-    }
-
-    private void createPartyDailySettlementNotificationIfAllVerified(
-            Participation sourceParticipation,
-            List<Participation> partyParticipations,
-            LocalDate verificationDate
-    ) {
-        // 파티원이 모두 인증한 날에 푸시 없이 알림함용 일별 정산 알림만 생성하는 메서드
-        List<Long> participationIds = partyParticipations.stream()
-                .map(Participation::getId)
-                .toList();
-
-        Set<Long> passParticipationIds = verificationRepository
-                .findAllByParticipation_IdInAndVerificationDate(participationIds, verificationDate)
-                .stream()
-                .filter(verification -> verification.getReview() == VerificationReviewStatus.PASS)
-                .map(verification -> verification.getParticipation().getId())
-                .collect(Collectors.toSet());
-
-        if (passParticipationIds.size() != partyParticipations.size()) {
-            return;
-        }
-
-        for (Participation target : partyParticipations) {
-            notificationCreateService.createIfAbsent(
-                    target.getUser().getId(),
-                    NotificationType.PARTY_DAILY_SETTLEMENT,
-                    "오늘의 파티 몫이 확정됐어요",
-                    sourceParticipation.getChallenge().getName() + " 오늘 몫이 확정됐어요 · 종료 시 지급",
-                    "PARTY_DAILY:" + verificationDate,
-                    sourceParticipation.getParty().getId()
-            );
-        }
     }
 
     // 현재 시각에 발송해야 할 인증 마감 리마인더 문구를 결정하는 메서드
