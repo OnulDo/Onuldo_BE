@@ -15,8 +15,6 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 public class NotificationCreateService {
@@ -26,7 +24,7 @@ public class NotificationCreateService {
     private final PlatformTransactionManager transactionManager;
 
     // 알림함용 Notification을 중복 없이 생성하는 메서드
-    public Optional<Notification> createIfAbsent(
+    public Notification createIfAbsent(
             Long userId,
             NotificationType type,
             String title,
@@ -48,21 +46,16 @@ public class NotificationCreateService {
                 throw e;
             }
 
-            Optional<Notification> existing = executeInNewTransaction(status -> notificationRepository.findByUser_IdAndTypeAndRefTypeAndRefId(
+            return executeInNewTransaction(status -> notificationRepository.findByUser_IdAndTypeAndRefTypeAndRefId(
                     userId,
                     type,
                     refType,
                     refId
-            ));
-            if (existing.isEmpty()) {
-                throw e;
-            }
-
-            return existing;
+            )).orElseThrow(() -> e);
         }
     }
 
-    private Optional<Notification> createIfAbsentInTransaction(
+    private Notification createIfAbsentInTransaction(
             Long userId,
             NotificationType type,
             String title,
@@ -78,14 +71,14 @@ public class NotificationCreateService {
                     refId
             );
             if (existing.isPresent()) {
-                return existing;
+                return existing.get();
             }
         }
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
-        return Optional.of(notificationRepository.saveAndFlush(
+        return notificationRepository.saveAndFlush(
                 Notification.builder()
                         .user(user)
                         .type(type)
@@ -94,7 +87,7 @@ public class NotificationCreateService {
                         .refType(refType)
                         .refId(refId)
                 .build()
-        ));
+        );
     }
 
     private <T> T executeInNewTransaction(TransactionCallback<T> callback) {

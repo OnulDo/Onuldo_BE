@@ -15,7 +15,7 @@ public interface DeviceLogRepository extends JpaRepository<DeviceLog, Long> {
             FROM DeviceLog dl
             WHERE dl.user.id = :userId
             AND dl.fcmToken IS NOT NULL
-            AND dl.fcmToken <> ''
+            AND TRIM(dl.fcmToken) <> ''
             """)
     List<DeviceLog> findAllByUserIdAndFcmTokenIsNotBlank(@Param("userId") Long userId);
 
@@ -23,7 +23,7 @@ public interface DeviceLogRepository extends JpaRepository<DeviceLog, Long> {
             SELECT dl
             FROM DeviceLog dl
             WHERE dl.fcmToken IS NOT NULL
-            AND dl.fcmToken <> ''
+            AND TRIM(dl.fcmToken) <> ''
             """)
     List<DeviceLog> findAllByFcmTokenIsNotBlank();
 

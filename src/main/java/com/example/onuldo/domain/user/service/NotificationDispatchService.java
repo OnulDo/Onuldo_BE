@@ -79,7 +79,7 @@ public class NotificationDispatchService {
                 command.getContent(),
                 command.getRefType(),
                 command.getRefId()
-        ).orElseThrow();
+        );
     }
 
     private void enqueueInTransaction(NotificationDispatchCommand command, Notification notification) {
@@ -272,8 +272,7 @@ public class NotificationDispatchService {
                                 dispatch.getContent(),
                                 dispatch.getRefType(),
                                 dispatch.getRefId()
-                        )
-                        .orElseThrow());
+                        ));
     }
 
     // 사용자 알림 설정에 따라 푸시 발송 대기열 등록 여부를 판단하는 메서드
