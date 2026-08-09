@@ -30,12 +30,10 @@ public class VerificationStreakService {
                 .findAllByParticipation_IdIn(participationIds)
                 .stream()
                 .filter(verification -> verification.getReview() == VerificationReviewStatus.PASS)
-                .collect(
-                        Collectors.groupingBy(
-                    verification -> verification.getParticipation().getId(),
-                    Collectors.mapping(Verification::getVerificationDate, Collectors.toSet())
-            )
-        );
+                .collect(Collectors.groupingBy(
+                        verification -> verification.getParticipation().getId(),
+                        Collectors.mapping(Verification::getVerificationDate, Collectors.toSet())
+                ));
 
         Map<Long, Integer> streakByParticipationId = new HashMap<>();
         for (Long participationId : participationIds) {
@@ -45,8 +43,12 @@ public class VerificationStreakService {
                     .sorted(Comparator.reverseOrder())
                     .toList();
 
+            LocalDate expected = passDatesByParticipationId
+                    .getOrDefault(participationId, Set.of())
+                    .contains(date)
+                    ? date
+                    : date.minusDays(1);
             int streak = 0;
-            LocalDate expected = date;
             for (LocalDate passDate : passDates) {
                 if (passDate.isAfter(expected)) {
                     continue;
