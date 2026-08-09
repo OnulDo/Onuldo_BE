@@ -235,7 +235,7 @@ public class ChallengeService {
 
     private ChallengeResDto toChallengeResDto(Challenge challenge) {
         return ChallengeResDto.builder()
-                .id(challenge.getId())
+                .challengeId(challenge.getId())
                 .name(challenge.getName())
                 .explainContent(challenge.getExplainContent())
                 .description(challenge.getDescription())
