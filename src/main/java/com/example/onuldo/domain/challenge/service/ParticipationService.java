@@ -9,6 +9,7 @@ import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeL
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
+import com.example.onuldo.domain.challenge.entity.ChallengePot;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Verification;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
@@ -16,10 +17,12 @@ import com.example.onuldo.domain.challenge.enums.DailyChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
+import com.example.onuldo.domain.challenge.repository.ChallengePotRepository;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.PartyCountProjection;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.domain.challenge.support.ParticipationValidator;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
@@ -38,6 +41,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -59,7 +64,12 @@ public class ParticipationService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final ChallengePotRepository challengePotRepository;
     private final TimeService timeService;
+    private final ParticipationValidator participationValidator;
+
+    // 개인 챌린지 몰수금 pot은 싱글톤 행 하나로 운용한다.
+    private static final Long CHALLENGE_POT_ID = 1L;
     private final DailyChallengeStatusResolver dailyChallengeStatusResolver;
 
     public ParticipationResDto participatePersonalChallenge(
@@ -76,7 +86,7 @@ public class ParticipationService {
 
         challenge.validateDurationOption(request.durationWeeks());
         challenge.validateDepositOption(request.depositAmount());
-        validateAlreadyParticipating(userId, challengeId);
+        participationValidator.validateNotOngoing(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
 
         // durationWeeks*7일은 시작일·종료일을 포함한 총 수행일수 (ParticipationRecordService.calculateInclusiveDays와 동일 기준)
@@ -88,8 +98,13 @@ public class ParticipationService {
         user.setPointBalance(balanceAfter);
         userRepository.save(user);
 
+        // 이 순간의 pot 운영 β를 참가에 스냅샷 — 이후 β가 재조정돼도 이 참가는 이 값으로 정산된다.
+        ChallengePot pot = challengePotRepository.findByIdForUpdate(CHALLENGE_POT_ID)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_POT_NOT_FOUND));
+        BigDecimal appliedBonusRate = pot.getCurrentBonusRate();
+
         Participation participation = createPersonalParticipation(
-                user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate
+                user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate, appliedBonusRate
         );
         participationRepository.save(participation);
 
@@ -102,13 +117,19 @@ public class ParticipationService {
                 .build()
         );
 
+        int bonusAmount = BigDecimal.valueOf(request.depositAmount())
+                .multiply(appliedBonusRate)
+                .setScale(0, RoundingMode.HALF_UP)
+                .intValue();
+        int expectedRefundAmount = request.depositAmount() + bonusAmount;
+
         return ParticipationResDto.builder()
                 .startDate(startDate)
                 .endDate(endDate)
                 .durationWeeks(request.durationWeeks())
                 .durationDays(durationDays)
                 .depositAmount(request.depositAmount())
-                .expectedRefundAmount(request.depositAmount())
+                .expectedRefundAmount(expectedRefundAmount)
                 .build();
     }
 
@@ -241,12 +262,6 @@ public class ParticipationService {
         ));
     }
 
-    private void validateAlreadyParticipating(Long userId, Long challengeId) {
-        if (participationRepository.existsByUser_IdAndChallenge_Id(userId, challengeId)) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_PARTICIPATING_CHALLENGE);
-        }
-    }
-
     private void validatePointBalance(User user, Integer depositAmount) {
         long currentPoint = user.getPointBalance();
         if (depositAmount > currentPoint) {
@@ -264,7 +279,8 @@ public class ParticipationService {
             Integer depositAmount,
             Integer durationWeeks,
             LocalDate startDate,
-            LocalDate endDate
+            LocalDate endDate,
+            BigDecimal appliedBonusRate
     ) {
         Participation participation = Participation.builder()
                 .user(user)
@@ -275,6 +291,7 @@ public class ParticipationService {
                 .durationWeeks(durationWeeks)
                 .startDate(startDate)
                 .endDate(endDate)
+                .appliedBonusRate(appliedBonusRate)
                 .build();
         validateParticipationState(participation);
         return participation;

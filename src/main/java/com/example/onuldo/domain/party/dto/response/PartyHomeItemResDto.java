@@ -18,6 +18,10 @@ public record PartyHomeItemResDto(
         String name,
         @Schema(example = "30분 러닝")
         String challengeTitle,
+        @Schema(example = "12")
+        Long challengeId,
+        @Schema(example = "2026-07-21")
+        LocalDate startDate,
         @Schema(example = "2026-08-20")
         LocalDate endDate,
         @Schema(example = "07:00")

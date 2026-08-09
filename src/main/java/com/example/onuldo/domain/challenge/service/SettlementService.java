@@ -1,12 +1,17 @@
 package com.example.onuldo.domain.challenge.service;
 
+import com.example.onuldo.domain.challenge.entity.ChallengePot;
 import com.example.onuldo.domain.challenge.entity.Participation;
+import com.example.onuldo.domain.challenge.entity.PotTransaction;
 import com.example.onuldo.domain.challenge.entity.Settlement;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
+import com.example.onuldo.domain.challenge.enums.PotTransactionType;
 import com.example.onuldo.domain.challenge.enums.SettlementStatus;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
+import com.example.onuldo.domain.challenge.repository.ChallengePotRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
+import com.example.onuldo.domain.challenge.repository.PotTransactionRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.user.entity.PointTransaction;
@@ -30,7 +35,10 @@ public class SettlementService {
     private static final BigDecimal SUCCESS_THRESHOLD = BigDecimal.valueOf(0.85);
     private static final BigDecimal FAILURE_REFUND_BASE = SUCCESS_THRESHOLD;
     private static final BigDecimal FAILURE_REFUND_EXPONENT = BigDecimal.ONE;
-    private static final BigDecimal BONUS_RATE = BigDecimal.valueOf(0.025);
+    // Participation.appliedBonusRate가 null인 레거시 참가(이 기능 도입 전 생성)에 쓰는 폴백 β
+    private static final BigDecimal LEGACY_BONUS_RATE_FALLBACK = BigDecimal.valueOf(0.025);
+    // 개인 챌린지 몰수금 pot은 싱글톤 행 하나로 운용한다.
+    private static final Long CHALLENGE_POT_ID = 1L;
 
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
@@ -38,11 +46,13 @@ public class SettlementService {
     private final PartySettlementService partySettlementService;
     private final UserRepository userRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final ChallengePotRepository challengePotRepository;
+    private final PotTransactionRepository potTransactionRepository;
     private final TimeService timeService;
 
-    /** 챌린지 정산 처리. <br>
-     * 정산 호출 로직이 두개로 분산되어 (챌린지 성공 시, 인증 실패 챌린지 조회 스케줄러)<br>
-     * 내부에 날짜에 따른 검증 로직을 구현하지 않음. <br><br>
+    /** 챌린지 정산 처리.
+     * 정산 호출 로직이 두개로 분산되어 (챌린지 성공 시, 인증 실패 챌린지 조회 스케줄러)
+     * 내부에 날짜에 따른 검증 로직을 구현하지 않음.
      *
      * 따라서 호출 시 바로 정산 처리 됨으로 주의하여 호출
      * */
@@ -95,7 +105,10 @@ public class SettlementService {
     }
 
     private void settleSuccess(Participation participation, BigDecimal rValue) {
-        int bonusAmount = calculateBonusAmount(participation.getDepositAmount());
+        BigDecimal bonusRate = participation.getAppliedBonusRate() != null
+                ? participation.getAppliedBonusRate()
+                : LEGACY_BONUS_RATE_FALLBACK;
+        int bonusAmount = calculateBonusAmount(participation.getDepositAmount(), bonusRate);
         int depositRefundAmount = participation.getDepositAmount();
         int refundAmount = depositRefundAmount + bonusAmount;
 
@@ -103,6 +116,8 @@ public class SettlementService {
 
         Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, depositRefundAmount, bonusAmount);
         settlementRepository.save(resultSettlement);
+
+        payBonusFromPot(resultSettlement, bonusAmount);
     }
 
     private void settleFailure(Participation participation, BigDecimal rValue) {
@@ -113,8 +128,62 @@ public class SettlementService {
 
         // 개인 실패 정산엔 보너스·분배금 개념이 없어 전액이 곧 예치금 환급분이다.
         Settlement resultSettlement = createSettlement(participation, rValue, refundAmount, refundAmount, 0);
-
         settlementRepository.save(resultSettlement);
+
+        accumulateForfeitureToPot(resultSettlement, penaltyAmount);
+    }
+
+    // 개인 챌린지 실패자 몰수금(도전금 - 환급액)을 pot에 적립하고 원장(PotTransaction)에 남긴다.
+    private void accumulateForfeitureToPot(Settlement settlement, int penaltyAmount) {
+        if (penaltyAmount <= 0) {
+            return;
+        }
+
+        ChallengePot pot = challengePotRepository.findByIdForUpdate(CHALLENGE_POT_ID)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_POT_NOT_FOUND));
+        pot.accumulateForfeiture(penaltyAmount);
+
+        potTransactionRepository.save(
+            PotTransaction.builder()
+                .type(PotTransactionType.FORFEITURE)
+                .amount(penaltyAmount)
+                .balanceAfter(pot.getBalance())
+                .settlement(settlement)
+                .description(describePotTransaction(settlement))
+                .build()
+        );
+    }
+
+    // 개인 챌린지 성공자 보너스를 pot에서 차감(마이너스 허용)하고 원장(PotTransaction)에 남긴다.
+    private void payBonusFromPot(Settlement settlement, int bonusAmount) {
+        if (bonusAmount <= 0) {
+            return;
+        }
+
+        ChallengePot pot = challengePotRepository.findByIdForUpdate(CHALLENGE_POT_ID)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_POT_NOT_FOUND));
+        pot.payBonus(bonusAmount);
+
+        potTransactionRepository.save(
+            PotTransaction.builder()
+                .type(PotTransactionType.BONUS_PAYOUT)
+                .amount(bonusAmount)
+                .balanceAfter(pot.getBalance())
+                .settlement(settlement)
+                .description(describePotTransaction(settlement))
+                .build()
+        );
+    }
+
+    // pot 원장 description을 "챌린지명_유저명_성공/실패" 형식으로 남겨 대시보드에서 바로 식별 가능하게 한다.
+    private String describePotTransaction(Settlement settlement) {
+        Participation participation = settlement.getParticipation();
+        String resultLabel = participation.getStatus() == ParticipationStatus.SUCCESS ? "성공" : "실패";
+        return "%s_%s_%s".formatted(
+                participation.getChallenge().getName(),
+                participation.getUser().getNickname(),
+                resultLabel
+        );
     }
 
     private Settlement createSettlement(
@@ -171,9 +240,9 @@ public class SettlementService {
         return "%s %s".formatted(challengeName, status == ParticipationStatus.SUCCESS ? "성공" : "실패");
     }
 
-    private int calculateBonusAmount(int depositAmount) {
+    private int calculateBonusAmount(int depositAmount, BigDecimal bonusRate) {
         return BigDecimal.valueOf(depositAmount)
-                .multiply(BONUS_RATE)
+                .multiply(bonusRate)
                 .setScale(0, RoundingMode.HALF_UP)
                 .intValue();
     }

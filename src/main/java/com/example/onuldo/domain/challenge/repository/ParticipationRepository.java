@@ -21,6 +21,8 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
 
     boolean existsByUser_IdAndStatus(Long userId, ParticipationStatus status);
 
+    boolean existsByUser_IdAndChallenge_IdAndStatus(Long userId, Long challengeId, ParticipationStatus status);
+
     @Query("""
         SELECT COALESCE(SUM(p.depositAmount), 0)
         FROM Participation p
@@ -183,6 +185,12 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     // HOME-07 코드리뷰 반영
     Optional<Participation> findByParty_IdAndUser_IdAndParticipationType(
             Long partyId,
+            Long userId,
+            ParticipationType participationType
+    );
+
+    List<Participation> findAllByParty_IdInAndUser_IdAndParticipationType(
+            Collection<Long> partyIds,
             Long userId,
             ParticipationType participationType
     );

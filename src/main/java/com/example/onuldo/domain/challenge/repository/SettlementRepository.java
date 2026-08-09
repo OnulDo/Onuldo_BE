@@ -1,10 +1,13 @@
 package com.example.onuldo.domain.challenge.repository;
 
 import com.example.onuldo.domain.challenge.entity.Settlement;
+import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
+import com.example.onuldo.domain.challenge.enums.SettlementStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -20,7 +23,10 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
             """)
     List<Settlement> findByPartyId(@Param("partyId") Long partyId);
 
-    List<Settlement> findAllByParticipation_IdInOrderByIdDesc(Collection<Long> participationIds);
+    List<Settlement> findAllByParticipation_IdInAndStatusOrderByIdDesc(
+            Collection<Long> participationIds,
+            SettlementStatus status
+    );
 
     boolean existsByParticipation_Id(Long participationId);
 
@@ -41,4 +47,19 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
             ORDER BY s.processedAt DESC
             """)
     List<Settlement> findUnconfirmedPartySettlementsByUserId(@Param("userId") Long userId);
+
+    // 자립유지식 β 재계산용 — 최근 N일간 개인 챌린지 완료 정산을 성공/실패 결과별로 집계
+    @Query("""
+            SELECT s
+            FROM Settlement s
+            JOIN FETCH s.participation p
+            WHERE p.participationType = com.example.onuldo.domain.challenge.enums.ParticipationType.PERSONAL
+              AND s.status = com.example.onuldo.domain.challenge.enums.SettlementStatus.COMPLETED
+              AND p.status = :participationStatus
+              AND s.processedAt >= :since
+            """)
+    List<Settlement> findPersonalSettlementsByParticipationStatusSince(
+            @Param("participationStatus") ParticipationStatus participationStatus,
+            @Param("since") LocalDateTime since
+    );
 }
