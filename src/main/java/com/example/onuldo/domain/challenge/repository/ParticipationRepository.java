@@ -118,6 +118,16 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             @Param("userId") Long userId,
             @Param("statuses") Collection<ParticipationStatus> statuses
     );
+
+    @Query("""
+            SELECT p
+            FROM Participation p
+            JOIN FETCH p.challenge
+            LEFT JOIN FETCH p.party
+            WHERE p.id IN :ids
+            """)
+    List<Participation> findAllByIdInWithChallengeAndParty(@Param("ids") Collection<Long> ids);
+
     Optional<Participation> findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(
             Long userId,
             Long challengeId,

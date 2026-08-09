@@ -14,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,7 +29,15 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "notification_dispatch")
+@Table(
+        name = "notification_dispatch",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_notification_dispatch_notification",
+                        columnNames = {"notification_id"}
+                )
+        }
+)
 public class NotificationDispatch extends BaseEntity {
 
     @Id
@@ -84,6 +93,7 @@ public class NotificationDispatch extends BaseEntity {
     private LocalDateTime lastAttemptAt;
 
     @Column(name = "locked_at")
+    @Setter
     private LocalDateTime lockedAt;
 
     @Column(name = "failed_reason", length = 500)

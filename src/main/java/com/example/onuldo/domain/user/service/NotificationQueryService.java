@@ -18,7 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -48,18 +53,23 @@ public class NotificationQueryService {
                 lastId,
                 CursorPageable.of(resolvedSize)
         );
+        Map<Long, NotificationTarget> targetByNotificationId = resolveTargets(notifications);
 
         return CursorPageResponse.of(
                 notifications,
                 resolvedSize,
-                this::toNotificationListItemResDto,
+                notification -> toNotificationListItemResDto(
+                        notification,
+                        targetByNotificationId.getOrDefault(notification.getId(), NotificationTarget.empty())
+                ),
                 notification -> CursorKeyCodec.encode(notification.getId())
         );
     }
 
-    private NotificationListItemResDto toNotificationListItemResDto(Notification notification) {
-        NotificationTarget target = resolveTarget(notification);
-
+    private NotificationListItemResDto toNotificationListItemResDto(
+            Notification notification,
+            NotificationTarget target
+    ) {
         return NotificationListItemResDto.builder()
                 .notificationId(notification.getId())
                 .type(notification.getType())
@@ -73,21 +83,66 @@ public class NotificationQueryService {
                 .build();
     }
 
-    // 알림의 참조 정보를 기반으로 이동에 필요한 챌린지 ID와 파티 ID를 찾는 메서드
-    private NotificationTarget resolveTarget(Notification notification) {
+    // 알림의 참조 정보를 기반으로 이동에 필요한 챌린지 ID와 파티 ID를 일괄 조회하는 메서드
+    private Map<Long, NotificationTarget> resolveTargets(List<Notification> notifications) {
+        Set<Long> verificationIds = new HashSet<>();
+        Set<Long> participationIds = new HashSet<>();
+
+        for (Notification notification : notifications) {
+            Long verificationId = resolveVerificationId(notification);
+            if (verificationId != null) {
+                verificationIds.add(verificationId);
+                continue;
+            }
+
+            Long participationId = resolveParticipationId(notification);
+            if (participationId != null) {
+                participationIds.add(participationId);
+            }
+        }
+
+        Map<Long, NotificationTarget> verificationTargetById = verificationIds.isEmpty()
+                ? Map.of()
+                : verificationRepository.findAllByIdInWithParticipation(verificationIds).stream()
+                .collect(Collectors.toMap(
+                        Verification::getId,
+                        verification -> toNotificationTarget(verification.getParticipation()),
+                        (left, right) -> left
+                ));
+        Map<Long, NotificationTarget> participationTargetById = participationIds.isEmpty()
+                ? Map.of()
+                : participationRepository.findAllByIdInWithChallengeAndParty(participationIds).stream()
+                .collect(Collectors.toMap(
+                        Participation::getId,
+                        this::toNotificationTarget,
+                        (left, right) -> left
+                ));
+
+        Map<Long, NotificationTarget> targetByNotificationId = new HashMap<>();
+        for (Notification notification : notifications) {
+            targetByNotificationId.put(notification.getId(), resolveTarget(
+                    notification,
+                    verificationTargetById,
+                    participationTargetById
+            ));
+        }
+
+        return targetByNotificationId;
+    }
+
+    private NotificationTarget resolveTarget(
+            Notification notification,
+            Map<Long, NotificationTarget> verificationTargetById,
+            Map<Long, NotificationTarget> participationTargetById
+    ) {
         Long verificationId = resolveVerificationId(notification);
         if (verificationId != null) {
-            return verificationRepository.findById(verificationId)
-                    .map(Verification::getParticipation)
-                    .map(this::toNotificationTarget)
-                    .orElse(NotificationTarget.empty());
+            return verificationTargetById.getOrDefault(verificationId, NotificationTarget.empty());
         }
 
         Long participationId = resolveParticipationId(notification);
         if (participationId != null) {
-            return participationRepository.findById(participationId)
-                    .map(this::toNotificationTarget)
-                    .orElse(NotificationTarget.empty());
+            return participationTargetById.getOrDefault(participationId, NotificationTarget.empty());
         }
 
         if (notification.getRefType() != null && notification.getRefType().startsWith("PARTY_DAILY:")) {

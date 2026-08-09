@@ -14,19 +14,28 @@ import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Slf4j
 public class NotificationDispatchService {
 
+    private static final int DISPATCH_BATCH_SIZE = 100;
     private static final LocalTime QUIET_HOURS_START = LocalTime.of(23, 0);
     private static final LocalTime QUIET_HOURS_END = LocalTime.of(5, 0);
 
@@ -37,26 +46,48 @@ public class NotificationDispatchService {
     private final DeviceLogRepository deviceLogRepository;
     private final FcmPushService fcmPushService;
     private final TimeService timeService;
+    private final PlatformTransactionManager transactionManager;
 
     // 발송 시점에 알림함 기록을 만들 수 있도록 푸시 발송 대기열에 예약 정보만 등록하는 메서드
-    @Transactional
     public void enqueue(NotificationDispatchCommand command) {
-        User user = userRepository.findById(command.getUserId())
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+        Notification notification = createReferenceNotification(command);
+        try {
+            executeWithoutResultInNewTransaction(status -> enqueueInTransaction(command, notification));
+        } catch (DataIntegrityViolationException e) {
+            if (notification == null) {
+                throw e;
+            }
+            notificationDispatchRepository.findByNotification_Id(notification.getId());
+        }
+    }
 
-        if (command.getRefType() != null && command.getRefId() != null
-                && notificationDispatchRepository.existsByUser_IdAndTypeAndRefTypeAndRefId(
+    private Notification createReferenceNotification(NotificationDispatchCommand command) {
+        if (command.getRefType() == null || command.getRefId() == null) {
+            return null;
+        }
+
+        return notificationCreateService.createIfAbsent(
                 command.getUserId(),
                 command.getType(),
+                command.getTitle(),
+                command.getContent(),
                 command.getRefType(),
                 command.getRefId()
-        )) {
+        ).orElseThrow();
+    }
+
+    private void enqueueInTransaction(NotificationDispatchCommand command, Notification notification) {
+        if (notification != null && notificationDispatchRepository.findByNotification_Id(notification.getId()).isPresent()) {
             return;
         }
+
+        User user = userRepository.findById(command.getUserId())
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
         notificationDispatchRepository.save(
                 NotificationDispatch.builder()
                         .user(user)
+                        .notification(notification)
                         .type(command.getType())
                         .scheduledAt(command.getScheduledAt())
                         .title(command.getTitle())
@@ -68,53 +99,111 @@ public class NotificationDispatchService {
     }
 
     // 발송 시간이 지난 PENDING 알림들을 야간 발송 제한을 적용해 FCM으로 전송하는 메서드
-    @Transactional
     public List<Long> sendDueDispatches() {
         LocalDateTime now = timeService.nowKst();
-        List<NotificationDispatch> dueDispatches = notificationDispatchRepository
-                .findAllByStatusAndScheduledAtLessThanEqualOrderByScheduledAtAscIdAsc(NotificationDispatchStatus.PENDING, now);
+        List<Long> dueDispatchIds = executeInNewTransaction(status -> notificationDispatchRepository
+                .findIdsByStatusAndScheduledAtLessThanEqualOrderByScheduledAtAscIdAsc(
+                        NotificationDispatchStatus.PENDING,
+                        now,
+                        PageRequest.of(0, DISPATCH_BATCH_SIZE)
+                ));
 
-        // 조용 시간 반영 (23:00 ~ 05:00 푸시 알람 보류. 05:00시에 일괄 발송
         boolean quietHours = isQuietHours(now.toLocalTime());
-        for (NotificationDispatch dispatch : dueDispatches) {
-            if (quietHours && !isQuietHoursException(dispatch)) {
-                continue;
-            }
-
-            sendOne(dispatch, now);
-        }
-
-        return dueDispatches.stream()
-                .filter(dispatch -> !quietHours || isQuietHoursException(dispatch))
-                .map(NotificationDispatch::getId)
+        return dueDispatchIds.stream()
+                .map(dispatchId -> claimDispatch(dispatchId, now, quietHours))
+                .flatMap(Optional::stream)
+                .map(dispatch -> sendOne(dispatch, now))
                 .toList();
     }
 
-    private void sendOne(NotificationDispatch dispatch, LocalDateTime now) {
+    private Optional<NotificationDispatch> claimDispatch(Long dispatchId, LocalDateTime now, boolean quietHours) {
+        return executeInNewTransaction(status -> {
+            Optional<NotificationDispatch> dispatchOptional =
+                    notificationDispatchRepository.findWithUserAndNotificationById(dispatchId);
+            if (dispatchOptional.isEmpty()) {
+                return Optional.empty();
+            }
+
+            NotificationDispatch dispatch = dispatchOptional.get();
+            if (dispatch.getStatus() != NotificationDispatchStatus.PENDING
+                    || (quietHours && !isQuietHoursException(dispatch))) {
+                return Optional.empty();
+            }
+
+            int updated = notificationDispatchRepository.updateStatusIfCurrent(
+                    dispatchId,
+                    NotificationDispatchStatus.PENDING,
+                    NotificationDispatchStatus.PROCESSING,
+                    now
+            );
+            if (updated != 1) {
+                return Optional.empty();
+            }
+
+            return notificationDispatchRepository.findWithUserAndNotificationById(dispatchId);
+        });
+    }
+
+    private Long sendOne(NotificationDispatch dispatch, LocalDateTime now) {
         try {
             Notification notification = createNotificationIfAbsent(dispatch);
             dispatch.setNotification(notification);
 
             if (!isPushEnabled(dispatch.getUser().getId(), dispatch.getType())) {
-                markCanceled(dispatch, now, "사용자 알림 설정이 꺼져 있습니다.");
-                return;
+                finalizeDispatch(dispatch, () -> markCanceled(dispatch, now, "사용자 알림 설정이 꺼져 있습니다."));
+                return dispatch.getId();
             }
 
             List<DeviceLog> deviceLogs = deviceLogRepository.findAllByUserIdAndFcmTokenIsNotNull(dispatch.getUser().getId());
 
             if (deviceLogs.isEmpty()) {
-                markFailed(dispatch, now, "FCM 토큰이 존재하지 않습니다.");
-                return;
+                finalizeDispatch(dispatch, () -> markFailed(dispatch, now, "FCM 토큰이 존재하지 않습니다."));
+                return dispatch.getId();
             }
 
+            int failureCount = 0;
+            String lastFailureReason = null;
             for (DeviceLog deviceLog : deviceLogs) {
-                fcmPushService.send(deviceLog, notification.getTitle(), notification.getContent());
+                try {
+                    fcmPushService.send(deviceLog, notification.getTitle(), notification.getContent());
+                } catch (Exception e) {
+                    failureCount++;
+                    lastFailureReason = e.getMessage();
+                    log.warn("FCM 발송 실패. dispatchId={}, deviceLogId={}", dispatch.getId(), deviceLog.getId(), e);
+                }
             }
 
-            markSent(dispatch, now);
+            if (failureCount == deviceLogs.size()) {
+                String reason = lastFailureReason == null ? "모든 FCM 토큰 발송에 실패했습니다." : lastFailureReason;
+                finalizeDispatch(dispatch, () -> markFailed(dispatch, now, reason));
+            } else {
+                finalizeDispatch(dispatch, () -> markSent(dispatch, now));
+            }
         } catch (Exception e) {
-            markFailed(dispatch, now, e.getMessage());
+            finalizeDispatch(dispatch, () -> markFailed(dispatch, now, e.getMessage()));
         }
+
+        return dispatch.getId();
+    }
+
+    private void finalizeDispatch(NotificationDispatch dispatch, Runnable transition) {
+        executeWithoutResultInNewTransaction(status -> {
+            transition.run();
+            notificationDispatchRepository.save(dispatch);
+        });
+    }
+
+    private <T> T executeInNewTransaction(TransactionCallback<T> callback) {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return template.execute(callback);
+    }
+
+    private void executeWithoutResultInNewTransaction(Consumer<TransactionStatus> callback) {
+        executeInNewTransaction(status -> {
+            callback.accept(status);
+            return null;
+        });
     }
 
     private void markSent(NotificationDispatch dispatch, LocalDateTime sentAt) {

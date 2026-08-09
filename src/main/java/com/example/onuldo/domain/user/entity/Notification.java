@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,7 +27,15 @@ import com.example.onuldo.global.common.time.TimeService;
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "notification")
+@Table(
+        name = "notification",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_notification_reference",
+                        columnNames = {"user_id", "type", "ref_type", "ref_id"}
+                )
+        }
+)
 public class Notification {
 
     @Id

@@ -130,6 +130,16 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
 
     boolean existsByPhotoUrl(String photoUrl);
 
+    @Query("""
+            SELECT v
+            FROM Verification v
+            JOIN FETCH v.participation p
+            JOIN FETCH p.challenge
+            LEFT JOIN FETCH p.party
+            WHERE v.id IN :ids
+            """)
+    List<Verification> findAllByIdInWithParticipation(@Param("ids") Collection<Long> ids);
+
     boolean existsByParticipation_IdAndVerificationDate(Long participationId, LocalDate verificationDate);
 
     List<Verification> findAllByParticipation_IdIn(Collection<Long> participationIds);
