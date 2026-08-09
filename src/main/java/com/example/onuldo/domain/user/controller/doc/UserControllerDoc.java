@@ -67,7 +67,18 @@ public interface UserControllerDoc {
 
     @Operation(
             summary = "알림 설정 조회",
-            description = "로그인한 유저의 알림 설정을 조회합니다."
+            description = """
+                    로그인한 유저의 알림 설정을 조회합니다.
+
+                    알림 설정 유형
+                    - allEnabled: 전체 알림 설정
+                    - verificationDeadline: 인증 마감 리마인더
+                    - challengeStart: 새 챌린지 시작
+                    - challengeEndReminder: 종료일 리마인더
+                    - verificationResult: 인증 결과
+                    - partyMemberVerified: 파티원 인증 완료
+                    - settlementComplete: 정산/환급 완료
+                    """
     )
     BaseResponse<GetNotificationResDto> getNotification(
             @AuthUser
@@ -77,14 +88,19 @@ public interface UserControllerDoc {
     @Operation(
             summary = "알림 설정 변경",
             description = """
-                    로그인한 유저의 특정 알림 타입 on/off 여부를 변경합니다.
+                    로그인한 유저의 특정 알림 설정 on/off 여부를 변경합니다.
+                    ALL_ENABLED enabled=true 요청은 전체 개별 설정을 true로 복구합니다.
+                    ALL_ENABLED enabled=false 요청은 정산/환급 완료를 제외한 개별 설정을 false로 변경합니다.
+                    SETTLEMENT_COMPLETE enabled=false 요청은 필수 알림 정책에 따라 반려됩니다.
 
-                    알림 타입(type)
-                    - CHALLENGE_START: 챌린지 시작 알림
-                    - VERIFICATION_DEADLINE: 인증 마감 임박 알림
-                    - VERIFICATION_RESULT: 인증 결과 알림
-                    - REFUND_COMPLETE: 환급 완료 알림
-                    - DEDUCTION_ALERT: 차감 알림
+                    알림 설정 타입(type)
+                    - ALL_ENABLED: 전체 알림 설정
+                    - VERIFICATION_DEADLINE: 인증 마감 리마인더
+                    - CHALLENGE_START: 새 챌린지 시작
+                    - CHALLENGE_END_REMINDER: 종료일 리마인더
+                    - VERIFICATION_RESULT: 인증 결과
+                    - PARTY_MEMBER_VERIFIED: 파티원 인증 완료
+                    - SETTLEMENT_COMPLETE: 정산/환급 완료
                     """
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -104,7 +120,7 @@ public interface UserControllerDoc {
             description = """
                     로그인한 유저의 알림함 목록을 최신순 커서 기반 스크롤로 조회합니다.
 
-                    응답에는 알림 카드 화면 구성을 위한 제목, 본문, 상대 시간, 읽음 여부와 이동에 필요한 challengeId/partyId가 포함됩니다.
+                    응답에는 알림 카드 화면 구성을 위한 제목, 본문, 상대 시간과 이동에 필요한 challengeId/partyId가 포함됩니다.
                     알림 보관 기간은 30일이며, 생성 후 30일이 지난 알림은 조회되지 않습니다.
                     """
     )

@@ -54,9 +54,9 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     _WITHDRAWAL_BLOCKED_BY_ONGOING_CHALLENGE(
             HttpStatus.BAD_REQUEST,
             "WITHDRAWAL_BLOCKED_BY_ONGOING_CHALLENGE", "진행 중인 챌린지가 있어 회원 탈퇴할 수 없습니다."),
-    _REFUND_COMPLETE_NOTIFICATION_REQUIRED(
+    _SETTLEMENT_COMPLETE_NOTIFICATION_REQUIRED(
             HttpStatus.BAD_REQUEST,
-            "REFUND_COMPLETE_NOTIFICATION_REQUIRED", "환급 완료 알림은 끌 수 없습니다."),
+            "SETTLEMENT_COMPLETE_NOTIFICATION_REQUIRED", "정산/환급 완료 알림은 끌 수 없습니다."),
 
     // 파일 관련 에러
     _FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_NOT_FOUND", "파일을 찾을 수 없습니다."),

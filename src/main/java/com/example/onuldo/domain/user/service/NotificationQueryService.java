@@ -144,10 +144,6 @@ public class NotificationQueryService {
             return participationTargetById.getOrDefault(participationId, NotificationTarget.empty());
         }
 
-        if (notification.getRefType() != null && notification.getRefType().startsWith("PARTY_DAILY:")) {
-            return new NotificationTarget(null, notification.getRefId());
-        }
-
         if (notification.getRefType() != null && notification.getRefType().startsWith("PARTY_VERIFIED:")) {
             return new NotificationTarget(null, notification.getRefId());
         }
