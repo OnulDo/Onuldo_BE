@@ -3,7 +3,9 @@ package com.example.onuldo.domain.user.enums;
 public enum NotificationType {
     VERIFICATION_DEADLINE,
     VERIFICATION_RESULT,
+    PARTY_MEMBER_VERIFIED,
     CHALLENGE_START,
+    CHALLENGE_END_REMINDER,
     REFUND_COMPLETE,
-    DEDUCTION_ALERT
+    PARTY_SETTLEMENT_COMPLETE
 }

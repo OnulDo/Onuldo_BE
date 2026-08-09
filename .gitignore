@@ -45,3 +45,5 @@ out/
 *.pem
 *.key
 *.p12
+
+firebase-service-key.json

@@ -33,6 +33,11 @@ public record OAuthSignupReqDto(
                         "{\"termType\":\"MARKETING\",\"value\":false}]"
         )
         @NotNull(message = "약관 동의 목록은 필수입니다.")
-        List<@NotNull @Valid TermAgreementReqDto> termAgreements
+        List<@NotNull @Valid TermAgreementReqDto> termAgreements,
+
+        @Schema(description = "디바이스 로그 적재를 위한 기기 정보")
+        @NotNull(message = "기기 정보는 필수입니다.")
+        @Valid
+        DeviceLogReqDto device
 ) {
 }
