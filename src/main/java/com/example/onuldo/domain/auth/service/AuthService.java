@@ -96,7 +96,7 @@ public class AuthService {
         return createAuthResponse(savedUser);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = RestApiException.class)
     public AuthResDto login(EmailLoginReqDto request) {
         User user = userRepository.findByEmailForUpdate(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
