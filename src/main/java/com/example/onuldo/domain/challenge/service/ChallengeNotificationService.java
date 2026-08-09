@@ -9,13 +9,14 @@ import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.user.enums.NotificationType;
-import com.example.onuldo.domain.user.service.NotificationCreateService;
 import com.example.onuldo.domain.user.service.NotificationDispatchCommand;
 import com.example.onuldo.domain.user.service.NotificationDispatchService;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -43,7 +44,7 @@ public class ChallengeNotificationService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final NotificationDispatchService notificationDispatchService;
-    private final NotificationCreateService notificationCreateService;
+    private final ApplicationEventPublisher eventPublisher;
     private final TimeService timeService;
 
     // 챌린지 참여 확정 시 시작 알림과 종료 리마인더를 예약하는 메서드
@@ -296,6 +297,11 @@ public class ChallengeNotificationService {
 
     // NotificationDispatchService에 푸시 발송 예약을 위임하는 메서드
     private void enqueuePush(NotificationDispatchCommand command) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            eventPublisher.publishEvent(new ChallengeNotificationEnqueueEvent(command));
+            return;
+        }
+
         notificationDispatchService.enqueue(command);
     }
 
