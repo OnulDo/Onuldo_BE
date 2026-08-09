@@ -11,6 +11,7 @@ import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.domain.challenge.service.DailyChallengeStatusResolver;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyListResDto;
@@ -90,6 +91,7 @@ public class PartyService {
     private final VerificationRepository verificationRepository;
     private final SettlementRepository settlementRepository;
     private final TimeService timeService;
+    private final DailyChallengeStatusResolver dailyChallengeStatusResolver;
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
         if (!PARTY_NAME_PATTERN.matcher(request.name()).matches()) {
@@ -612,7 +614,7 @@ public class PartyService {
         LocalDate endDate = participation != null ? participation.getEndDate() : null;
 
         Verification myVerification = verificationByUserId.get(userId);
-        DailyChallengeStatus dailyStatus = resolveDailyChallengeStatus(
+        DailyChallengeStatus dailyStatus = dailyChallengeStatusResolver.resolve(
                 participation,
                 challenge,
                 myVerification,
@@ -638,55 +640,6 @@ public class PartyService {
                 .build();
 
         return new HomeItemWithChallengeId(item, challenge.getId());
-    }
-
-    private DailyChallengeStatus resolveDailyChallengeStatus(
-            Participation participation,
-            Challenge challenge,
-            Verification latestVerification,
-            LocalDate today,
-            LocalTime currentTime
-    ) {
-        if (participation == null || isOutsideParticipationDates(participation, today)) {
-            return DailyChallengeStatus.UNAVAILABLE;
-        }
-
-        if (latestVerification == null) {
-            return resolveUnverifiedDailyStatus(challenge, currentTime);
-        }
-
-        return toDailyChallengeStatus(latestVerification);
-    }
-
-    private boolean isOutsideParticipationDates(Participation participation, LocalDate today) {
-        LocalDate startDate = participation.getStartDate();
-        LocalDate endDate = participation.getEndDate();
-        return (startDate != null && today.isBefore(startDate))
-                || (endDate != null && today.isAfter(endDate));
-    }
-
-    private DailyChallengeStatus toDailyChallengeStatus(Verification verification) {
-        VerificationReviewStatus review = verification.getReview();
-        return switch (review) {
-            case PASS -> DailyChallengeStatus.SUCCESS;
-            case AUTO_FAIL -> DailyChallengeStatus.FAIL;
-            case MANUAL_REVIEW, PENDING -> DailyChallengeStatus.REVIEW_PENDING;
-        };
-    }
-
-    private DailyChallengeStatus resolveUnverifiedDailyStatus(Challenge challenge, LocalTime currentTime) {
-        LocalTime timeStart = challenge.getTimeStart();
-        LocalTime timeEnd = challenge.getTimeEnd();
-
-        if (timeStart != null && currentTime.isBefore(timeStart)) {
-            return DailyChallengeStatus.UNAVAILABLE;
-        }
-
-        if (timeEnd != null && currentTime.isAfter(timeEnd)) {
-            return DailyChallengeStatus.FAIL;
-        }
-
-        return DailyChallengeStatus.WAITING;
     }
 
 }

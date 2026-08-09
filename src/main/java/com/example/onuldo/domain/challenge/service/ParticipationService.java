@@ -60,6 +60,7 @@ public class ParticipationService {
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final TimeService timeService;
+    private final DailyChallengeStatusResolver dailyChallengeStatusResolver;
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,
@@ -321,8 +322,9 @@ public class ParticipationService {
             LocalTime currentTime
     ) {
         Challenge challenge = participation.getChallenge();
-        DailyChallengeStatus dailyStatus = resolveDailyChallengeStatus(
+        DailyChallengeStatus dailyStatus = dailyChallengeStatusResolver.resolve(
                 participation,
+                challenge,
                 latestVerification,
                 today,
                 currentTime
@@ -367,51 +369,6 @@ public class ParticipationService {
                         (latest, ignored) -> latest,
                         LinkedHashMap::new
                 ));
-    }
-
-    private DailyChallengeStatus resolveDailyChallengeStatus(
-            Participation participation,
-            Verification latestVerification,
-            LocalDate today,
-            LocalTime currentTime
-    ) {
-        if (isOutsideParticipationDates(participation, today)) {
-            return DailyChallengeStatus.UNAVAILABLE;
-        }
-
-        if (latestVerification == null) {
-            return resolveUnverifiedDailyStatus(participation.getChallenge(), currentTime);
-        }
-
-        return toDailyChallengeStatus(latestVerification);
-    }
-
-    private boolean isOutsideParticipationDates(Participation participation, LocalDate today) {
-        return today.isBefore(participation.getStartDate()) || today.isAfter(participation.getEndDate());
-    }
-
-    private DailyChallengeStatus toDailyChallengeStatus(Verification verification) {
-        VerificationReviewStatus review = verification.getReview();
-        return switch (review) {
-            case PASS -> DailyChallengeStatus.SUCCESS;
-            case AUTO_FAIL -> DailyChallengeStatus.FAIL;
-            case MANUAL_REVIEW, PENDING -> DailyChallengeStatus.REVIEW_PENDING;
-        };
-    }
-
-    private DailyChallengeStatus resolveUnverifiedDailyStatus(Challenge challenge, LocalTime currentTime) {
-        LocalTime timeStart = challenge.getTimeStart();
-        LocalTime timeEnd = challenge.getTimeEnd();
-
-        if (timeStart != null && currentTime.isBefore(timeStart)) {
-            return DailyChallengeStatus.UNAVAILABLE;
-        }
-
-        if (timeEnd != null && currentTime.isAfter(timeEnd)) {
-            return DailyChallengeStatus.FAIL;
-        }
-
-        return DailyChallengeStatus.WAITING;
     }
 
     private CompletedPartyResDto toCompletedPartyResDto(
