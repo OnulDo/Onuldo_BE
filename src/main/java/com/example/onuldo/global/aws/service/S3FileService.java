@@ -101,11 +101,16 @@ public class S3FileService {
         }
 
         String prefix = publicBaseUrl.replaceAll("/+$", "") + "/";
-        if (url == null || !url.startsWith(prefix) || url.length() == prefix.length()) {
+        if (url == null || !url.startsWith(prefix)) {
             throw new RestApiException(GlobalErrorStatus._INVALID_FILE_URL);
         }
 
-        return url.substring(prefix.length());
+        String fileId = url.substring(prefix.length());
+        if (fileId.isBlank()) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_FILE_URL);
+        }
+
+        return fileId;
     }
 
     private ImageUploadPayload readAndValidateImage(MultipartFile file) {
