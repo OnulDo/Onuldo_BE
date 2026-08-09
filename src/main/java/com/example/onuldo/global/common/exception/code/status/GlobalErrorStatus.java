@@ -152,6 +152,8 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     ),
     // 파티 정산 시 시작일=종료일 등으로 수행일이 0 이하가 되어 일 지분 계산이 불가능한 데이터 이상 상태
     _SETTLEMENT_INVALID_PERIOD(HttpStatus.INTERNAL_SERVER_ERROR, "SETTLEMENT_INVALID_PERIOD", "정산 대상 기간이 올바르지 않습니다."),
+    // 개인 챌린지 몰수금 pot 싱글톤 행이 시드되지 않은 데이터 이상 상태
+    _CHALLENGE_POT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "CHALLENGE_POT_NOT_FOUND", "챌린지 몰수금 pot을 찾을 수 없습니다."),
 
     // 약관 관련 에러
     _TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "TERM_NOT_FOUND", "약관을 찾을 수 없습니다."),

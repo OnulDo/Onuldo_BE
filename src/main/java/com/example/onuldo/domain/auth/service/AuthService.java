@@ -122,6 +122,7 @@ public class AuthService {
         return createAuthResponse(user);
     }
 
+    @Transactional
     public AuthResDto refresh(RefreshTokenReqDto request) {
         Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
         User user = userRepository.findByIdForUpdate(userId)

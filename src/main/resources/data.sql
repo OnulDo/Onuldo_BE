@@ -23,6 +23,13 @@ ON DUPLICATE KEY UPDATE
                      content = new.content;
 
 
+-- 개인 챌린지 몰수금 pot 싱글톤 행 (challenge_pot_id = 1 고정)
+-- WHERE NOT EXISTS + INSERT는 원자적이지 않아 여러 인스턴스가 동시에 기동하면 둘 다 "행 없음"으로 판단해
+-- 한쪽이 PK 중복 오류로 기동 실패할 수 있다. ON DUPLICATE KEY UPDATE로 원자적 UPSERT 처리(기존 행은 그대로 유지).
+INSERT INTO challenge_pot (challenge_pot_id, balance, total_forfeited, total_bonus_paid, current_bonus_rate, updated_at)
+VALUES (1, 0, 0, 0, 0.0250, NOW()) AS new
+ON DUPLICATE KEY UPDATE challenge_pot_id = new.challenge_pot_id;
+
 INSERT INTO challenge (
     name,
     explain_content,
