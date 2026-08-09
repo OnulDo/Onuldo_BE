@@ -19,12 +19,27 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 import com.example.onuldo.global.common.time.TimeService;
 
 @Service
 @RequiredArgsConstructor
 public class S3FileService {
+    // 회원가입 시점엔 인증 전이라 업로드 API(POST /api/file/images)를 쓸 수 없어, 지정 가능한 값이
+    // 이 9개 기본 이미지뿐이다. 그래서 존재 여부뿐 아니라 이 allowlist까지 검증한다.
+    private static final Set<String> DEFAULT_PROFILE_IMAGE_FILE_IDS = Set.of(
+            "profile/1.png",
+            "profile/2.png",
+            "profile/3.png",
+            "profile/4.png",
+            "profile/5.png",
+            "profile/6.png",
+            "profile/7.png",
+            "profile/8.png",
+            "profile/9.png"
+    );
+
     private final S3Client s3Client;
     private final AwsProperties awsProperties;
     private final TimeService timeService;
@@ -67,6 +82,35 @@ public class S3FileService {
                 .fileId(fileId)
                 .url(createAccessUrl(bucket, fileId))
                 .build();
+    }
+
+    public void verifyDefaultProfileImageUrl(String url) {
+        String bucket = resolveBucket();
+        String fileId = extractFileIdFromPublicUrl(url);
+        if (!DEFAULT_PROFILE_IMAGE_FILE_IDS.contains(fileId)) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_FILE_URL);
+        }
+
+        verifyObjectExists(bucket, fileId);
+    }
+
+    private String extractFileIdFromPublicUrl(String url) {
+        String publicBaseUrl = awsProperties.s3().publicBaseUrl();
+        if (publicBaseUrl == null || publicBaseUrl.isBlank()) {
+            throw new RestApiException(GlobalErrorStatus._S3_PUBLIC_BASE_URL_NOT_CONFIGURED);
+        }
+
+        String prefix = publicBaseUrl.replaceAll("/+$", "") + "/";
+        if (url == null || !url.startsWith(prefix)) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_FILE_URL);
+        }
+
+        String fileId = url.substring(prefix.length());
+        if (fileId.isBlank()) {
+            throw new RestApiException(GlobalErrorStatus._INVALID_FILE_URL);
+        }
+
+        return fileId;
     }
 
     private ImageUploadPayload readAndValidateImage(MultipartFile file) {

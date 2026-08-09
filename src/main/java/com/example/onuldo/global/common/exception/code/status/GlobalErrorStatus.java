@@ -58,6 +58,7 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
     // 파일 관련 에러
     _FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FILE_NOT_FOUND", "파일을 찾을 수 없습니다."),
     _FILE_ID_REQUIRED(HttpStatus.BAD_REQUEST, "FILE_ID_REQUIRED", "fileId는 필수입니다."),
+    _INVALID_FILE_URL(HttpStatus.BAD_REQUEST, "INVALID_FILE_URL", "올바르지 않은 파일 URL입니다."),
     _FILE_EXISTENCE_CHECK_FAILED(HttpStatus.INTERNAL_SERVER_ERROR,
             "FILE_EXISTENCE_CHECK_FAILED", "파일 존재 여부 확인에 실패했습니다."),
     _IMAGE_FILE_REQUIRED(HttpStatus.BAD_REQUEST, "IMAGE_FILE_REQUIRED", "업로드할 이미지 파일이 필요합니다."),
