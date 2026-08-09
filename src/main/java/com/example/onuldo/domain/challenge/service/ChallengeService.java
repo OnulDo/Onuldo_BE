@@ -163,32 +163,16 @@ public class ChallengeService {
             LocalTime currentTime
     ) {
         if (participation.getEndDate() != null && today.isAfter(participation.getEndDate())) {
-            throw new RestApiException(GlobalErrorStatus._CHALLENGE_VERIFICATION_TIME_EXPIRED);
+            throw new RestApiException(GlobalErrorStatus._CHALLENGE_PARTICIPATION_ENDED);
         }
 
-        if (!isWithinVerificationTime(challenge.getTimeStart(), challenge.getTimeEnd(), currentTime)) {
-            throw new RestApiException(GlobalErrorStatus._CHALLENGE_VERIFICATION_TIME_EXPIRED);
+        if (!ChallengeVerificationTimePolicy.isWithinVerificationTime(
+                challenge.getTimeStart(),
+                challenge.getTimeEnd(),
+                currentTime
+        )) {
+            throw new RestApiException(GlobalErrorStatus._CHALLENGE_VERIFICATION_TIME_UNAVAILABLE);
         }
-    }
-
-    private boolean isWithinVerificationTime(LocalTime timeStart, LocalTime timeEnd, LocalTime currentTime) {
-        if (timeStart == null && timeEnd == null) {
-            return true;
-        }
-
-        if (timeStart == null) {
-            return !currentTime.isAfter(timeEnd);
-        }
-
-        if (timeEnd == null) {
-            return !currentTime.isBefore(timeStart);
-        }
-
-        if (!timeStart.isAfter(timeEnd)) {
-            return !currentTime.isBefore(timeStart) && !currentTime.isAfter(timeEnd);
-        }
-
-        return !currentTime.isBefore(timeStart) || !currentTime.isAfter(timeEnd);
     }
 
     @Transactional
