@@ -20,8 +20,6 @@ public record NotificationListItemResDto(
         String title,
         @Schema(example = "30분 러닝 챌린지 인증을 잊지 마세요")
         String content,
-        @Schema(example = "false")
-        Boolean isRead,
         @Schema(example = "방금")
         String timeAgo,
         @Schema(example = "2026-08-09T00:11:38")

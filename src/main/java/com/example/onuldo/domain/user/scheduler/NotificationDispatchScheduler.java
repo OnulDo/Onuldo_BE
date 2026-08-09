@@ -13,7 +13,7 @@ public class NotificationDispatchScheduler {
 
     private final NotificationDispatchService notificationDispatchService;
 
-    @Scheduled(cron = "0 */10 * * * *")
+    @Scheduled(cron = "0 * * * * *")
     public void dispatchNotifications() {
         var targetIds = notificationDispatchService.sendDueDispatches();
         log.info("dispatchNotifications finished. targetCount={}", targetIds.size());

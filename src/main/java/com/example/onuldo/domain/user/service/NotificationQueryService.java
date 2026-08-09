@@ -77,7 +77,6 @@ public class NotificationQueryService {
                 .partyId(target.partyId())
                 .title(notification.getTitle())
                 .content(notification.getContent())
-                .isRead(notification.getIsRead())
                 .timeAgo(formatTimeAgo(notification.getCreatedAt()))
                 .createdAt(notification.getCreatedAt())
                 .build();

@@ -18,29 +18,41 @@ public interface NotificationDispatchRepository extends JpaRepository<Notificati
     @Query("""
             SELECT nd.id
             FROM NotificationDispatch nd
-            WHERE nd.status = :status
-            AND nd.scheduledAt <= :scheduledAt
+            WHERE nd.attemptCount < :maxAttemptCount
+            AND (
+                (nd.status = :pendingStatus AND nd.scheduledAt <= :scheduledAt)
+                OR (nd.status = :processingStatus AND nd.lockedAt <= :staleLockedAt)
+            )
             ORDER BY nd.scheduledAt ASC, nd.id ASC
             """)
-    List<Long> findIdsByStatusAndScheduledAtLessThanEqualOrderByScheduledAtAscIdAsc(
-            @Param("status") NotificationDispatchStatus status,
+    List<Long> findClaimableIdsOrderByScheduledAtAscIdAsc(
+            @Param("pendingStatus") NotificationDispatchStatus pendingStatus,
+            @Param("processingStatus") NotificationDispatchStatus processingStatus,
             @Param("scheduledAt") LocalDateTime scheduledAt,
+            @Param("staleLockedAt") LocalDateTime staleLockedAt,
+            @Param("maxAttemptCount") int maxAttemptCount,
             Pageable pageable
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE NotificationDispatch nd
-            SET nd.status = :nextStatus,
+            SET nd.status = :processingStatus,
                 nd.lockedAt = :lockedAt
             WHERE nd.id = :id
-            AND nd.status = :currentStatus
+            AND nd.attemptCount < :maxAttemptCount
+            AND (
+                nd.status = :pendingStatus
+                OR (nd.status = :processingStatus AND nd.lockedAt <= :staleLockedAt)
+            )
             """)
-    int updateStatusIfCurrent(
+    int claimIfAvailable(
             @Param("id") Long id,
-            @Param("currentStatus") NotificationDispatchStatus currentStatus,
-            @Param("nextStatus") NotificationDispatchStatus nextStatus,
-            @Param("lockedAt") LocalDateTime lockedAt
+            @Param("pendingStatus") NotificationDispatchStatus pendingStatus,
+            @Param("processingStatus") NotificationDispatchStatus processingStatus,
+            @Param("lockedAt") LocalDateTime lockedAt,
+            @Param("staleLockedAt") LocalDateTime staleLockedAt,
+            @Param("maxAttemptCount") int maxAttemptCount
     );
 
     Optional<NotificationDispatch> findByNotification_Id(Long notificationId);

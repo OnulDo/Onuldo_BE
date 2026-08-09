@@ -57,10 +57,6 @@ public class Notification {
     @Column(nullable = false, length = 255)
     private String content;
 
-    @Builder.Default
-    @Column(name = "is_read", nullable = false)
-    private Boolean isRead = false;
-
     @Column(name = "ref_type", length = 50)
     private String refType;
 

@@ -204,14 +204,28 @@ public class AuthService {
     }
 
     private void saveDeviceLog(User user, DeviceLogReqDto device) {
-        deviceLogRepository.save(
-                DeviceLog.builder()
-                        .user(user)
-                        .deviceId(device.deviceId())
-                        .fcmToken(device.fcmToken())
-                        .lastSeenAt(timeService.nowKst())
-                        .build()
-        );
+        LocalDateTime now = timeService.nowKst();
+        String fcmToken = normalizeFcmToken(device.fcmToken());
+
+        deviceLogRepository.findByUser_IdAndDeviceId(user.getId(), device.deviceId())
+                .ifPresentOrElse(
+                        deviceLog -> deviceLog.update(fcmToken, now),
+                        () -> deviceLogRepository.save(
+                                DeviceLog.builder()
+                                        .user(user)
+                                        .deviceId(device.deviceId())
+                                        .fcmToken(fcmToken)
+                                        .lastSeenAt(now)
+                                        .build()
+                        )
+                );
+    }
+
+    private String normalizeFcmToken(String fcmToken) {
+        if (fcmToken == null || fcmToken.isBlank()) {
+            return null;
+        }
+        return fcmToken;
     }
 
     private AuthResDto createAuthResponse(User user) {

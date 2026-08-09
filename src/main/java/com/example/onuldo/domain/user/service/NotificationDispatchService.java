@@ -24,6 +24,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -36,6 +37,9 @@ import java.util.function.Consumer;
 public class NotificationDispatchService {
 
     private static final int DISPATCH_BATCH_SIZE = 100;
+    private static final int MAX_ATTEMPT_COUNT = 3;
+    private static final Duration PROCESSING_LOCK_TIMEOUT = Duration.ofMinutes(5);
+    private static final Duration BASE_RETRY_BACKOFF = Duration.ofMinutes(1);
     private static final LocalTime QUIET_HOURS_START = LocalTime.of(23, 0);
     private static final LocalTime QUIET_HOURS_END = LocalTime.of(5, 0);
 
@@ -57,7 +61,9 @@ public class NotificationDispatchService {
             if (notification == null) {
                 throw e;
             }
-            notificationDispatchRepository.findByNotification_Id(notification.getId());
+            if (notificationDispatchRepository.findByNotification_Id(notification.getId()).isEmpty()) {
+                throw e;
+            }
         }
     }
 
@@ -101,22 +107,31 @@ public class NotificationDispatchService {
     // 발송 시간이 지난 PENDING 알림들을 야간 발송 제한을 적용해 FCM으로 전송하는 메서드
     public List<Long> sendDueDispatches() {
         LocalDateTime now = timeService.nowKst();
+        LocalDateTime staleLockedAt = now.minus(PROCESSING_LOCK_TIMEOUT);
         List<Long> dueDispatchIds = executeInNewTransaction(status -> notificationDispatchRepository
-                .findIdsByStatusAndScheduledAtLessThanEqualOrderByScheduledAtAscIdAsc(
+                .findClaimableIdsOrderByScheduledAtAscIdAsc(
                         NotificationDispatchStatus.PENDING,
+                        NotificationDispatchStatus.PROCESSING,
                         now,
+                        staleLockedAt,
+                        MAX_ATTEMPT_COUNT,
                         PageRequest.of(0, DISPATCH_BATCH_SIZE)
                 ));
 
         boolean quietHours = isQuietHours(now.toLocalTime());
         return dueDispatchIds.stream()
-                .map(dispatchId -> claimDispatch(dispatchId, now, quietHours))
+                .map(dispatchId -> claimDispatch(dispatchId, now, staleLockedAt, quietHours))
                 .flatMap(Optional::stream)
                 .map(dispatch -> sendOne(dispatch, now))
                 .toList();
     }
 
-    private Optional<NotificationDispatch> claimDispatch(Long dispatchId, LocalDateTime now, boolean quietHours) {
+    private Optional<NotificationDispatch> claimDispatch(
+            Long dispatchId,
+            LocalDateTime now,
+            LocalDateTime staleLockedAt,
+            boolean quietHours
+    ) {
         return executeInNewTransaction(status -> {
             Optional<NotificationDispatch> dispatchOptional =
                     notificationDispatchRepository.findWithUserAndNotificationById(dispatchId);
@@ -125,16 +140,23 @@ public class NotificationDispatchService {
             }
 
             NotificationDispatch dispatch = dispatchOptional.get();
-            if (dispatch.getStatus() != NotificationDispatchStatus.PENDING
+            boolean claimablePending = dispatch.getStatus() == NotificationDispatchStatus.PENDING;
+            boolean claimableStaleProcessing = dispatch.getStatus() == NotificationDispatchStatus.PROCESSING
+                    && dispatch.getLockedAt() != null
+                    && !dispatch.getLockedAt().isAfter(staleLockedAt);
+            if ((!claimablePending && !claimableStaleProcessing)
+                    || dispatch.getAttemptCount() >= MAX_ATTEMPT_COUNT
                     || (quietHours && !isQuietHoursException(dispatch))) {
                 return Optional.empty();
             }
 
-            int updated = notificationDispatchRepository.updateStatusIfCurrent(
+            int updated = notificationDispatchRepository.claimIfAvailable(
                     dispatchId,
                     NotificationDispatchStatus.PENDING,
                     NotificationDispatchStatus.PROCESSING,
-                    now
+                    now,
+                    staleLockedAt,
+                    MAX_ATTEMPT_COUNT
             );
             if (updated != 1) {
                 return Optional.empty();
@@ -154,10 +176,10 @@ public class NotificationDispatchService {
                 return dispatch.getId();
             }
 
-            List<DeviceLog> deviceLogs = deviceLogRepository.findAllByUserIdAndFcmTokenIsNotNull(dispatch.getUser().getId());
+            List<DeviceLog> deviceLogs = deviceLogRepository.findAllByUserIdAndFcmTokenIsNotBlank(dispatch.getUser().getId());
 
             if (deviceLogs.isEmpty()) {
-                finalizeDispatch(dispatch, () -> markFailed(dispatch, now, "FCM 토큰이 존재하지 않습니다."));
+                finalizeDispatch(dispatch, () -> markFailedOrRetry(dispatch, now, "FCM 토큰이 존재하지 않습니다."));
                 return dispatch.getId();
             }
 
@@ -175,12 +197,12 @@ public class NotificationDispatchService {
 
             if (failureCount == deviceLogs.size()) {
                 String reason = lastFailureReason == null ? "모든 FCM 토큰 발송에 실패했습니다." : lastFailureReason;
-                finalizeDispatch(dispatch, () -> markFailed(dispatch, now, reason));
+                finalizeDispatch(dispatch, () -> markFailedOrRetry(dispatch, now, reason));
             } else {
                 finalizeDispatch(dispatch, () -> markSent(dispatch, now));
             }
         } catch (Exception e) {
-            finalizeDispatch(dispatch, () -> markFailed(dispatch, now, e.getMessage()));
+            finalizeDispatch(dispatch, () -> markFailedOrRetry(dispatch, now, e.getMessage()));
         }
 
         return dispatch.getId();
@@ -210,22 +232,34 @@ public class NotificationDispatchService {
         dispatch.setStatus(NotificationDispatchStatus.SENT);
         dispatch.setSentAt(sentAt);
         dispatch.setLastAttemptAt(sentAt);
+        dispatch.setLockedAt(null);
         dispatch.setFailedReason(null);
         dispatch.setAttemptCount(dispatch.getAttemptCount() + 1);
     }
 
-    private void markFailed(NotificationDispatch dispatch, LocalDateTime attemptedAt, String reason) {
-        dispatch.setStatus(NotificationDispatchStatus.FAILED);
+    private void markFailedOrRetry(NotificationDispatch dispatch, LocalDateTime attemptedAt, String reason) {
+        int nextAttemptCount = dispatch.getAttemptCount() + 1;
+        dispatch.setStatus(nextAttemptCount >= MAX_ATTEMPT_COUNT
+                ? NotificationDispatchStatus.FAILED
+                : NotificationDispatchStatus.PENDING);
         dispatch.setLastAttemptAt(attemptedAt);
+        dispatch.setLockedAt(null);
+        dispatch.setScheduledAt(attemptedAt.plus(resolveRetryBackoff(nextAttemptCount)));
         dispatch.setFailedReason(reason);
-        dispatch.setAttemptCount(dispatch.getAttemptCount() + 1);
+        dispatch.setAttemptCount(nextAttemptCount);
     }
 
     private void markCanceled(NotificationDispatch dispatch, LocalDateTime attemptedAt, String reason) {
         dispatch.setStatus(NotificationDispatchStatus.CANCELED);
         dispatch.setLastAttemptAt(attemptedAt);
+        dispatch.setLockedAt(null);
         dispatch.setFailedReason(reason);
         dispatch.setAttemptCount(dispatch.getAttemptCount() + 1);
+    }
+
+    private Duration resolveRetryBackoff(int attemptCount) {
+        long multiplier = 1L << Math.max(0, attemptCount - 1);
+        return BASE_RETRY_BACKOFF.multipliedBy(multiplier);
     }
 
     // 발송 처리 시점에 알림함용 Notification을 중복 없이 생성하는 메서드

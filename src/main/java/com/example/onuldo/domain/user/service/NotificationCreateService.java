@@ -48,12 +48,17 @@ public class NotificationCreateService {
                 throw e;
             }
 
-            return executeInNewTransaction(status -> notificationRepository.findByUser_IdAndTypeAndRefTypeAndRefId(
+            Optional<Notification> existing = executeInNewTransaction(status -> notificationRepository.findByUser_IdAndTypeAndRefTypeAndRefId(
                     userId,
                     type,
                     refType,
                     refId
             ));
+            if (existing.isEmpty()) {
+                throw e;
+            }
+
+            return existing;
         }
     }
 

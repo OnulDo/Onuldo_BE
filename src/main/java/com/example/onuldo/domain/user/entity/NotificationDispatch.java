@@ -65,6 +65,7 @@ public class NotificationDispatch extends BaseEntity {
     private NotificationDispatchStatus status = NotificationDispatchStatus.PENDING;
 
     @Column(name = "scheduled_at", nullable = false)
+    @Setter
     private LocalDateTime scheduledAt;
 
     @Column(nullable = false, length = 100)
