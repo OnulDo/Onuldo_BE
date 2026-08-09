@@ -63,6 +63,10 @@ public class NotificationSetting {
     @Column(name = "party_member_verified", nullable = false)
     private Boolean partyMemberVerified = true;
 
+    @Builder.Default
+    @Column(name = "deduction_alert", nullable = false)
+    private Boolean deductionAlert = true;
+
     public void apply(NotificationSettingType type, boolean enabled) {
         switch (type) {
             case ALL_ENABLED -> applyAll(enabled);
@@ -107,6 +111,7 @@ public class NotificationSetting {
         verificationDeadline = enabled;
         verificationResult = enabled;
         partyMemberVerified = enabled;
+        deductionAlert = enabled;
         refundComplete = true;
     }
 
