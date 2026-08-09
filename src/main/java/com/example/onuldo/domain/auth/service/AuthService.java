@@ -77,7 +77,7 @@ public class AuthService {
         nicknameValidator.validate(request.nickname());
         validateRequiredTerms(request.termAgreements());
         validatePassword(request.password());
-        s3FileService.verifyPublicUrlExists(request.profileImageUrl());
+        s3FileService.verifyDefaultProfileImageUrl(request.profileImageUrl());
 
         User user = User.builder()
                 .email(request.email())
@@ -175,7 +175,7 @@ public class AuthService {
 
         nicknameValidator.validate(request.nickname());
         validateRequiredTerms(request.termAgreements());
-        s3FileService.verifyPublicUrlExists(request.profileImageUrl());
+        s3FileService.verifyDefaultProfileImageUrl(request.profileImageUrl());
 
         User user = userRepository.save(User.builder()
                 .email(info.email())
