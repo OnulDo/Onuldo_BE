@@ -582,7 +582,10 @@ public class PartyService {
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(party.getId());
 
-        LocalDate today = timeService.todayKst();
+        // 서버 시간대가 KST가 아닐 수 있으므로 now/today/currentTime 모두 TimeService 기준으로 통일
+        LocalDateTime now = timeService.nowKst();
+        LocalDate today = now.toLocalDate();
+        LocalTime currentTime = now.toLocalTime();
         List<Verification> todayVerifications =
                 verificationRepository.findTodayVerificationsByPartyId(party.getId(), today);
 
@@ -608,8 +611,6 @@ public class PartyService {
                 })
                 .toList();
 
-        // 서버 시간대가 KST가 아닐 수 있으므로 now/today 모두 TimeService 기준으로 통일
-        LocalDateTime now = timeService.nowKst();
         LocalTime deadline = challenge.getTimeEnd();
         // 자정 경계를 포함해 마감 임박 여부를 판단하기 위해 날짜가 결합된 deadlineAt을 사용
         // (LocalTime만으로 minusHours(1)을 계산하면 마감이 자정 부근일 때 전날 시각으로 순환해버림)
@@ -630,7 +631,7 @@ public class PartyService {
                 challenge,
                 myVerification,
                 today,
-                now.toLocalTime()
+                currentTime
         );
         PartyHomeCardStatus status = toPartyHomeCardStatus(dailyStatus);
         LocalDateTime verifiedAt = dailyStatus == DailyChallengeStatus.SUCCESS && myVerification != null
