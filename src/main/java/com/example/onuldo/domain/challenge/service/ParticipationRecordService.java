@@ -104,6 +104,7 @@ public class ParticipationRecordService {
                 .participationId(participation.getId())
                 .challengeId(challenge.getId())
                 .challengeTitle(challenge.getName())
+                .category(challenge.getCategory())
                 .isVerifiedToday(isVerifiedToday)
                 .daysUntilEnd(calculateDaysUntilEnd(date, participation.getEndDate()))
                 .achievementRate(achievementRate)

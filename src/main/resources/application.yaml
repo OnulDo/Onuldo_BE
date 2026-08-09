@@ -17,3 +17,6 @@ springdoc:
     tags-sorter: alpha
   api-docs:
     path: /v3/api-docs
+
+discord:
+  webhook-url: ${DISCORD_WEBHOOK_URL:}

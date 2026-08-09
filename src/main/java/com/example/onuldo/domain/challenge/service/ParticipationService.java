@@ -9,12 +9,14 @@ import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeL
 import com.example.onuldo.domain.challenge.dto.response.ParticipationResDto;
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.entity.Challenge;
+import com.example.onuldo.domain.challenge.entity.ChallengePot;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Verification;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
+import com.example.onuldo.domain.challenge.enums.DailyChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
-import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
+import com.example.onuldo.domain.challenge.repository.ChallengePotRepository;
 import com.example.onuldo.domain.challenge.repository.ChallengeRepository;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.PartyCountProjection;
@@ -42,13 +44,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collection;
+import java.time.LocalTime;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -61,11 +61,15 @@ public class ParticipationService {
     private final ParticipationRepository participationRepository;
     private final VerificationRepository verificationRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final ChallengePotRepository challengePotRepository;
     private final ChallengeNotificationService challengeNotificationService;
     private final TimeService timeService;
     private final ParticipationValidator participationValidator;
+    private final VerificationStreakService verificationStreakService;
 
-    private static final BigDecimal BONUS_RATE = BigDecimal.valueOf(0.025);
+    // 개인 챌린지 몰수금 pot은 싱글톤 행 하나로 운용한다.
+    private static final Long CHALLENGE_POT_ID = 1L;
+    private final DailyChallengeStatusResolver dailyChallengeStatusResolver;
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,
@@ -93,8 +97,13 @@ public class ParticipationService {
         user.setPointBalance(balanceAfter);
         userRepository.save(user);
 
+        // 이 순간의 pot 운영 β를 참가에 스냅샷 — 이후 β가 재조정돼도 이 참가는 이 값으로 정산된다.
+        ChallengePot pot = challengePotRepository.findByIdForUpdate(CHALLENGE_POT_ID)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_POT_NOT_FOUND));
+        BigDecimal appliedBonusRate = pot.getCurrentBonusRate();
+
         Participation participation = createPersonalParticipation(
-                user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate
+                user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate, appliedBonusRate
         );
         participationRepository.save(participation);
         challengeNotificationService.scheduleChallengeLifecycleNotifications(participation);
@@ -109,7 +118,7 @@ public class ParticipationService {
         );
 
         int bonusAmount = BigDecimal.valueOf(request.depositAmount())
-                .multiply(BONUS_RATE)
+                .multiply(appliedBonusRate)
                 .setScale(0, RoundingMode.HALF_UP)
                 .intValue();
         int expectedRefundAmount = request.depositAmount() + bonusAmount;
@@ -148,24 +157,28 @@ public class ParticipationService {
     }
 
     public DailyChallengeListResDto getDailyChallenges(Long userId) {
-        LocalDate date = timeService.todayKst();
-
         List<Participation> participations = participationRepository
-                .findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
-                        userId,
-                        ParticipationStatus.ONGOING,
-                        date,
-                        date
-                );
-
-        Set<Long> verifiedChallengeIds = new HashSet<>(verificationRepository
-                .findVerifiedChallengeIdsByUserIdAndVerificationDate(userId, date));
+                .findAllWithChallengeByUserIdAndStatusOrderByIdDesc(userId, ParticipationStatus.ONGOING);
+        LocalDateTime now = timeService.nowKst();
+        LocalDate today = now.toLocalDate();
+        LocalTime currentTime = now.toLocalTime();
+        Map<Long, Verification> latestVerificationByParticipationId = findLatestVerificationByParticipationId(
+                participations.stream().map(Participation::getId).toList(),
+                today
+        );
+        Map<Long, Integer> streakByParticipationId = verificationStreakService.calculateStreaks(
+                participations.stream().map(Participation::getId).toList(),
+                today
+        );
 
         return DailyChallengeListResDto.builder()
                 .challenges(participations.stream()
                         .map(participation -> toDailyChallengeResDto(
                                 participation,
-                                verifiedChallengeIds.contains(participation.getChallenge().getId())
+                                latestVerificationByParticipationId.get(participation.getId()),
+                                streakByParticipationId.getOrDefault(participation.getId(), 0),
+                                today,
+                                currentTime
                         ))
                         .toList())
                 .build();
@@ -227,7 +240,7 @@ public class ParticipationService {
                 .filter(participation -> participation.getParticipationType() == ParticipationType.PERSONAL)
                 .toList();
 
-        Map<Long, Integer> streakByParticipationId = calculateStreaks(
+        Map<Long, Integer> streakByParticipationId = verificationStreakService.calculateStreaks(
                 completedChallenges.stream().map(Participation::getId).toList(),
                 date
         );
@@ -271,7 +284,8 @@ public class ParticipationService {
             Integer depositAmount,
             Integer durationWeeks,
             LocalDate startDate,
-            LocalDate endDate
+            LocalDate endDate,
+            BigDecimal appliedBonusRate
     ) {
         Participation participation = Participation.builder()
                 .user(user)
@@ -282,6 +296,7 @@ public class ParticipationService {
                 .durationWeeks(durationWeeks)
                 .startDate(startDate)
                 .endDate(endDate)
+                .appliedBonusRate(appliedBonusRate)
                 .build();
         validateParticipationState(participation);
         return participation;
@@ -322,8 +337,21 @@ public class ParticipationService {
                 .build();
     }
 
-    private DailyChallengeResDto toDailyChallengeResDto(Participation participation, boolean verifiedOnDate) {
+    private DailyChallengeResDto toDailyChallengeResDto(
+            Participation participation,
+            Verification latestVerification,
+            int streakDays,
+            LocalDate today,
+            LocalTime currentTime
+    ) {
         Challenge challenge = participation.getChallenge();
+        DailyChallengeStatus dailyStatus = dailyChallengeStatusResolver.resolve(
+                participation,
+                challenge,
+                latestVerification,
+                today,
+                currentTime
+        );
 
         return DailyChallengeResDto.builder()
                 .participationId(participation.getId())
@@ -342,8 +370,29 @@ public class ParticipationService {
                 .durationWeeks(participation.getDurationWeeks())
                 .startDate(participation.getStartDate())
                 .endDate(participation.getEndDate())
-                .verifiedOnDate(verifiedOnDate)
+                .dailyStatus(dailyStatus)
+                .verifiedOnDate(dailyStatus == DailyChallengeStatus.SUCCESS)
+                .streakDays(streakDays)
                 .build();
+    }
+
+    private Map<Long, Verification> findLatestVerificationByParticipationId(
+            List<Long> participationIds,
+            LocalDate date
+    ) {
+        if (participationIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return verificationRepository
+                .findAllByParticipationIdInAndVerificationDateOrderByLatest(participationIds, date)
+                .stream()
+                .collect(Collectors.toMap(
+                        verification -> verification.getParticipation().getId(),
+                        verification -> verification,
+                        (latest, ignored) -> latest,
+                        LinkedHashMap::new
+                ));
     }
 
     private CompletedPartyResDto toCompletedPartyResDto(
@@ -382,38 +431,4 @@ public class ParticipationService {
                 .build();
     }
 
-    private Map<Long, Integer> calculateStreaks(Collection<Long> participationIds, LocalDate date) {
-        if (participationIds.isEmpty()) {
-            return Map.of();
-        }
-
-        Map<Long, List<Verification>> historyByParticipationId = verificationRepository
-                .findAllByParticipation_IdIn(participationIds)
-                .stream()
-                .collect(Collectors.groupingBy(verification -> verification.getParticipation().getId()));
-
-        Map<Long, Integer> streakByParticipationId = new HashMap<>();
-        for (Long participationId : participationIds) {
-            List<Verification> history = historyByParticipationId
-                    .getOrDefault(participationId, List.of())
-                    .stream()
-                    .sorted(Comparator.comparing(Verification::getVerificationDate).reversed())
-                    .toList();
-
-            int streak = 0;
-            LocalDate expected = date;
-            for (Verification verification : history) {
-                if (verification.getReview() != VerificationReviewStatus.PASS) {
-                    break;
-                }
-                if (!verification.getVerificationDate().equals(expected)) {
-                    break;
-                }
-                streak++;
-                expected = expected.minusDays(1);
-            }
-            streakByParticipationId.put(participationId, streak);
-        }
-        return streakByParticipationId;
-    }
 }
