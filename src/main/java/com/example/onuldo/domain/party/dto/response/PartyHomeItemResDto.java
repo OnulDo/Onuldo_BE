@@ -1,5 +1,6 @@
 package com.example.onuldo.domain.party.dto.response;
 
+import com.example.onuldo.domain.challenge.enums.DailyChallengeStatus;
 import com.example.onuldo.domain.party.enums.PartyHomeCardStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -30,6 +31,8 @@ public record PartyHomeItemResDto(
         boolean showRemainingTime,
         @Schema(example = "NOT_VERIFIED")
         PartyHomeCardStatus status,
+        @Schema(example = "WAITING")
+        DailyChallengeStatus dailyStatus,
         @Schema(example = "2026-07-23T09:00:00", nullable = true)
         LocalDateTime verifiedAt,
         List<PartyHomeMemberResDto> members

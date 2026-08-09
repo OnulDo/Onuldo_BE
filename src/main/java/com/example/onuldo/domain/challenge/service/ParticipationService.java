@@ -13,6 +13,7 @@ import com.example.onuldo.domain.challenge.entity.ChallengePot;
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Verification;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
+import com.example.onuldo.domain.challenge.enums.DailyChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
@@ -44,13 +45,13 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -69,6 +70,7 @@ public class ParticipationService {
 
     // 개인 챌린지 몰수금 pot은 싱글톤 행 하나로 운용한다.
     private static final Long CHALLENGE_POT_ID = 1L;
+    private final DailyChallengeStatusResolver dailyChallengeStatusResolver;
 
     public ParticipationResDto participatePersonalChallenge(
             Long userId,
@@ -155,24 +157,23 @@ public class ParticipationService {
     }
 
     public DailyChallengeListResDto getDailyChallenges(Long userId) {
-        LocalDate date = timeService.todayKst();
-
         List<Participation> participations = participationRepository
-                .findAllByUser_IdAndStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByIdDesc(
-                        userId,
-                        ParticipationStatus.ONGOING,
-                        date,
-                        date
-                );
-
-        Set<Long> verifiedChallengeIds = new HashSet<>(verificationRepository
-                .findVerifiedChallengeIdsByUserIdAndVerificationDate(userId, date));
+                .findAllWithChallengeByUserIdAndStatusOrderByIdDesc(userId, ParticipationStatus.ONGOING);
+        LocalDateTime now = timeService.nowKst();
+        LocalDate today = now.toLocalDate();
+        LocalTime currentTime = now.toLocalTime();
+        Map<Long, Verification> latestVerificationByParticipationId = findLatestVerificationByParticipationId(
+                participations.stream().map(Participation::getId).toList(),
+                today
+        );
 
         return DailyChallengeListResDto.builder()
                 .challenges(participations.stream()
                         .map(participation -> toDailyChallengeResDto(
                                 participation,
-                                verifiedChallengeIds.contains(participation.getChallenge().getId())
+                                latestVerificationByParticipationId.get(participation.getId()),
+                                today,
+                                currentTime
                         ))
                         .toList())
                 .build();
@@ -331,8 +332,20 @@ public class ParticipationService {
                 .build();
     }
 
-    private DailyChallengeResDto toDailyChallengeResDto(Participation participation, boolean verifiedOnDate) {
+    private DailyChallengeResDto toDailyChallengeResDto(
+            Participation participation,
+            Verification latestVerification,
+            LocalDate today,
+            LocalTime currentTime
+    ) {
         Challenge challenge = participation.getChallenge();
+        DailyChallengeStatus dailyStatus = dailyChallengeStatusResolver.resolve(
+                participation,
+                challenge,
+                latestVerification,
+                today,
+                currentTime
+        );
 
         return DailyChallengeResDto.builder()
                 .participationId(participation.getId())
@@ -351,8 +364,28 @@ public class ParticipationService {
                 .durationWeeks(participation.getDurationWeeks())
                 .startDate(participation.getStartDate())
                 .endDate(participation.getEndDate())
-                .verifiedOnDate(verifiedOnDate)
+                .dailyStatus(dailyStatus)
+                .verifiedOnDate(dailyStatus == DailyChallengeStatus.SUCCESS)
                 .build();
+    }
+
+    private Map<Long, Verification> findLatestVerificationByParticipationId(
+            List<Long> participationIds,
+            LocalDate date
+    ) {
+        if (participationIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return verificationRepository
+                .findAllByParticipationIdInAndVerificationDateOrderByLatest(participationIds, date)
+                .stream()
+                .collect(Collectors.toMap(
+                        verification -> verification.getParticipation().getId(),
+                        verification -> verification,
+                        (latest, ignored) -> latest,
+                        LinkedHashMap::new
+                ));
     }
 
     private CompletedPartyResDto toCompletedPartyResDto(

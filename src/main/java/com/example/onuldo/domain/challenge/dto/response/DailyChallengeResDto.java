@@ -1,6 +1,7 @@
 package com.example.onuldo.domain.challenge.dto.response;
 
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
+import com.example.onuldo.domain.challenge.enums.DailyChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -43,6 +44,8 @@ public record DailyChallengeResDto(
         LocalDate startDate,
         @Schema(example = "2026-08-24")
         LocalDate endDate,
+        @Schema(example = "WAITING")
+        DailyChallengeStatus dailyStatus,
         @Schema(example = "true")
         Boolean verifiedOnDate
 ) {
