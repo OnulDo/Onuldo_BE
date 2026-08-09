@@ -7,7 +7,6 @@ import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
-import com.example.onuldo.domain.auth.entity.DeviceLog;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.domain.auth.entity.Term;
@@ -31,14 +30,9 @@ import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.global.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -76,7 +70,6 @@ public class AuthService {
     private final TimeService timeService;
     private final NicknameValidator nicknameValidator;
     private final S3FileService s3FileService;
-    private final PlatformTransactionManager transactionManager;
 
     @Transactional
     public AuthResDto signup(EmailSignupReqDto request) {
@@ -213,45 +206,7 @@ public class AuthService {
     private void saveDeviceLog(User user, DeviceLogReqDto device) {
         LocalDateTime now = timeService.nowKst();
         String fcmToken = normalizeFcmToken(device.fcmToken());
-
-        try {
-            executeInNewTransaction(status -> {
-                upsertDeviceLog(user, device.deviceId(), fcmToken, now);
-                return null;
-            });
-        } catch (DataIntegrityViolationException e) {
-            retryUpdateExistingDeviceLog(user.getId(), device.deviceId(), fcmToken, now, e);
-        }
-    }
-
-    private void upsertDeviceLog(User user, String deviceId, String fcmToken, LocalDateTime now) {
-        deviceLogRepository.findByUser_IdAndDeviceId(user.getId(), deviceId)
-                .ifPresentOrElse(
-                        deviceLog -> deviceLog.update(fcmToken, now),
-                        () -> deviceLogRepository.saveAndFlush(
-                                DeviceLog.builder()
-                                        .user(user)
-                                        .deviceId(deviceId)
-                                        .fcmToken(fcmToken)
-                                        .lastSeenAt(now)
-                                        .build()
-                        )
-                );
-    }
-
-    private void retryUpdateExistingDeviceLog(
-            Long userId,
-            String deviceId,
-            String fcmToken,
-            LocalDateTime now,
-            DataIntegrityViolationException originalException
-    ) {
-        executeInNewTransaction(status -> {
-            DeviceLog deviceLog = deviceLogRepository.findByUser_IdAndDeviceId(userId, deviceId)
-                    .orElseThrow(() -> originalException);
-            deviceLog.update(fcmToken, now);
-            return null;
-        });
+        deviceLogRepository.upsert(user.getId(), device.deviceId(), fcmToken, now);
     }
 
     private String normalizeFcmToken(String fcmToken) {
@@ -346,11 +301,5 @@ public class AuthService {
 
     private boolean isLocked(User user, LocalDateTime now) {
         return user.getLockedUntil() != null && user.getLockedUntil().isAfter(now);
-    }
-
-    private <T> T executeInNewTransaction(TransactionCallback<T> callback) {
-        TransactionTemplate template = new TransactionTemplate(transactionManager);
-        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        return template.execute(callback);
     }
 }
