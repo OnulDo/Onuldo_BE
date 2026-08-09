@@ -39,9 +39,6 @@ public class DeviceLog {
     @Column(name = "device_id", nullable = false, length = 255)
     private String deviceId;
 
-    @Column(name = "android_id", length = 255)
-    private String androidId;
-
     @Column(name = "fcm_token", length = 512)
     private String fcmToken;
 

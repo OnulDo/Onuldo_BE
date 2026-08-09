@@ -1,17 +1,20 @@
 package com.example.onuldo.domain.auth.service;
 
+import com.example.onuldo.domain.auth.dto.request.DeviceLogReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
+import com.example.onuldo.domain.auth.entity.DeviceLog;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.domain.auth.entity.Term;
 import com.example.onuldo.domain.auth.entity.TermAgreement;
 import com.example.onuldo.domain.auth.entity.TermAgreementId;
 import com.example.onuldo.domain.auth.enums.TermType;
+import com.example.onuldo.domain.auth.repository.DeviceLogRepository;
 import com.example.onuldo.domain.auth.repository.TermAgreementRepository;
 import com.example.onuldo.domain.auth.repository.TermRepository;
 import com.example.onuldo.domain.auth.service.client.dto.OAuthUserInfo;
@@ -61,6 +64,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final TermRepository termRepository;
     private final TermAgreementRepository termAgreementRepository;
+    private final DeviceLogRepository deviceLogRepository;
     private final NotificationSettingRepository notificationSettingRepository;
     private final LoginFailureService loginFailureService;
     private final PasswordEncoder passwordEncoder;
@@ -93,6 +97,7 @@ public class AuthService {
         User savedUser = userRepository.save(user);
         saveTermAgreements(savedUser, request.termAgreements());
         saveDefaultNotificationSetting(savedUser);
+        saveDeviceLog(savedUser, request.device());
         return createAuthResponse(savedUser);
     }
 
@@ -119,9 +124,11 @@ public class AuthService {
         user.setLockedUntil(null);
         user.setLastLoginAt(timeService.nowKst());
         userRepository.save(user);
+        saveDeviceLog(user, request.device());
         return createAuthResponse(user);
     }
 
+    @Transactional
     public AuthResDto refresh(RefreshTokenReqDto request) {
         Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
         User user = userRepository.findByIdForUpdate(userId)
@@ -131,6 +138,7 @@ public class AuthService {
             throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
         }
 
+        saveDeviceLog(user, request.device());
         return createAuthResponse(user);
     }
 
@@ -157,6 +165,7 @@ public class AuthService {
 
         user.setLastLoginAt(timeService.nowKst());
         userRepository.save(user);
+        saveDeviceLog(user, request.device());
 
         return OAuthResDto.builder()
                 .accessToken(jwtTokenProvider.createAccessToken(user))
@@ -190,7 +199,19 @@ public class AuthService {
 
         saveTermAgreements(user, request.termAgreements());
         saveDefaultNotificationSetting(user);
+        saveDeviceLog(user, request.device());
         return createAuthResponse(user);
+    }
+
+    private void saveDeviceLog(User user, DeviceLogReqDto device) {
+        deviceLogRepository.save(
+                DeviceLog.builder()
+                        .user(user)
+                        .deviceId(device.deviceId())
+                        .fcmToken(device.fcmToken())
+                        .lastSeenAt(timeService.nowKst())
+                        .build()
+        );
     }
 
     private AuthResDto createAuthResponse(User user) {
