@@ -503,7 +503,9 @@ public class PartyService {
         List<Party> ongoingParties = partyRepository.findOngoingPartiesByUserId(userId);
 
         Map<Long, Participation> myParticipationByPartyId = findMyPartyParticipationsByPartyId(ongoingParties, userId);
-        LocalDate today = timeService.todayKst();
+        LocalDateTime now = timeService.nowKst();
+        LocalDate today = now.toLocalDate();
+        LocalTime currentTime = now.toLocalTime();
         Map<Long, Integer> streakByParticipationId = verificationStreakService.calculateStreaks(
                 myParticipationByPartyId.values().stream().map(Participation::getId).toList(),
                 today
@@ -515,7 +517,7 @@ public class PartyService {
                     int streakDays = myParticipation == null
                             ? 0
                             : streakByParticipationId.getOrDefault(myParticipation.getId(), 0);
-                    return generatePartyHomeItem(party, userId, myParticipation, streakDays);
+                    return generatePartyHomeItem(party, userId, myParticipation, streakDays, now, today, currentTime);
                 })
                 .filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
@@ -589,7 +591,10 @@ public class PartyService {
             Party party,
             Long userId,
             Participation myParticipation,
-            int streakDays
+            int streakDays,
+            LocalDateTime now,
+            LocalDate today,
+            LocalTime currentTime
     ) {
         PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(party.getId())
                 .orElse(null);
@@ -600,10 +605,6 @@ public class PartyService {
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(party.getId());
 
-        // 서버 시간대가 KST가 아닐 수 있으므로 now/today/currentTime 모두 TimeService 기준으로 통일
-        LocalDateTime now = timeService.nowKst();
-        LocalDate today = now.toLocalDate();
-        LocalTime currentTime = now.toLocalTime();
         List<Verification> todayVerifications =
                 verificationRepository.findTodayVerificationsByPartyId(party.getId(), today);
 
