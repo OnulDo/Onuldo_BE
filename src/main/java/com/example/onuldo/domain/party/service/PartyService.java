@@ -619,30 +619,23 @@ public class PartyService {
                 && !now.isBefore(deadlineAt.minusHours(1))
                 && now.isBefore(deadlineAt);
 
-        Verification myVerification = verificationByUserId.get(userId);
-        PartyHomeCardStatus status;
-        LocalDateTime verifiedAt = null;
-
-        if (myVerification == null) {
-            // HOME-04: 오늘 인증 미완료 + 마감 시각 전이면 [인증하기] 노출
-            // 마감 후 미인증은 오늘 하루치 실패로 표시함 (챌린지 전체 SUCCESS/FAIL과는 무관, 화면 표시용 판단)
-            boolean beforeDeadline = deadlineAt == null || now.isBefore(deadlineAt);
-            status = beforeDeadline ? PartyHomeCardStatus.NOT_VERIFIED : PartyHomeCardStatus.FAIL;
-        } else {
-            status = switch (myVerification.getReview()) {
-                case PASS -> PartyHomeCardStatus.SUCCESS;
-                case AUTO_FAIL -> PartyHomeCardStatus.FAIL;
-                case PENDING, MANUAL_REVIEW -> PartyHomeCardStatus.PENDING;
-            };
-            if (status == PartyHomeCardStatus.SUCCESS) {
-                verifiedAt = myVerification.getVerifiedAt();
-            }
-        }
-
         // startDate/endDate는 startParty()에서 생성된 Participation을 단일 원본으로 사용한다
         // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 날짜가 하루 어긋남)
         LocalDate startDate = myParticipation != null ? myParticipation.getStartDate() : null;
         LocalDate endDate = myParticipation != null ? myParticipation.getEndDate() : null;
+
+        Verification myVerification = verificationByUserId.get(userId);
+        DailyChallengeStatus dailyStatus = dailyChallengeStatusResolver.resolve(
+                myParticipation,
+                challenge,
+                myVerification,
+                today,
+                now.toLocalTime()
+        );
+        PartyHomeCardStatus status = toPartyHomeCardStatus(dailyStatus);
+        LocalDateTime verifiedAt = dailyStatus == DailyChallengeStatus.SUCCESS && myVerification != null
+                ? myVerification.getVerifiedAt()
+                : null;
 
         PartyHomeItemResDto item = PartyHomeItemResDto.builder()
                 .partyId(party.getId())
