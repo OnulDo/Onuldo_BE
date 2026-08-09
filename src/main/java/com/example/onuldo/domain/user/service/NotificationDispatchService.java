@@ -2,6 +2,10 @@ package com.example.onuldo.domain.user.service;
 
 import com.example.onuldo.domain.auth.entity.DeviceLog;
 import com.example.onuldo.domain.auth.repository.DeviceLogRepository;
+import com.example.onuldo.domain.challenge.entity.Participation;
+import com.example.onuldo.domain.challenge.entity.Verification;
+import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
+import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.user.entity.Notification;
 import com.example.onuldo.domain.user.entity.NotificationDispatch;
 import com.example.onuldo.domain.user.entity.User;
@@ -27,7 +31,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -48,6 +54,8 @@ public class NotificationDispatchService {
     private final NotificationCreateService notificationCreateService;
     private final NotificationSettingRepository notificationSettingRepository;
     private final DeviceLogRepository deviceLogRepository;
+    private final ParticipationRepository participationRepository;
+    private final VerificationRepository verificationRepository;
     private final FcmPushService fcmPushService;
     private final TimeService timeService;
     private final PlatformTransactionManager transactionManager;
@@ -185,9 +193,10 @@ public class NotificationDispatchService {
 
             int failureCount = 0;
             String lastFailureReason = null;
+            Map<String, String> pushData = buildPushData(dispatch, notification);
             for (DeviceLog deviceLog : deviceLogs) {
                 try {
-                    fcmPushService.send(deviceLog, notification.getTitle(), notification.getContent());
+                    fcmPushService.send(deviceLog, notification.getTitle(), notification.getContent(), pushData);
                 } catch (Exception e) {
                     failureCount++;
                     lastFailureReason = e.getMessage();
@@ -282,6 +291,163 @@ public class NotificationDispatchService {
                 .orElse(true);
     }
 
+    private Map<String, String> buildPushData(NotificationDispatch dispatch, Notification notification) {
+        Map<String, String> data = new LinkedHashMap<>();
+        putIfNotNull(data, "notificationId", notification.getId());
+        putIfNotNull(data, "notificationType", dispatch.getType());
+        putIfNotNull(data, "refType", dispatch.getRefType());
+        putIfNotNull(data, "refId", dispatch.getRefId());
+        data.put("landing", resolveLanding(dispatch.getType()));
+        data.put("fallbackLanding", "HOME");
+
+        NotificationTarget target = resolveNotificationTarget(dispatch);
+        putIfNotNull(data, "participationId", target.participationId());
+        putIfNotNull(data, "challengeId", target.challengeId());
+        putIfNotNull(data, "partyId", target.partyId());
+        putIfNotNull(data, "verificationId", target.verificationId());
+        return data;
+    }
+
+    private String resolveLanding(NotificationType type) {
+        return switch (type) {
+            case VERIFICATION_DEADLINE, CHALLENGE_START -> "HOME";
+            case VERIFICATION_RESULT, CHALLENGE_END_REMINDER -> "CHALLENGE_DETAIL";
+            case PARTY_MEMBER_VERIFIED -> "PARTY_FEED";
+            case REFUND_COMPLETE -> "SOLO_RECORD_COMPLETED";
+            case PARTY_SETTLEMENT_COMPLETE -> "PARTY_SETTLEMENT_RESULT";
+        };
+    }
+
+    private NotificationTarget resolveNotificationTarget(NotificationDispatch dispatch) {
+        Long verificationId = resolveVerificationId(dispatch.getRefType());
+        if (verificationId != null) {
+            Optional<NotificationTarget> target = findTargetByVerificationId(verificationId);
+            if (target.isPresent()) {
+                return withFallbackPartyId(target.get(), dispatch);
+            }
+        }
+
+        Long participationId = resolveParticipationId(dispatch);
+        if (participationId != null) {
+            Optional<NotificationTarget> target = findTargetByParticipationId(participationId)
+                    .map(found -> withVerificationId(found, verificationId));
+            if (target.isPresent()) {
+                return withFallbackPartyId(target.get(), dispatch);
+            }
+        }
+
+        Long partyId = dispatch.getType() == NotificationType.PARTY_MEMBER_VERIFIED
+                ? dispatch.getRefId()
+                : null;
+        return new NotificationTarget(participationId, null, partyId, verificationId);
+    }
+
+    private Optional<NotificationTarget> findTargetByVerificationId(Long verificationId) {
+        return verificationRepository.findAllByIdInWithParticipation(List.of(verificationId))
+                .stream()
+                .findFirst()
+                .map(this::toNotificationTarget);
+    }
+
+    private Optional<NotificationTarget> findTargetByParticipationId(Long participationId) {
+        return participationRepository.findAllByIdInWithChallengeAndParty(List.of(participationId))
+                .stream()
+                .findFirst()
+                .map(this::toNotificationTarget);
+    }
+
+    private NotificationTarget toNotificationTarget(Verification verification) {
+        NotificationTarget target = toNotificationTarget(verification.getParticipation());
+        return new NotificationTarget(
+                target.participationId(),
+                target.challengeId(),
+                target.partyId(),
+                verification.getId()
+        );
+    }
+
+    private NotificationTarget toNotificationTarget(Participation participation) {
+        Long partyId = participation.getParty() == null ? null : participation.getParty().getId();
+        return new NotificationTarget(
+                participation.getId(),
+                participation.getChallenge().getId(),
+                partyId,
+                null
+        );
+    }
+
+    private NotificationTarget withVerificationId(NotificationTarget target, Long verificationId) {
+        if (target.verificationId() != null || verificationId == null) {
+            return target;
+        }
+        return new NotificationTarget(
+                target.participationId(),
+                target.challengeId(),
+                target.partyId(),
+                verificationId
+        );
+    }
+
+    private NotificationTarget withFallbackPartyId(NotificationTarget target, NotificationDispatch dispatch) {
+        if (target.partyId() != null || dispatch.getType() != NotificationType.PARTY_MEMBER_VERIFIED) {
+            return target;
+        }
+        return new NotificationTarget(
+                target.participationId(),
+                target.challengeId(),
+                dispatch.getRefId(),
+                target.verificationId()
+        );
+    }
+
+    private Long resolveParticipationId(NotificationDispatch dispatch) {
+        String refType = dispatch.getRefType();
+        if (refType == null) {
+            return null;
+        }
+
+        if (refType.startsWith("DEADLINE:")
+                || refType.equals("CHALLENGE_START")
+                || refType.startsWith("END_REMINDER:")
+                || refType.startsWith("SETTLEMENT:")) {
+            return dispatch.getRefId();
+        }
+
+        return null;
+    }
+
+    private Long resolveVerificationId(String refType) {
+        Long parsedId = parseIdSuffix(refType, "PARTY_VERIFIED:");
+        if (parsedId != null) {
+            return parsedId;
+        }
+
+        parsedId = parseIdSuffix(refType, "MANUAL_PASS:");
+        if (parsedId != null) {
+            return parsedId;
+        }
+
+        return parseIdSuffix(refType, "MANUAL_REJECT:");
+    }
+
+    private Long parseIdSuffix(String value, String prefix) {
+        if (value == null || !value.startsWith(prefix)) {
+            return null;
+        }
+
+        try {
+            return Long.parseLong(value.substring(prefix.length()));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private void putIfNotNull(Map<String, String> data, String key, Object value) {
+        if (value != null) {
+            data.put(key, String.valueOf(value));
+        }
+    }
+
     // 현재 시간이 푸시 발송 제한 시간대인지 확인하는 메서드
     private boolean isQuietHours(LocalTime time) {
         return !time.isBefore(QUIET_HOURS_START) || time.isBefore(QUIET_HOURS_END);
@@ -290,5 +456,13 @@ public class NotificationDispatchService {
     // 발송 제한 시간대에도 즉시 보낼 수 있는 알림인지 확인하는 메서드
     private boolean isQuietHoursException(NotificationDispatch dispatch) {
         return dispatch.getType() == NotificationType.VERIFICATION_DEADLINE;
+    }
+
+    private record NotificationTarget(
+            Long participationId,
+            Long challengeId,
+            Long partyId,
+            Long verificationId
+    ) {
     }
 }
