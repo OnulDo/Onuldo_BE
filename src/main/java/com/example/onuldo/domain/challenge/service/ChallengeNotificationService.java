@@ -23,8 +23,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -134,7 +132,7 @@ public class ChallengeNotificationService {
         enqueuePush(
                 NotificationDispatchCommand.builder()
                         .userId(participation.getUser().getId())
-                        .type(NotificationType.VERIFICATION_RESULT)
+                        .type(NotificationType.VERIFICATION_APPROVED)
                         .title("인증이 승인됐어요 ✅")
                         .content(participation.getChallenge().getName() + " 인증이 검토를 통과했어요. 오늘도 성공!")
                         .scheduledAt(timeService.nowKst())
@@ -156,7 +154,7 @@ public class ChallengeNotificationService {
         enqueuePush(
                 NotificationDispatchCommand.builder()
                         .userId(participation.getUser().getId())
-                        .type(NotificationType.VERIFICATION_RESULT)
+                        .type(NotificationType.VERIFICATION_REJECTED)
                         .title("인증이 승인되지 않았어요")
                         .content(truncateContent(participation.getChallenge().getName() + " 오늘 인증이 실패 처리됐어요. 사유: " + reason))
                         .scheduledAt(timeService.nowKst())

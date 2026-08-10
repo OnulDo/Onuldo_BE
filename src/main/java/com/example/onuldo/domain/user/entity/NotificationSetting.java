@@ -98,7 +98,7 @@ public class NotificationSetting {
             case CHALLENGE_START -> challengeStart;
             case VERIFICATION_DEADLINE -> verificationDeadline;
             case CHALLENGE_END_REMINDER -> challengeEndReminder;
-            case VERIFICATION_RESULT -> verificationResult;
+            case VERIFICATION_APPROVED, VERIFICATION_REJECTED -> verificationResult;
             case PARTY_MEMBER_VERIFIED -> partyMemberVerified;
             case REFUND_COMPLETE, PARTY_SETTLEMENT_COMPLETE -> refundComplete;
         };

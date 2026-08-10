@@ -10,7 +10,20 @@ import java.time.LocalDateTime;
 public record NotificationListItemResDto(
         @Schema(example = "1")
         Long notificationId,
-        @Schema(example = "VERIFICATION_DEADLINE")
+        @Schema(
+                description = """
+                        알림 타입
+                        - VERIFICATION_DEADLINE: 인증 마감 리마인더
+                        - VERIFICATION_APPROVED: 인증 승인 결과
+                        - VERIFICATION_REJECTED: 인증 기각 결과
+                        - PARTY_MEMBER_VERIFIED: 파티원 인증 완료
+                        - CHALLENGE_START: 새 챌린지 시작
+                        - CHALLENGE_END_REMINDER: 종료일 리마인더
+                        - REFUND_COMPLETE: 개인 챌린지 정산/환급 완료
+                        - PARTY_SETTLEMENT_COMPLETE: 파티 정산 완료
+                        """,
+                example = "VERIFICATION_DEADLINE"
+        )
         NotificationType type,
         @Schema(example = "1")
         Long challengeId,

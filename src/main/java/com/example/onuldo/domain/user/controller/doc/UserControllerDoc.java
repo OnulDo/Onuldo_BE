@@ -122,6 +122,16 @@ public interface UserControllerDoc {
 
                     응답에는 알림 카드 화면 구성을 위한 제목, 본문, 상대 시간과 이동에 필요한 challengeId/partyId가 포함됩니다.
                     알림 보관 기간은 30일이며, 생성 후 30일이 지난 알림은 조회되지 않습니다.
+
+                    알림 타입(type)
+                    - VERIFICATION_DEADLINE: 인증 마감 리마인더
+                    - VERIFICATION_APPROVED: 인증 승인 결과
+                    - VERIFICATION_REJECTED: 인증 기각 결과
+                    - PARTY_MEMBER_VERIFIED: 파티원 인증 완료
+                    - CHALLENGE_START: 새 챌린지 시작
+                    - CHALLENGE_END_REMINDER: 종료일 리마인더
+                    - REFUND_COMPLETE: 개인 챌린지 정산/환급 완료
+                    - PARTY_SETTLEMENT_COMPLETE: 파티 정산 완료
                     """
     )
     @ApiResponse(responseCode = "200")
