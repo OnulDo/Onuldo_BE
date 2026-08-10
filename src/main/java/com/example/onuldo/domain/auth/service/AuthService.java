@@ -76,7 +76,7 @@ public class AuthService {
 
     @Transactional
     public AuthResDto signup(EmailSignupReqDto request) {
-        emailRateLimiter.consume(request.email());
+        emailRateLimiter.consume(request.email(), "signup");
 
         if (userRepository.existsByEmail(request.email())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
@@ -107,8 +107,9 @@ public class AuthService {
 
     @Transactional(noRollbackFor = RestApiException.class)
     public AuthResDto login(EmailLoginReqDto request) {
-        emailRateLimiter.consume(request.email());
-
+        // 이메일 단독 키로 소진하지 않음: 공개 email/exists 요청으로 특정 유저의 로그인을
+        // 미리 막아버리는 걸 방지. 로그인 남용은 IP 제한(RateLimitInterceptor) +
+        // 실패 횟수 기반 잠금(LoginFailureService/_LOGIN_LOCKED)으로 방어한다.
         User user = userRepository.findByEmailForUpdate(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
@@ -151,7 +152,7 @@ public class AuthService {
     @Transactional
     public OAuthResDto oauthLogin(OAuthLoginReqDto request) {
         OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
-        emailRateLimiter.consume(info.email());
+        emailRateLimiter.consume(info.email(), "oauth-login");
 
         Optional<User> existingUser = userRepository.findByEmail(info.email());
         if (existingUser.isEmpty()) {
@@ -184,7 +185,7 @@ public class AuthService {
     @Transactional
     public AuthResDto oauthSignup(OAuthSignupReqDto request) {
         OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
-        emailRateLimiter.consume(info.email());
+        emailRateLimiter.consume(info.email(), "oauth-signup");
 
         if (userRepository.existsByEmail(info.email())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
@@ -213,7 +214,7 @@ public class AuthService {
     }
 
     public EmailExistsResDto checkEmailExists(String email) {
-        emailRateLimiter.consume(email);
+        emailRateLimiter.consume(email, "email-exists");
 
         return EmailExistsResDto.builder()
                 .exists(userRepository.existsByEmail(email))

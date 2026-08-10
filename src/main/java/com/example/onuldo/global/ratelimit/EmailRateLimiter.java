@@ -22,9 +22,11 @@ public class EmailRateLimiter {
             .maximumSize(100_000)
             .build();
 
-    public void consume(String email) {
-        String emailKey = email.toLowerCase(Locale.ROOT);
-        Bucket bucket = emailBuckets.get(emailKey, key -> newBucket(EMAIL_LIMIT_PER_MINUTE, Duration.ofMinutes(1)));
+    // scope로 동작 유형(signup/oauth-login 등)을 구분해, 공개 엔드포인트에서 특정 이메일의
+    // 버킷을 미리 소진시켜 다른 동작(특히 로그인)을 막는 걸 방지한다.
+    public void consume(String email, String scope) {
+        String bucketKey = scope + ":" + email.toLowerCase(Locale.ROOT);
+        Bucket bucket = emailBuckets.get(bucketKey, key -> newBucket(EMAIL_LIMIT_PER_MINUTE, Duration.ofMinutes(1)));
         if (!bucket.tryConsume(1)) {
             throw new RestApiException(GlobalErrorStatus._RATE_LIMIT_EXCEEDED);
         }
