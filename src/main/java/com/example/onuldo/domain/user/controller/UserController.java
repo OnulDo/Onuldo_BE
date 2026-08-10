@@ -20,12 +20,12 @@ import com.example.onuldo.domain.user.service.NotificationQueryService;
 import com.example.onuldo.domain.user.service.PointService;
 import com.example.onuldo.domain.user.service.UserService;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -97,14 +97,11 @@ public class UserController implements UserControllerDoc {
             @AuthUser
             Long userId,
 
-            @RequestParam(required = false)
-            String cursor,
-
-            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
-            @Max(value = CursorConstants.MAX_SIZE, message = "size는 최대 50까지 가능합니다.")
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     ) {
-        return notificationQueryService.getNotifications(userId, cursor, size);
+        return notificationQueryService.getNotifications(userId, pagination.getCursor(), pagination.getSize());
     }
 
     @PostMapping("/wallet/charges")
@@ -164,13 +161,10 @@ public class UserController implements UserControllerDoc {
             @RequestParam(required = false)
             PointTransactionType type,
 
-            @RequestParam(required = false)
-            String cursor,
-
-            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
-            @Max(value = CursorConstants.MAX_SIZE, message = "size는 최대 50까지 가능합니다.")
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     ) {
-        return pointService.getPointTransactions(userId, type, cursor, size);
+        return pointService.getPointTransactions(userId, type, pagination.getCursor(), pagination.getSize());
     }
 }

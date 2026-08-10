@@ -11,7 +11,7 @@ import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,10 +19,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작, 진행 피드, 정산 결과, 홈 화면 관련 API")
 public interface PartyControllerDoc {
@@ -53,13 +52,9 @@ public interface PartyControllerDoc {
     @ApiResponse(responseCode = "200")
     CursorPageResponse<PartyListResDto> getMyParties(
             @AuthUser Long userId,
-            @Parameter(description = "이전 응답의 nextCursor 값. 첫 페이지는 비워둠")
-            @RequestParam(required = false)
-            String cursor,
-            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
-            @RequestParam(defaultValue = "10")
-            @Max(value = CursorConstants.MAX_SIZE, message = "size는 최대 50까지 가능합니다.")
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     );
 
     @Operation(

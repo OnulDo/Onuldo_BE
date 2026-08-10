@@ -7,13 +7,14 @@ import com.example.onuldo.domain.challenge.dto.response.DailyCompletedChallengeL
 import com.example.onuldo.domain.challenge.dto.response.UserChallengeResDto;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.constraints.Max;
+import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
@@ -43,14 +44,9 @@ public interface UserChallengeControllerDoc {
             @RequestParam(required = false)
             ParticipationStatus status,
 
-            @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력")
-            @RequestParam(required = false)
-            String cursor,
-
-            @Parameter(description = "조회할 개수 기본값 10", example = "10")
-            @RequestParam(defaultValue = "10")
-            @Max(value = CursorConstants.MAX_SIZE, message = "size는 최대 50까지 가능합니다.")
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     );
 
     @Operation(

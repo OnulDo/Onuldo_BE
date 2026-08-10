@@ -16,12 +16,12 @@ import com.example.onuldo.domain.party.service.PartyLifecycleService;
 import com.example.onuldo.domain.party.service.PartyMemberService;
 import com.example.onuldo.domain.party.service.PartyService;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -57,13 +57,11 @@ public class PartyController implements PartyControllerDoc {
     public CursorPageResponse<PartyListResDto> getMyParties(
             @AuthUser
             Long userId,
-            @RequestParam(required = false)
-            String cursor,
-            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
-            @Max(value = CursorConstants.MAX_SIZE, message = "size는 최대 50까지 가능합니다.")
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     ) {
-        return partyService.getMyParties(userId, cursor, size);
+        return partyService.getMyParties(userId, pagination.getCursor(), pagination.getSize());
     }
 
     @GetMapping("/{partyId}/waiting-room")

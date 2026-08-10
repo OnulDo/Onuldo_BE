@@ -8,11 +8,11 @@ import com.example.onuldo.domain.challenge.dto.request.ChallengeVerificationReqD
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.service.ChallengeService;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
-import jakarta.validation.constraints.Max;
 import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,17 +33,15 @@ public class ChallengeController implements ChallengeControllerDoc {
 
     @GetMapping
     public CursorPageResponse<ChallengeResDto> getChallenges(
-            @RequestParam(required = false)
-            String cursor,
-            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
-            @Max(value = CursorConstants.MAX_SIZE, message = "size는 최대 50까지 가능합니다.")
-            int size,
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination,
             @RequestParam(required = false)
             ChallengeCategory category,
             @RequestParam(required = false)
             String keyword
     ) {
-        return challengeService.getChallenges(cursor, size, category, keyword);
+        return challengeService.getChallenges(pagination.getCursor(), pagination.getSize(), category, keyword);
     }
 
     @GetMapping("/{challengeId}")
