@@ -2,7 +2,9 @@ package com.example.onuldo.domain.challenge.repository;
 
 import com.example.onuldo.domain.challenge.entity.Verification;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -167,5 +169,20 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             Long participationId,
             LocalDate verificationDate,
             VerificationReviewStatus review
+    );
+
+    // 직접검토 동시 요청 경합 시, 패배한 트랜잭션의 REPEATABLE READ 스냅샷에 상대방이 커밋한 row가
+    // 안 보일 수 있어 locking read로 최신 커밋 데이터를 강제로 읽는다.
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("""
+            SELECT v FROM Verification v
+            WHERE v.participation.id = :participationId
+            AND v.verificationDate = :date
+            AND v.review = :review
+            """)
+    Optional<Verification> findByParticipationIdAndVerificationDateAndReviewForUpdate(
+            @Param("participationId") Long participationId,
+            @Param("date") LocalDate date,
+            @Param("review") VerificationReviewStatus review
     );
 }
