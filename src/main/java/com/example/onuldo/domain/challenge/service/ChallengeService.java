@@ -29,7 +29,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -53,6 +57,7 @@ public class ChallengeService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final S3FileService s3FileService;
+    private final PlatformTransactionManager transactionManager;
 
     public CursorPageResponse<ChallengeResDto> getChallenges(
             String cursor,
@@ -207,7 +212,9 @@ public class ChallengeService {
 
         Verification manualReview;
         try{
-            manualReview = verificationRepository.save(Verification.builder()
+            // IDENTITY 전략은 save() 시점에 즉시 insert가 실행되므로, 제약 위반 예외가 나면
+            // 같은 세션에서 flush를 다시 시도할 때 이 문제가 발생하므로 별도 트랜잭션으로 격리
+            manualReview = executeInNewTransaction(status -> verificationRepository.save(Verification.builder()
                     .participation(participation)
                     .originalVerification(autoFail)
                     .verificationDate(autoFail.getVerificationDate())
@@ -218,7 +225,7 @@ public class ChallengeService {
                     .review(VerificationReviewStatus.MANUAL_REVIEW)
                     .dayScore(autoFail.getDayScore())
                     .verifiedAt(timeService.nowKst())
-                    .build());
+                    .build()));
         } catch(DataIntegrityViolationException e) {
             log.warn("Manual review insert failed with constraint violation. participationId={}, date={}, message={}",
                     participation.getId(), today, e.getMostSpecificCause().getMessage(), e);
@@ -233,6 +240,12 @@ public class ChallengeService {
         return ChallengeManualReviewResDto.builder()
                 .manualReviewRequestedAt(manualReview.getVerifiedAt())
                 .build();
+    }
+
+    private <T> T executeInNewTransaction(TransactionCallback<T> callback) {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return template.execute(callback);
     }
 
     private void triggerSettlementIfLastDay(Participation participation, LocalDate verificationDate) {
