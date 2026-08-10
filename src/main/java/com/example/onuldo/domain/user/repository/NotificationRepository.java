@@ -20,6 +20,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             Long refId
     );
 
+    Optional<Notification> findByUser_IdAndId(Long userId, Long id);
+
     @Query("""
             SELECT n
             FROM Notification n

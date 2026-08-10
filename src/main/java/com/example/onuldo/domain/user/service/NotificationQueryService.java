@@ -48,7 +48,7 @@ public class NotificationQueryService {
             int size
     ) {
         int resolvedSize = CursorConstants.resolveSize(size);
-        CursorPosition cursorPosition = decodeCursor(cursor);
+        CursorPosition cursorPosition = decodeCursor(userId, cursor);
         LocalDateTime storedAfter = timeService.nowKst().minusDays(RETENTION_DAYS);
 
         List<Notification> notifications = notificationRepository.findByUserIdWithCursor(
@@ -71,20 +71,35 @@ public class NotificationQueryService {
         );
     }
 
-    private CursorPosition decodeCursor(String cursor) {
+    private CursorPosition decodeCursor(Long userId, String cursor) {
         if (CursorKeyCodec.isBlank(cursor)) {
             return CursorPosition.empty();
         }
 
         try {
-            String[] parts = CursorKeyCodec.decodeParts(cursor, 2);
-            return new CursorPosition(
-                    LocalDateTime.parse(parts[0], CURSOR_TIME_FORMATTER),
-                    Long.parseLong(parts[1])
-            );
+            String[] parts = CursorKeyCodec.decode(cursor);
+            if (parts.length == 2) {
+                return new CursorPosition(
+                        LocalDateTime.parse(parts[0], CURSOR_TIME_FORMATTER),
+                        Long.parseLong(parts[1])
+                );
+            }
+            if (parts.length == 1) {
+                return decodeLegacyIdCursor(userId, parts[0]);
+            }
+
+            throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
         } catch (RuntimeException e) {
             throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
         }
+    }
+
+    private CursorPosition decodeLegacyIdCursor(Long userId, String cursorId) {
+        Long notificationId = Long.parseLong(cursorId);
+        Notification notification = notificationRepository.findByUser_IdAndId(userId, notificationId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT));
+
+        return new CursorPosition(notification.getCreatedAt(), notification.getId());
     }
 
     private String formatCursorTime(LocalDateTime createdAt) {
