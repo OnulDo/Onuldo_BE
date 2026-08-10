@@ -26,6 +26,7 @@ import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class ChallengeService {
 
     private final ChallengeRepository challengeRepository;
@@ -218,7 +220,12 @@ public class ChallengeService {
                     .verifiedAt(timeService.nowKst())
                     .build());
         } catch(DataIntegrityViolationException e) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_MANUALLY_REVIEWED);
+            log.warn("Manual review insert failed with constraint violation. participationId={}, date={}, message={}",
+                    participation.getId(), today, e.getMostSpecificCause().getMessage(), e);
+            // 동시 요청 경합으로 먼저 들어온 쪽이 이미 만든 row가 있으면 그걸 그대로 성공 응답으로 처리
+            manualReview = verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
+                            participation.getId(), today, VerificationReviewStatus.MANUAL_REVIEW)
+                    .orElseThrow(() -> new RestApiException(GlobalErrorStatus._ALREADY_MANUALLY_REVIEWED));
         }
 
 
