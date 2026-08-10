@@ -223,7 +223,8 @@ public class ChallengeService {
             log.warn("Manual review insert failed with constraint violation. participationId={}, date={}, message={}",
                     participation.getId(), today, e.getMostSpecificCause().getMessage(), e);
             // 동시 요청 경합으로 먼저 들어온 쪽이 이미 만든 row가 있으면 그걸 그대로 성공 응답으로 처리
-            manualReview = verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
+            // locking read로 조회해 REPEATABLE READ 스냅샷 때문에 상대방의 커밋이 안 보이는 것을 방지
+            manualReview = verificationRepository.findByParticipationIdAndVerificationDateAndReviewForUpdate(
                             participation.getId(), today, VerificationReviewStatus.MANUAL_REVIEW)
                     .orElseThrow(() -> new RestApiException(GlobalErrorStatus._ALREADY_MANUALLY_REVIEWED));
         }
