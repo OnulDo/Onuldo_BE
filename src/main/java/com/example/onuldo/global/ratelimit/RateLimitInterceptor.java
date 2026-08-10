@@ -6,7 +6,6 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
@@ -19,7 +18,7 @@ import java.util.Locale;
 public class RateLimitInterceptor implements HandlerInterceptor {
 
     private static final int IP_LIMIT_PER_MINUTE = 5;
-    private static final int EMAIL_LIMIT_PER_HOUR = 3;
+    private static final int EMAIL_LIMIT_PER_MINUTE = 3;
     private static final String EMAIL_PARAM = "email";
     private static final String FORWARDED_FOR_HEADER = "X-Forwarded-For";
 
@@ -30,7 +29,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             .build();
 
     private final Cache<String, Bucket> emailBuckets = Caffeine.newBuilder()
-            .expireAfterAccess(Duration.ofHours(2))
+            .expireAfterAccess(Duration.ofMinutes(10))
             .maximumSize(100_000)
             .build();
 
@@ -45,7 +44,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         String email = request.getParameter(EMAIL_PARAM);
         if (email != null && !email.isBlank()) {
             String emailKey = email.toLowerCase(Locale.ROOT);
-            Bucket emailBucket = emailBuckets.get(emailKey, key -> newBucket(EMAIL_LIMIT_PER_HOUR, Duration.ofHours(1)));
+            Bucket emailBucket = emailBuckets.get(emailKey, key -> newBucket(EMAIL_LIMIT_PER_MINUTE, Duration.ofMinutes(1)));
             if (!emailBucket.tryConsume(1)) {
                 throw new RestApiException(GlobalErrorStatus._RATE_LIMIT_EXCEEDED);
             }
@@ -55,7 +54,10 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     }
 
     private Bucket newBucket(int capacity, Duration period) {
-        Bandwidth limit = Bandwidth.classic(capacity, Refill.greedy(capacity, period));
+        Bandwidth limit = Bandwidth.builder()
+                .capacity(capacity)
+                .refillGreedy(capacity, period)
+                .build();
         return Bucket.builder().addLimit(limit).build();
     }
 
