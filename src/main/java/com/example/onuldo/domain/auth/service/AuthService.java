@@ -198,9 +198,9 @@ public class AuthService {
         return createAuthResponse(user);
     }
 
-    public EmailExistsResDto checkEmailExists(EmailExistsReqDto request) {
+    public EmailExistsResDto checkEmailExists(String email) {
         return EmailExistsResDto.builder()
-                .exists(userRepository.existsByEmail(request.email()))
+                .exists(userRepository.existsByEmail(email))
                 .build();
     }
 

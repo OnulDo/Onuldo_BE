@@ -8,12 +8,16 @@ import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.domain.auth.service.AuthService;
 import com.example.onuldo.global.common.base.BaseResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/auth")
+@Validated
 public class AuthController implements AuthControllerDoc {
 
     private final AuthService authService;
@@ -63,12 +67,17 @@ public class AuthController implements AuthControllerDoc {
         return BaseResponse.onSuccess(authService.oauthSignup(request));
     }
 
-    @PostMapping("/email/exists")
+    @GetMapping("/email/exists")
     public BaseResponse<EmailExistsResDto> checkEmailExists(
-            @Valid
-            @RequestBody
-            EmailExistsReqDto request
+            @NotBlank(message = "이메일은 필수입니다.")
+            @Pattern(
+                    regexp = "^[a-zA-Z0-9+_-]+(\\.[a-zA-Z0-9+_-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?" +
+                            "(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)*\\.[a-zA-Z]{2,}$",
+                    message = "올바른 이메일 형식이 아닙니다."
+            )
+            @RequestParam
+            String email
     ) {
-        return BaseResponse.onSuccess(authService.checkEmailExists(request));
+        return BaseResponse.onSuccess(authService.checkEmailExists(email));
     }
 }

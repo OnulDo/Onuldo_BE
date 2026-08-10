@@ -1,6 +1,5 @@
 package com.example.onuldo.domain.auth.controller.doc;
 
-import com.example.onuldo.domain.auth.dto.request.EmailExistsReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
@@ -11,10 +10,14 @@ import com.example.onuldo.domain.auth.dto.response.EmailExistsResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Auth", description = "이메일 회원가입, 로그인, JWT 재발급 API")
 public interface AuthControllerDoc {
@@ -96,12 +99,15 @@ public interface AuthControllerDoc {
                     실제 가입 시점의 중복 여부는 signup API에서 별도로 최종 검증합니다.
                     """
     )
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            content = @Content(mediaType = "application/json")
-    )
     BaseResponse<EmailExistsResDto> checkEmailExists(
-            @Valid
-            @RequestBody
-            EmailExistsReqDto request
+            @Parameter(description = "확인할 이메일", example = "onuldo@onuldo.com")
+            @NotBlank(message = "이메일은 필수입니다.")
+            @Pattern(
+                    regexp = "^[a-zA-Z0-9+_-]+(\\.[a-zA-Z0-9+_-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?" +
+                            "(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)*\\.[a-zA-Z]{2,}$",
+                    message = "올바른 이메일 형식이 아닙니다."
+            )
+            @RequestParam
+            String email
     );
 }
