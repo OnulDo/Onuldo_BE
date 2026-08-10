@@ -25,10 +25,10 @@ public class DailyChallengeStatusResolver {
         }
 
         if (latestVerification == null) {
-            return resolveUnverifiedDailyStatus(challenge, currentTime);
+            return resolveFailureCandidateDailyStatus(challenge, currentTime);
         }
 
-        return toDailyChallengeStatus(latestVerification);
+        return toDailyChallengeStatus(latestVerification, challenge, currentTime);
     }
 
     private boolean isOutsideParticipationDates(Participation participation, LocalDate today) {
@@ -38,16 +38,20 @@ public class DailyChallengeStatusResolver {
                 || (endDate != null && today.isAfter(endDate));
     }
 
-    private DailyChallengeStatus toDailyChallengeStatus(Verification verification) {
+    private DailyChallengeStatus toDailyChallengeStatus(
+            Verification verification,
+            Challenge challenge,
+            LocalTime currentTime
+    ) {
         VerificationReviewStatus review = verification.getReview();
         return switch (review) {
             case PASS -> DailyChallengeStatus.SUCCESS;
-            case AUTO_FAIL -> DailyChallengeStatus.FAIL;
+            case AUTO_FAIL -> resolveFailureCandidateDailyStatus(challenge, currentTime);
             case MANUAL_REVIEW, PENDING -> DailyChallengeStatus.REVIEW_PENDING;
         };
     }
 
-    private DailyChallengeStatus resolveUnverifiedDailyStatus(Challenge challenge, LocalTime currentTime) {
+    private DailyChallengeStatus resolveFailureCandidateDailyStatus(Challenge challenge, LocalTime currentTime) {
         LocalTime timeStart = challenge.getTimeStart();
         LocalTime timeEnd = challenge.getTimeEnd();
 
