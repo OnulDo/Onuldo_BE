@@ -62,7 +62,7 @@ public interface AuthControllerDoc {
     );
 
     @Operation(
-            summary = "소셜 로그인 (카카오/네이버)",
+            summary = "소셜 로그인 (카카오)",
             description = "클라이언트가 SNS SDK로 발급받은 socialAccessToken을 전달하면, " +
                     "가입 여부를 확인하여 이미 가입된 유저라면 accessToken/refreshToken을 발급합니다. " +
                     "아직 가입되지 않은 유저라면 토큰 없이 isNewUser=true만 반환하며, " +
@@ -78,7 +78,7 @@ public interface AuthControllerDoc {
     );
 
     @Operation(
-            summary = "소셜 회원가입 (카카오/네이버)",
+            summary = "소셜 회원가입 (카카오)",
             description = "oauth/login에서 isNewUser=true를 받은 경우 호출합니다. " +
                     "SNS SDK로 발급받은 socialAccessToken과 닉네임, 프로필 사진, 약관 동의 여부를 전달받아 " +
                     "회원가입을 진행하고 accessToken/refreshToken을 발급합니다."
