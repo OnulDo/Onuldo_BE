@@ -120,7 +120,13 @@ public class ChallengeService {
 
         validateVerificationAvailableTime(challenge, participation, today, nowKst.toLocalTime());
 
-        if (verificationRepository.existsByPhotoUrl(s3FileService.getFileUrl(request.fileId()).url())) {
+        if (verificationRepository.existsByParticipation_IdAndVerificationDateAndReview(
+                participation.getId(), today, VerificationReviewStatus.PASS)) {
+            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
+        }
+
+        String photoUrl = s3FileService.getFileUrl(request.fileId()).url();
+        if (verificationRepository.existsByPhotoUrl(photoUrl)) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
         }
 
@@ -139,14 +145,14 @@ public class ChallengeService {
             verification = verificationRepository.saveAndFlush(Verification.builder()
                     .participation(participation)
                     .verificationDate(today)
-                    .photoUrl(s3FileService.getFileUrl(request.fileId()).url())
+                    .photoUrl(photoUrl)
                     .rekognitionResult(rekognitionResult)
                     .review(review)
                     .dayScore(dayScore)
                     .verifiedAt(timeService.nowKst())
                     .build());
         } catch (DataIntegrityViolationException e) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
+            throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
         }
 
         // 인증 성공 시 정산 트리거 호출
@@ -198,7 +204,7 @@ public class ChallengeService {
         LocalDate today = timeService.todayKst();
 
         Optional<Verification> existingManualReview = verificationRepository
-                .findByParticipation_IdAndVerificationDateAndReview(
+                .findFirstByParticipation_IdAndVerificationDateAndReviewOrderByVerifiedAtDescIdDesc(
                         participation.getId(), today, VerificationReviewStatus.MANUAL_REVIEW);
         if (existingManualReview.isPresent()) {
             // 이미 직접 검토 요청이 접수된 상태이므로, 재요청도 동일 결과로 idempotent하게 성공 처리
@@ -207,12 +213,12 @@ public class ChallengeService {
                     .build();
         }
 
-        if (verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
-                participation.getId(), today, VerificationReviewStatus.PASS).isPresent()) {
+        if (verificationRepository.existsByParticipation_IdAndVerificationDateAndReview(
+                participation.getId(), today, VerificationReviewStatus.PASS)) {
             throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
         }
 
-        Verification autoFail = verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
+        Verification autoFail = verificationRepository.findFirstByParticipation_IdAndVerificationDateAndReviewOrderByVerifiedAtDescIdDesc(
                         participation.getId(), today, VerificationReviewStatus.AUTO_FAIL)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._AUTO_FAIL_VERIFICATION_NOT_FOUND));
 

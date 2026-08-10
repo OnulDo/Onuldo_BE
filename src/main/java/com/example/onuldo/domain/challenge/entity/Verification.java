@@ -9,6 +9,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -30,14 +31,16 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "verification",
+        indexes = {
+                @Index(
+                        name = "idx_verification_participation_date_review",
+                        columnList = "participation_id, verification_date, review"
+                )
+        },
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_verification_photo_url",
                         columnNames = {"photo_url"}
-                ),
-                @UniqueConstraint(
-                        name = "uk_verification_participation_date_review",
-                        columnNames = {"participation_id", "verification_date", "review"}
                 )
         }
 )
