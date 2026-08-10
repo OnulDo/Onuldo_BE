@@ -1,6 +1,6 @@
 package com.example.onuldo.domain.party.dto.response;
 
-import com.example.onuldo.domain.party.enums.PartyHomeCardStatus;
+import com.example.onuldo.domain.challenge.enums.DailyChallengeStatus;
 import com.example.onuldo.domain.party.enums.PartyStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -23,8 +23,8 @@ public record PartyListResDto(
         String goal,
         @Schema(example = "ONGOING")
         PartyStatus status,
-        @Schema(description = "오늘 나의 인증 상태 (홈 카드 정책과 동일)", example = "NOT_VERIFIED")
-        PartyHomeCardStatus myStatus,
+        @Schema(description = "오늘 나의 챌린지 상태", example = "WAITING")
+        DailyChallengeStatus dailyStatus,
         @Schema(example = "2026-08-20")
         LocalDate endDate,
         @Schema(example = "12")
