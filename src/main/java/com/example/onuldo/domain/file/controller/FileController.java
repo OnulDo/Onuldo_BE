@@ -17,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/file")
+@RequestMapping("/api/files")
 public class FileController implements FileControllerDoc {
 
     private final S3FileService s3FileService;

@@ -21,7 +21,9 @@ import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -72,7 +74,7 @@ public class PartyController implements PartyControllerDoc {
         return BaseResponse.onSuccess(partyService.getPartyWaiting(partyId, userId));
     }
 
-    @PostMapping("/join")
+    @PostMapping("/members")
     public BaseResponse<PartyWaitingResDto> joinParty(
             @AuthUser
             Long userId,
@@ -83,7 +85,7 @@ public class PartyController implements PartyControllerDoc {
         return BaseResponse.onSuccess(partyMemberService.joinParty(userId, request));
     }
 
-    @PostMapping("/{partyId}/leave")
+    @DeleteMapping("/{partyId}/members/me")
     public BaseResponse<PartyLeaveResDto> leaveParty(
             @AuthUser
             Long userId,
@@ -93,7 +95,7 @@ public class PartyController implements PartyControllerDoc {
         return BaseResponse.onSuccess("파티 이탈에 성공했습니다.", partyMemberService.leaveParty(partyId, userId));
     }
 
-    @PostMapping("/{partyId}/ready")
+    @PatchMapping("/{partyId}/members/me/readiness")
     public BaseResponse<PartyWaitingResDto> togglePartyMemberReady(
             @AuthUser
             Long userId,
@@ -103,7 +105,7 @@ public class PartyController implements PartyControllerDoc {
         return BaseResponse.onSuccess(partyMemberService.togglePartyMemberReady(partyId, userId));
     }
 
-    @PostMapping("/{partyId}/start")
+    @PatchMapping("/{partyId}/status")
     public BaseResponse<PartyStartResDto> startParty(
             @AuthUser
             Long userId,
