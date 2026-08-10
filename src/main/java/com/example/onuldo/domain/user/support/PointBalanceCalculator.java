@@ -1,0 +1,18 @@
+package com.example.onuldo.domain.user.support;
+
+import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+
+public final class PointBalanceCalculator {
+
+    private PointBalanceCalculator() {
+    }
+
+    public static long addToBalance(long currentBalance, long amount) {
+        try {
+            return Math.addExact(currentBalance, amount);
+        } catch (ArithmeticException e) {
+            throw new RestApiException(GlobalErrorStatus._POINT_BALANCE_OVERFLOW);
+        }
+    }
+}
