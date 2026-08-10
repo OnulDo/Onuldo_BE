@@ -7,7 +7,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
   servlet:
     multipart:
@@ -32,7 +32,7 @@ management:
         include: health
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
 
 aws:
   region: ${AWS_REGION:ap-northeast-2}
