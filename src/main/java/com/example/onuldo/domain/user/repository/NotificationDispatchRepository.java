@@ -2,6 +2,7 @@ package com.example.onuldo.domain.user.repository;
 
 import com.example.onuldo.domain.user.entity.NotificationDispatch;
 import com.example.onuldo.domain.user.enums.NotificationDispatchStatus;
+import com.example.onuldo.domain.user.enums.NotificationType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -56,6 +57,13 @@ public interface NotificationDispatchRepository extends JpaRepository<Notificati
     );
 
     Optional<NotificationDispatch> findByNotification_Id(Long notificationId);
+
+    Optional<NotificationDispatch> findByUser_IdAndTypeAndRefTypeAndRefId(
+            Long userId,
+            NotificationType type,
+            String refType,
+            Long refId
+    );
 
     @EntityGraph(attributePaths = {"user", "notification"})
     Optional<NotificationDispatch> findWithUserAndNotificationById(Long id);

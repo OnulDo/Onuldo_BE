@@ -35,6 +35,10 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(
                         name = "uk_notification_dispatch_notification",
                         columnNames = {"notification_id"}
+                ),
+                @UniqueConstraint(
+                        name = "uk_notification_dispatch_reference",
+                        columnNames = {"user_id", "type", "ref_type", "ref_id"}
                 )
         }
 )
