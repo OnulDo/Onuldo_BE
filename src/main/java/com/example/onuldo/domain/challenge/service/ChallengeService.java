@@ -40,6 +40,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -196,9 +197,14 @@ public class ChallengeService {
 
         LocalDate today = timeService.todayKst();
 
-        if (verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
-                participation.getId(), today, VerificationReviewStatus.MANUAL_REVIEW).isPresent()) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_MANUALLY_REVIEWED);
+        Optional<Verification> existingManualReview = verificationRepository
+                .findByParticipation_IdAndVerificationDateAndReview(
+                        participation.getId(), today, VerificationReviewStatus.MANUAL_REVIEW);
+        if (existingManualReview.isPresent()) {
+            // 이미 직접 검토 요청이 접수된 상태이므로, 재요청도 동일 결과로 idempotent하게 성공 처리
+            return ChallengeManualReviewResDto.builder()
+                    .manualReviewRequestedAt(existingManualReview.get().getVerifiedAt())
+                    .build();
         }
 
         if (verificationRepository.findByParticipation_IdAndVerificationDateAndReview(
