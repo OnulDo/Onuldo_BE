@@ -24,7 +24,7 @@ public record PartyListResDto(
         @Schema(example = "ONGOING")
         PartyStatus status,
         @Schema(description = "오늘 나의 챌린지 상태", example = "WAITING")
-        DailyChallengeStatus dailyStatus,
+        DailyChallengeStatus myDailyStatus,
         @Schema(example = "2026-08-20")
         LocalDate endDate,
         @Schema(example = "12")

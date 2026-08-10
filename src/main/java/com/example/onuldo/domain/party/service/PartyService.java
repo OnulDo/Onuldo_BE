@@ -190,7 +190,7 @@ public class PartyService {
         List<PartyListSortEntry> sorted = rows.stream()
                 .map(row -> toSortEntry(row, today, currentTime, membersByParty, myVerificationByParty, myParticipationByParty))
                 .sorted(Comparator
-                        .comparingInt((PartyListSortEntry entry) -> dailyStatusPriority(entry.item().dailyStatus()))
+                        .comparingInt((PartyListSortEntry entry) -> dailyStatusPriority(entry.item().myDailyStatus()))
                         .thenComparing(
                                 entry -> entry.item().verificationDeadline(),
                                 Comparator.nullsLast(Comparator.naturalOrder())
@@ -323,7 +323,7 @@ public class PartyService {
                 .challengeTitle((String) row[2])
                 .goal((String) row[3])
                 .status(status)
-                .dailyStatus(dailyStatus)
+                .myDailyStatus(dailyStatus)
                 .endDate(endDate)
                 .dDay(calculateDDay(endDate, today))
                 .verificationDeadline(verificationDeadline)
