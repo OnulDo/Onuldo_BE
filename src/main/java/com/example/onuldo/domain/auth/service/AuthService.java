@@ -1,13 +1,8 @@
 package com.example.onuldo.domain.auth.service;
 
-import com.example.onuldo.domain.auth.dto.request.DeviceLogReqDto;
-import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
-import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
-import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
-import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
-import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
-import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
+import com.example.onuldo.domain.auth.dto.request.*;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
+import com.example.onuldo.domain.auth.dto.response.EmailExistsResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.domain.auth.entity.Term;
 import com.example.onuldo.domain.auth.entity.TermAgreement;
@@ -201,6 +196,12 @@ public class AuthService {
         saveDefaultNotificationSetting(user);
         saveDeviceLog(user, request.device());
         return createAuthResponse(user);
+    }
+
+    public EmailExistsResDto checkEmailExists(EmailExistsReqDto request) {
+        return EmailExistsResDto.builder()
+                .exists(userRepository.existsByEmail(request.email()))
+                .build();
     }
 
     private void saveDeviceLog(User user, DeviceLogReqDto device) {

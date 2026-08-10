@@ -1,11 +1,13 @@
 package com.example.onuldo.domain.auth.controller.doc;
 
+import com.example.onuldo.domain.auth.dto.request.EmailExistsReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
+import com.example.onuldo.domain.auth.dto.response.EmailExistsResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -85,5 +87,21 @@ public interface AuthControllerDoc {
             @Valid
             @RequestBody
             OAuthSignupReqDto request
+    );
+
+    @Operation(
+            summary = "이메일 중복 확인",
+            description = """
+                    회원가입 폼 입력 중 해당 이메일이 이미 가입되어 있는지 확인합니다.
+                    실제 가입 시점의 중복 여부는 signup API에서 별도로 최종 검증합니다.
+                    """
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(mediaType = "application/json")
+    )
+    BaseResponse<EmailExistsResDto> checkEmailExists(
+            @Valid
+            @RequestBody
+            EmailExistsReqDto request
     );
 }

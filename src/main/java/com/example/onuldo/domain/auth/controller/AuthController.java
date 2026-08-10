@@ -1,21 +1,15 @@
 package com.example.onuldo.domain.auth.controller;
 
 import com.example.onuldo.domain.auth.controller.doc.AuthControllerDoc;
-import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
-import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
-import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
-import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
-import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
+import com.example.onuldo.domain.auth.dto.request.*;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
+import com.example.onuldo.domain.auth.dto.response.EmailExistsResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.domain.auth.service.AuthService;
 import com.example.onuldo.global.common.base.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -67,5 +61,14 @@ public class AuthController implements AuthControllerDoc {
             OAuthSignupReqDto request
     ) {
         return BaseResponse.onSuccess(authService.oauthSignup(request));
+    }
+
+    @PostMapping("/email/exists")
+    public BaseResponse<EmailExistsResDto> checkEmailExists(
+            @Valid
+            @RequestBody
+            EmailExistsReqDto request
+    ) {
+        return BaseResponse.onSuccess(authService.checkEmailExists(request));
     }
 }
