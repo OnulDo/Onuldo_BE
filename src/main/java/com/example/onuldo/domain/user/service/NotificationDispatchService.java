@@ -311,7 +311,7 @@ public class NotificationDispatchService {
     private String resolveLanding(NotificationType type) {
         return switch (type) {
             case VERIFICATION_DEADLINE, CHALLENGE_START -> "HOME";
-            case VERIFICATION_RESULT, CHALLENGE_END_REMINDER -> "CHALLENGE_DETAIL";
+            case VERIFICATION_APPROVED, VERIFICATION_REJECTED, CHALLENGE_END_REMINDER -> "CHALLENGE_DETAIL";
             case PARTY_MEMBER_VERIFIED -> "PARTY_FEED";
             case REFUND_COMPLETE -> "SOLO_RECORD_COMPLETED";
             case PARTY_SETTLEMENT_COMPLETE -> "PARTY_SETTLEMENT_RESULT";

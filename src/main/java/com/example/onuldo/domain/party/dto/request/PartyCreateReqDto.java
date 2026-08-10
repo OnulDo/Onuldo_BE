@@ -14,7 +14,7 @@ import lombok.Builder;
 public record PartyCreateReqDto(
         @Schema(example = "갓생팟")
         @NotBlank(message = "파티 이름은 필수입니다.")
-        @Size(min = 2, max = 20, message = "파티 이름은 2~20자여야 합니다.")
+        @Size(min = 2, max = 10, message = "파티 이름은 2~10자여야 합니다.")
         @Pattern(regexp = "^[가-힣a-zA-Z0-9 ]+$", message = "파티 이름은 한글, 영문, 숫자, 공백만 가능합니다.")
         String name,
 

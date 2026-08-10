@@ -6,13 +6,18 @@ import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
 import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
+import com.example.onuldo.domain.auth.dto.response.EmailExistsResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Auth", description = "이메일 회원가입, 로그인, JWT 재발급 API")
 public interface AuthControllerDoc {
@@ -85,5 +90,24 @@ public interface AuthControllerDoc {
             @Valid
             @RequestBody
             OAuthSignupReqDto request
+    );
+
+    @Operation(
+            summary = "이메일 중복 확인",
+            description = """
+                    회원가입 폼 입력 중 해당 이메일이 이미 가입되어 있는지 확인합니다.
+                    실제 가입 시점의 중복 여부는 signup API에서 별도로 최종 검증합니다.
+                    """
+    )
+    BaseResponse<EmailExistsResDto> checkEmailExists(
+            @Parameter(description = "확인할 이메일", example = "onuldo@onuldo.com")
+            @NotBlank(message = "이메일은 필수입니다.")
+            @Pattern(
+                    regexp = "^[a-zA-Z0-9+_-]+(\\.[a-zA-Z0-9+_-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?" +
+                            "(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)*\\.[a-zA-Z]{2,}$",
+                    message = "올바른 이메일 형식이 아닙니다."
+            )
+            @RequestParam
+            String email
     );
 }

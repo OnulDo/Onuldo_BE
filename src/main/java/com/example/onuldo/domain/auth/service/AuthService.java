@@ -8,6 +8,7 @@ import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
 import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
 import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
 import com.example.onuldo.domain.auth.dto.response.AuthResDto;
+import com.example.onuldo.domain.auth.dto.response.EmailExistsResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.domain.auth.entity.Term;
 import com.example.onuldo.domain.auth.entity.TermAgreement;
@@ -28,6 +29,7 @@ import com.example.onuldo.global.aws.service.S3FileService;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
+import com.example.onuldo.global.ratelimit.EmailRateLimiter;
 import com.example.onuldo.global.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -70,9 +72,12 @@ public class AuthService {
     private final TimeService timeService;
     private final NicknameValidator nicknameValidator;
     private final S3FileService s3FileService;
+    private final EmailRateLimiter emailRateLimiter;
 
     @Transactional
     public AuthResDto signup(EmailSignupReqDto request) {
+        emailRateLimiter.consume(request.email(), "signup");
+
         if (userRepository.existsByEmail(request.email())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
         }
@@ -102,6 +107,9 @@ public class AuthService {
 
     @Transactional(noRollbackFor = RestApiException.class)
     public AuthResDto login(EmailLoginReqDto request) {
+        // 이메일 단독 키로 소진하지 않음: 공개 email/exists 요청으로 특정 유저의 로그인을
+        // 미리 막아버리는 걸 방지. 로그인 남용은 IP 제한(RateLimitInterceptor) +
+        // 실패 횟수 기반 잠금(LoginFailureService/_LOGIN_LOCKED)으로 방어한다.
         User user = userRepository.findByEmailForUpdate(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
@@ -144,6 +152,7 @@ public class AuthService {
     @Transactional
     public OAuthResDto oauthLogin(OAuthLoginReqDto request) {
         OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
+        emailRateLimiter.consume(info.email(), "oauth-login");
 
         Optional<User> existingUser = userRepository.findByEmail(info.email());
         if (existingUser.isEmpty()) {
@@ -176,6 +185,7 @@ public class AuthService {
     @Transactional
     public AuthResDto oauthSignup(OAuthSignupReqDto request) {
         OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
+        emailRateLimiter.consume(info.email(), "oauth-signup");
 
         if (userRepository.existsByEmail(info.email())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
@@ -201,6 +211,14 @@ public class AuthService {
         saveDefaultNotificationSetting(user);
         saveDeviceLog(user, request.device());
         return createAuthResponse(user);
+    }
+
+    public EmailExistsResDto checkEmailExists(String email) {
+        emailRateLimiter.consume(email, "email-exists");
+
+        return EmailExistsResDto.builder()
+                .exists(userRepository.existsByEmail(email))
+                .build();
     }
 
     private void saveDeviceLog(User user, DeviceLogReqDto device) {

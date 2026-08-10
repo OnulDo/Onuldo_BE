@@ -20,3 +20,6 @@ springdoc:
 
 discord:
   webhook-url: ${DISCORD_WEBHOOK_URL:}
+
+rate-limit:
+  trusted-proxies: ${RATE_LIMIT_TRUSTED_PROXIES:}
