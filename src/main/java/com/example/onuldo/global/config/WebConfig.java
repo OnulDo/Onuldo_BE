@@ -1,5 +1,6 @@
 package com.example.onuldo.global.config;
 
+import com.example.onuldo.global.ratelimit.RateLimitInterceptor;
 import com.example.onuldo.global.security.AuthUserArgumentResolver;
 import com.example.onuldo.global.security.JwtAuthenticationInterceptor;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import java.util.List;
 public class WebConfig implements WebMvcConfigurer {
 
     private final JwtAuthenticationInterceptor jwtAuthenticationInterceptor;
+    private final RateLimitInterceptor rateLimitInterceptor;
     private final AuthUserArgumentResolver authUserArgumentResolver;
 
     @Override
@@ -34,6 +36,15 @@ public class WebConfig implements WebMvcConfigurer {
                         "/v3/api-docs/**",
                         "/swagger-resources/**",
                         "/error"
+                );
+
+        registry.addInterceptor(rateLimitInterceptor)
+                .addPathPatterns(
+                        "/api/auth/signup",
+                        "/api/auth/login",
+                        "/api/auth/email/exists",
+                        "/api/auth/oauth/login",
+                        "/api/auth/oauth/signup"
                 );
     }
 
