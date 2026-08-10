@@ -15,6 +15,8 @@ public record PartyListResDto(
         Long partyId,
         @Schema(example = "새벽 러너 파티")
         String name,
+        @Schema(example = "1")
+        Long challengeId,
         @Schema(example = "30일 헬스")
         String challengeTitle,
         @Schema(example = "30분 러닝")

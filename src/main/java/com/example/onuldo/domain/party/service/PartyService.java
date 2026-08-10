@@ -210,7 +210,7 @@ public class PartyService {
         );
     }
 
-    // 정렬 기준(챌린지ID)을 응답 DTO에 노출하지 않으면서 함께 들고 다니기 위한 내부 전용 래퍼
+    // 정렬 기준(챌린지ID)을 DTO와 함께 들고 다니기 위한 내부 전용 래퍼
     private record PartyListSortEntry(PartyListResDto item, Long challengeId) {
     }
 
@@ -284,6 +284,7 @@ public class PartyService {
             Verification myVerification
     ) {
         Long partyId = (Long) row[0];
+        Long challengeId = (Long) row[11];
         PartyStatus status = (PartyStatus) row[4];
         LocalDate startDate = (LocalDate) row[5];
         LocalDate endDate = (LocalDate) row[6];
@@ -295,6 +296,7 @@ public class PartyService {
         return PartyListResDto.builder()
                 .partyId(partyId)
                 .name((String) row[1])
+                .challengeId(challengeId)
                 .challengeTitle((String) row[2])
                 .goal((String) row[3])
                 .status(status)
