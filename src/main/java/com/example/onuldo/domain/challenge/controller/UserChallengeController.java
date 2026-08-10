@@ -13,7 +13,9 @@ import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
+import jakarta.validation.constraints.Max;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,6 +25,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/api/users/me")
 public class UserChallengeController implements UserChallengeControllerDoc {
 
@@ -38,6 +41,7 @@ public class UserChallengeController implements UserChallengeControllerDoc {
             @RequestParam(required = false)
             String cursor,
             @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
+            @Max(value = CursorConstants.MAX_SIZE, message = "size는 최대 50까지 가능합니다.")
             int size
     ) {
         return participationService.getUserChallenges(userId, status, cursor, size);

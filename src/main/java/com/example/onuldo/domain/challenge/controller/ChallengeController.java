@@ -10,8 +10,10 @@ import com.example.onuldo.domain.challenge.service.ChallengeService;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import jakarta.validation.constraints.Max;
 import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,7 @@ import com.example.onuldo.global.security.AuthUser;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/api/challenges")
 public class ChallengeController implements ChallengeControllerDoc {
 
@@ -33,6 +36,7 @@ public class ChallengeController implements ChallengeControllerDoc {
             @RequestParam(required = false)
             String cursor,
             @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
+            @Max(value = CursorConstants.MAX_SIZE, message = "size는 최대 50까지 가능합니다.")
             int size,
             @RequestParam(required = false)
             ChallengeCategory category,
