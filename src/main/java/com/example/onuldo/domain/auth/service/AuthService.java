@@ -29,6 +29,7 @@ import com.example.onuldo.global.aws.service.S3FileService;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
+import com.example.onuldo.global.ratelimit.EmailRateLimiter;
 import com.example.onuldo.global.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -71,9 +72,12 @@ public class AuthService {
     private final TimeService timeService;
     private final NicknameValidator nicknameValidator;
     private final S3FileService s3FileService;
+    private final EmailRateLimiter emailRateLimiter;
 
     @Transactional
     public AuthResDto signup(EmailSignupReqDto request) {
+        emailRateLimiter.consume(request.email());
+
         if (userRepository.existsByEmail(request.email())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
         }
@@ -103,6 +107,8 @@ public class AuthService {
 
     @Transactional(noRollbackFor = RestApiException.class)
     public AuthResDto login(EmailLoginReqDto request) {
+        emailRateLimiter.consume(request.email());
+
         User user = userRepository.findByEmailForUpdate(request.email())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
 
@@ -145,6 +151,7 @@ public class AuthService {
     @Transactional
     public OAuthResDto oauthLogin(OAuthLoginReqDto request) {
         OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
+        emailRateLimiter.consume(info.email());
 
         Optional<User> existingUser = userRepository.findByEmail(info.email());
         if (existingUser.isEmpty()) {
@@ -177,6 +184,7 @@ public class AuthService {
     @Transactional
     public AuthResDto oauthSignup(OAuthSignupReqDto request) {
         OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
+        emailRateLimiter.consume(info.email());
 
         if (userRepository.existsByEmail(info.email())) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
@@ -205,6 +213,8 @@ public class AuthService {
     }
 
     public EmailExistsResDto checkEmailExists(String email) {
+        emailRateLimiter.consume(email);
+
         return EmailExistsResDto.builder()
                 .exists(userRepository.existsByEmail(email))
                 .build();
