@@ -13,6 +13,7 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.domain.user.support.PointBalanceCalculator;
 import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
@@ -44,7 +45,7 @@ public class PointService {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
-        long balanceAfter = user.getPointBalance() + request.point();
+        long balanceAfter = PointBalanceCalculator.addToBalance(user.getPointBalance(), request.point());
         user.setPointBalance(balanceAfter);
         userRepository.save(user);
 
@@ -101,7 +102,7 @@ public class PointService {
             throw new RestApiException(GlobalErrorStatus._SIGNUP_BONUS_ALREADY_GRANTED);
         }
 
-        long balanceAfter = user.getPointBalance() + SIGNUP_BONUS;
+        long balanceAfter = PointBalanceCalculator.addToBalance(user.getPointBalance(), SIGNUP_BONUS);
         user.setPointBalance(balanceAfter);
         userRepository.save(user);
 

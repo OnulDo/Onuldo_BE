@@ -14,6 +14,7 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.domain.user.support.PointBalanceCalculator;
 import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
@@ -202,7 +203,7 @@ public class PartySettlementService {
         User user = userRepository.findByIdForUpdate(participation.getUser().getId())
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
 
-        long balanceAfter = user.getPointBalance() + payoutAmount;
+        long balanceAfter = PointBalanceCalculator.addToBalance(user.getPointBalance(), payoutAmount);
         user.setPointBalance(balanceAfter);
 
         ParticipationStatus resultStatus = participation.getStatus();
