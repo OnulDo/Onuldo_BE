@@ -287,8 +287,15 @@ public class PartyService {
                 .collect(Collectors.toMap(
                         v -> v.getParticipation().getParty().getId(),
                         v -> v,
-                        (existing, duplicate) -> existing
+                        this::latestVerification
                 ));
+    }
+
+    private Verification latestVerification(Verification first, Verification second) {
+        Comparator<Verification> latestFirst = Comparator
+                .comparing(Verification::getVerifiedAt, Comparator.nullsFirst(Comparator.naturalOrder()))
+                .thenComparing(Verification::getId, Comparator.nullsFirst(Comparator.naturalOrder()));
+        return latestFirst.compare(first, second) >= 0 ? first : second;
     }
 
     private PartyListResDto toPartyListResDto(
