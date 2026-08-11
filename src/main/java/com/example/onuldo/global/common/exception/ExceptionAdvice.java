@@ -8,11 +8,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.ErrorResponse;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -95,20 +99,44 @@ public class ExceptionAdvice {
         return handleExceptionInternal(GlobalErrorStatus._BAD_REQUEST.getCode());
     }
 
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<BaseResponse<String>> handleMissingServletRequestParameterException() {
+        return handleExceptionInternal(GlobalErrorStatus._BAD_REQUEST.getCode());
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<BaseResponse<String>> handleHttpRequestMethodNotSupportedException() {
+        return handleExceptionInternal(GlobalErrorStatus._METHOD_NOT_ALLOWED.getCode());
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<BaseResponse<String>> handleHttpMediaTypeNotSupportedException() {
+        return handleExceptionInternal(GlobalErrorStatus._UNSUPPORTED_MEDIA_TYPE.getCode());
+    }
+
     /*
      * 일반적인 서버 에러에 대한 예외 처리
      */
     @ExceptionHandler
     public ResponseEntity<BaseResponse<String>> handleException(Exception e, HttpServletRequest request) {
-        e.printStackTrace(); //예외 정보 출력
+        log.error("Unhandled exception occurred at [{}]", request.getRequestURI(), e);
 
         // 처리되지 않은 진짜 500 에러만 디스코드로 알림 (비즈니스 예외/검증 오류는 위에서 이미 처리됨)
-        // Spring이 던지는 4xx 예외(405, 415 등)까지 이 핸들러로 떨어지므로 서버 에러만 걸러서 알림한다.
+        // 여기서 다루지 않는 Spring의 나머지 4xx 예외(예: 406 등)까지 이 핸들러로 떨어질 수 있으므로 서버 에러만 걸러서 알림한다.
         if (isServerError(e)) {
             discordAlertSender.sendServerError(request.getRequestURI(), e);
+            return handleExceptionInternalFalse(GlobalErrorStatus._INTERNAL_SERVER_ERROR.getCode(), e.getMessage());
         }
 
-        return handleExceptionInternalFalse(GlobalErrorStatus._INTERNAL_SERVER_ERROR.getCode(), e.getMessage());
+        // 여기서 별도 @ExceptionHandler로 다루지 않는 4xx 예외는 실제 상태 코드를 그대로 보존해서 응답한다.
+        HttpStatus status = HttpStatus.valueOf(((ErrorResponse) e).getStatusCode().value());
+        BaseCodeDto errorCode = BaseCodeDto.builder()
+                .httpStatus(status)
+                .isSuccess(false)
+                .code(status.name())
+                .message(status.getReasonPhrase())
+                .build();
+        return handleExceptionInternalFalse(errorCode, e.getMessage());
     }
 
     // 예외가 4xx 클라이언트 오류로 명시된 경우가 아니면 서버 에러(5xx)로 간주한다.
