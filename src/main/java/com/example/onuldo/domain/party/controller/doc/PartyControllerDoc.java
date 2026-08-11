@@ -2,6 +2,7 @@ package com.example.onuldo.domain.party.controller.doc;
 
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
+import com.example.onuldo.domain.party.dto.request.PartyReadyReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
 import com.example.onuldo.domain.party.dto.response.PartyHomeResDto;
@@ -97,15 +98,17 @@ public interface PartyControllerDoc {
     );
 
     @Operation(
-            summary = "파티원 준비완료 상태 토글",
-            description = "파티원이 대기방에서 [준비완료]/[대기] 상태를 전환합니다. "
+            summary = "파티원 준비완료 상태 변경",
+            description = "파티원이 대기방에서 요청 바디의 ready 값에 따라 [준비완료]/[대기] 상태를 변경합니다. "
                     + "방장은 준비완료 대상이 아닙니다. "
-                    + "준비완료로 전환 시 보유 포인트가 도전금보다 부족하면 전환에 실패합니다."
+                    + "ready=true로 변경 시 보유 포인트가 도전금보다 부족하면 전환에 실패합니다."
     )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody
     @ApiResponse(responseCode = "200")
-    BaseResponse<PartyWaitingResDto> togglePartyMemberReady(
+    BaseResponse<PartyWaitingResDto> updatePartyMemberReady(
             @AuthUser Long userId,
-            @PathVariable Long partyId
+            @PathVariable Long partyId,
+            @Valid @RequestBody PartyReadyReqDto request
     );
 
     @Operation(

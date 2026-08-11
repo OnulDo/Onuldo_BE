@@ -116,7 +116,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(pointService.chargePoint(userId, request));
     }
 
-    @PostMapping("/wallet/withdraw")
+    @PostMapping("/wallet/withdrawals")
     public BaseResponse<WithdrawPointResDto> withdrawPoint(
             @AuthUser
             Long userId,

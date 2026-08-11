@@ -51,7 +51,7 @@ public class ChallengeController implements ChallengeControllerDoc {
         return BaseResponse.onSuccess(challengeService.getChallenge(challengeId));
     }
 
-    @PostMapping("/{challengeId}/verification")
+    @PostMapping("/{challengeId}/verifications")
     public BaseResponse<ChallengeVerificationResDto> verifyChallenge(
             @AuthUser
             Long userId,
@@ -64,7 +64,7 @@ public class ChallengeController implements ChallengeControllerDoc {
         return BaseResponse.onSuccess(challengeService.verifyChallenge(userId, challengeId, request));
     }
 
-    @PostMapping("/{challengeId}/verification/manual-review")
+    @PostMapping("/{challengeId}/verification-review-requests")
     public BaseResponse<ChallengeManualReviewResDto> manualReviewVerification(
             @AuthUser
             Long userId,
