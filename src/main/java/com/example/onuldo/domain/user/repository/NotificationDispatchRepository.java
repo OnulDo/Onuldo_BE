@@ -56,8 +56,6 @@ public interface NotificationDispatchRepository extends JpaRepository<Notificati
             @Param("maxAttemptCount") int maxAttemptCount
     );
 
-    Optional<NotificationDispatch> findByNotification_Id(Long notificationId);
-
     Optional<NotificationDispatch> findByUser_IdAndTypeAndRefTypeAndRefId(
             Long userId,
             NotificationType type,
