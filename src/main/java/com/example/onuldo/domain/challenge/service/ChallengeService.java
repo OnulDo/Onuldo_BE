@@ -26,11 +26,10 @@ import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -45,7 +44,6 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-@Slf4j
 public class ChallengeService {
 
     private final ChallengeRepository challengeRepository;
@@ -101,11 +99,78 @@ public class ChallengeService {
         return toChallengeResDto(challenge);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ChallengeVerificationResDto verifyChallenge(Long userId, Long challengeId, ChallengeVerificationReqDto request) {
         LocalDateTime nowKst = timeService.nowKst();
         LocalDate today = nowKst.toLocalDate();
 
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+
+        Participation participationSnapshot = participationRepository
+                .findFirstByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+
+        if (today.isBefore(participationSnapshot.getStartDate())) {
+            throw new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_STARTED);
+        }
+
+        validateVerificationAvailableTime(challenge, participationSnapshot, today, nowKst.toLocalTime());
+
+        if (verificationRepository.existsByParticipation_IdAndVerificationDateAndReview(
+                participationSnapshot.getId(), today, VerificationReviewStatus.PASS)) {
+            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
+        }
+
+        String photoUrl = s3FileService.getFileUrl(request.fileId()).url();
+        List<String> detectedLabelNames = rekognitionService.detectLabelNamesByFileId(request.fileId());
+
+        boolean matchedChallengeLabel = hasMatchingLabel(challenge.getVerificationLabelList(), detectedLabelNames);
+        VerificationReviewStatus review = matchedChallengeLabel
+                ? VerificationReviewStatus.PASS
+                : VerificationReviewStatus.AUTO_FAIL;
+
+        BigDecimal dayScore = matchedChallengeLabel ? BigDecimal.valueOf(100) : BigDecimal.ZERO;
+        String rekognitionResult = toJson(detectedLabelNames);
+
+        VerificationWriteResult saved = executeInTransaction(status -> saveVerificationInTransaction(
+                userId,
+                challengeId,
+                today,
+                nowKst.toLocalTime(),
+                photoUrl,
+                rekognitionResult,
+                review,
+                dayScore
+        ));
+
+        if (saved.review() == VerificationReviewStatus.PASS) {
+            challengeNotificationService.notifyPartyMemberVerified(saved.verificationId());
+            triggerSettlementIfLastDay(saved.participationId(), saved.participationEndDate(), today);
+        }
+
+        return ChallengeVerificationResDto.builder()
+                .verificationId(saved.verificationId())
+                .challengeId(challengeId)
+                .participationId(saved.participationId())
+                .fileId(request.fileId())
+                .verificationDate(saved.verificationDate())
+                .verifiedAt(saved.verifiedAt())
+                .review(saved.review())
+                .build();
+    }
+
+    private VerificationWriteResult saveVerificationInTransaction(
+            Long userId,
+            Long challengeId,
+            LocalDate today,
+            LocalTime currentTime,
+            String photoUrl,
+            String rekognitionResult,
+            VerificationReviewStatus review,
+            BigDecimal dayScore
+    ) {
         Challenge challenge = challengeRepository.findById(challengeId)
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
@@ -118,27 +183,16 @@ public class ChallengeService {
             throw new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_STARTED);
         }
 
-        validateVerificationAvailableTime(challenge, participation, today, nowKst.toLocalTime());
+        validateVerificationAvailableTime(challenge, participation, today, currentTime);
 
         if (verificationRepository.existsByParticipation_IdAndVerificationDateAndReview(
                 participation.getId(), today, VerificationReviewStatus.PASS)) {
             throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
         }
 
-        String photoUrl = s3FileService.getFileUrl(request.fileId()).url();
         if (verificationRepository.existsByPhotoUrl(photoUrl)) {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
         }
-
-        List<String> detectedLabelNames = rekognitionService.detectLabelNamesByFileId(request.fileId());
-
-        boolean matchedChallengeLabel = hasMatchingLabel(challenge.getVerificationLabelList(), detectedLabelNames);
-        VerificationReviewStatus review = matchedChallengeLabel
-                ? VerificationReviewStatus.PASS
-                : VerificationReviewStatus.AUTO_FAIL;
-
-        BigDecimal dayScore = matchedChallengeLabel ? BigDecimal.valueOf(100) : BigDecimal.ZERO;
-        String rekognitionResult = toJson(detectedLabelNames);
 
         Verification verification;
         try {
@@ -155,21 +209,14 @@ public class ChallengeService {
             throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
         }
 
-        // 인증 성공 시 정산 트리거 호출
-        if (verification.getReview() == VerificationReviewStatus.PASS) {
-            challengeNotificationService.notifyPartyMemberVerified(verification);
-            triggerSettlementIfLastDay(participation, today);
-        }
-
-        return ChallengeVerificationResDto.builder()
-                .verificationId(verification.getId())
-                .challengeId(challenge.getId())
-                .participationId(participation.getId())
-                .fileId(request.fileId())
-                .verificationDate(verification.getVerificationDate())
-                .verifiedAt(verification.getVerifiedAt())
-                .review(verification.getReview())
-                .build();
+        return new VerificationWriteResult(
+                verification.getId(),
+                participation.getId(),
+                participation.getEndDate(),
+                verification.getVerificationDate(),
+                verification.getVerifiedAt(),
+                verification.getReview()
+        );
     }
 
     private void validateVerificationAvailableTime(
@@ -222,50 +269,45 @@ public class ChallengeService {
                         participation.getId(), today, VerificationReviewStatus.AUTO_FAIL)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._AUTO_FAIL_VERIFICATION_NOT_FOUND));
 
-        Verification manualReview;
-        try{
-            // IDENTITY 전략은 save() 시점에 즉시 insert가 실행되므로, 제약 위반 예외가 나면
-            // 같은 세션에서 flush를 다시 시도할 때 이 문제가 발생하므로 별도 트랜잭션으로 격리
-            manualReview = executeInNewTransaction(status -> verificationRepository.save(Verification.builder()
-                    .participation(participation)
-                    .originalVerification(autoFail)
-                    .verificationDate(autoFail.getVerificationDate())
-                    .photoUrl(null)
-                    .exifData(autoFail.getExifData())
-                    .rekognitionResult(autoFail.getRekognitionResult())
-                    .aiScore(autoFail.getAiScore())
-                    .review(VerificationReviewStatus.MANUAL_REVIEW)
-                    .dayScore(autoFail.getDayScore())
-                    .verifiedAt(timeService.nowKst())
-                    .build()));
-        } catch(DataIntegrityViolationException e) {
-            log.warn("Manual review insert failed with constraint violation. participationId={}, date={}, message={}",
-                    participation.getId(), today, e.getMostSpecificCause().getMessage(), e);
-            // 동시 요청 경합으로 먼저 들어온 쪽이 이미 만든 row가 있으면 그걸 그대로 성공 응답으로 처리
-            // locking read로 조회해 REPEATABLE READ 스냅샷 때문에 상대방의 커밋이 안 보이는 것을 방지
-            manualReview = verificationRepository.findByParticipationIdAndVerificationDateAndReviewForUpdate(
-                            participation.getId(), today, VerificationReviewStatus.MANUAL_REVIEW)
-                    .orElseThrow(() -> new RestApiException(GlobalErrorStatus._ALREADY_MANUALLY_REVIEWED));
-        }
-
+        Verification manualReview = verificationRepository.save(Verification.builder()
+                .participation(participation)
+                .originalVerification(autoFail)
+                .verificationDate(autoFail.getVerificationDate())
+                .photoUrl(null)
+                .exifData(autoFail.getExifData())
+                .rekognitionResult(autoFail.getRekognitionResult())
+                .aiScore(autoFail.getAiScore())
+                .review(VerificationReviewStatus.MANUAL_REVIEW)
+                .dayScore(autoFail.getDayScore())
+                .verifiedAt(timeService.nowKst())
+                .build());
 
         return ChallengeManualReviewResDto.builder()
                 .manualReviewRequestedAt(manualReview.getVerifiedAt())
                 .build();
     }
 
-    private <T> T executeInNewTransaction(TransactionCallback<T> callback) {
+    private <T> T executeInTransaction(TransactionCallback<T> callback) {
         TransactionTemplate template = new TransactionTemplate(transactionManager);
-        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         return template.execute(callback);
     }
 
-    private void triggerSettlementIfLastDay(Participation participation, LocalDate verificationDate) {
-        if (!verificationDate.equals(participation.getEndDate())) {
+    private void triggerSettlementIfLastDay(Long participationId, LocalDate participationEndDate, LocalDate verificationDate) {
+        if (!verificationDate.equals(participationEndDate)) {
             return;
         }
 
-        settlementService.settleParticipatedChallenge(participation.getId());
+        settlementService.settleParticipatedChallenge(participationId);
+    }
+
+    private record VerificationWriteResult(
+            Long verificationId,
+            Long participationId,
+            LocalDate participationEndDate,
+            LocalDate verificationDate,
+            LocalDateTime verifiedAt,
+            VerificationReviewStatus review
+    ) {
     }
 
     private ChallengeResDto toChallengeResDto(Challenge challenge) {

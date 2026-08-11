@@ -150,6 +150,12 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             ParticipationStatus status
     );
 
+    Optional<Participation> findFirstByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(
+            Long userId,
+            Long challengeId,
+            ParticipationStatus status
+    );
+
     @Query("""
         SELECT p
         FROM Participation p

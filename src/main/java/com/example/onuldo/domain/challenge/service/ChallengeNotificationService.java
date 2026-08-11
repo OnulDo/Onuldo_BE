@@ -92,6 +92,20 @@ public class ChallengeNotificationService {
 
     // 파티원 인증 성공 알림을 인증 당사자를 제외한 파티원들에게 보내는 메서드
     @Transactional
+    public void notifyPartyMemberVerified(Long verificationId) {
+        Verification verification = verificationRepository.findAllByIdInWithParticipation(List.of(verificationId))
+                .stream()
+                .findFirst()
+                .orElse(null);
+        if (verification == null) {
+            return;
+        }
+
+        notifyPartyMemberVerified(verification);
+    }
+
+    // 파티원 인증 성공 알림을 인증 당사자를 제외한 파티원들에게 보내는 메서드
+    @Transactional
     public void notifyPartyMemberVerified(Verification verification) {
         Participation participation = verification.getParticipation();
         if (verification.getReview() != VerificationReviewStatus.PASS
