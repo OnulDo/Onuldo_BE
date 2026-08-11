@@ -1,4 +1,4 @@
-# Onuldo (오늘도) Backend
+# Onuldo (오늘두) Backend
 
 챌린지를 파티(그룹) 단위로 인증하고, 함께 습관을 만들어가는 서비스 오늘두(Onuldo)의 백엔드 서버입니다.
 
