@@ -371,6 +371,7 @@ public class ParticipationService {
                 .endDate(participation.getEndDate())
                 .dailyStatus(dailyStatus)
                 .verifiedOnDate(dailyStatus == DailyChallengeStatus.SUCCESS)
+                .verifiedAt(latestVerification != null ? latestVerification.getVerifiedAt() : null)
                 .streakDays(streakDays)
                 .build();
     }

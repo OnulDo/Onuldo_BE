@@ -62,6 +62,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             WHERE p.party.id IN :partyIds
             AND p.user.id = :userId
             AND v.verificationDate = :date
+            ORDER BY v.verifiedAt DESC, v.id DESC
             """)
     List<Verification> findTodayVerificationsByPartyIdInAndUserId(
             @Param("partyIds") Collection<Long> partyIds,

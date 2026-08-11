@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Builder
@@ -48,6 +49,8 @@ public record DailyChallengeResDto(
         DailyChallengeStatus dailyStatus,
         @Schema(example = "true")
         Boolean verifiedOnDate,
+        @Schema(description = "당일 최신 인증 시각", example = "2026-07-23T09:00:00", nullable = true)
+        LocalDateTime verifiedAt,
         @Schema(description = "기준일 포함 연속 인증 성공 일수", example = "3")
         Integer streakDays
 ) {
