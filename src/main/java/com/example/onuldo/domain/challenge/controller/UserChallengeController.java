@@ -10,10 +10,13 @@ import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.service.ParticipationService;
 import com.example.onuldo.domain.challenge.service.ParticipationRecordService;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,6 +26,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/api/users/me")
 public class UserChallengeController implements UserChallengeControllerDoc {
 
@@ -35,12 +39,11 @@ public class UserChallengeController implements UserChallengeControllerDoc {
             Long userId,
             @RequestParam(required = false)
             ParticipationStatus status,
-            @RequestParam(required = false)
-            String cursor,
-            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     ) {
-        return participationService.getUserChallenges(userId, status, cursor, size);
+        return participationService.getUserChallenges(userId, status, pagination.getCursor(), pagination.getSize());
     }
 
     @GetMapping("/challenges/daily")

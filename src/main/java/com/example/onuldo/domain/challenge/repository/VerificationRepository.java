@@ -171,6 +171,18 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             VerificationReviewStatus review
     );
 
+    boolean existsByParticipation_IdAndVerificationDateAndReview(
+            Long participationId,
+            LocalDate verificationDate,
+            VerificationReviewStatus review
+    );
+
+    Optional<Verification> findFirstByParticipation_IdAndVerificationDateAndReviewOrderByVerifiedAtDescIdDesc(
+            Long participationId,
+            LocalDate verificationDate,
+            VerificationReviewStatus review
+    );
+
     // 직접검토 동시 요청 경합 시, 패배한 트랜잭션의 REPEATABLE READ 스냅샷에 상대방이 커밋한 row가
     // 안 보일 수 있어 locking read로 최신 커밋 데이터를 강제로 읽는다.
     @Lock(LockModeType.PESSIMISTIC_READ)

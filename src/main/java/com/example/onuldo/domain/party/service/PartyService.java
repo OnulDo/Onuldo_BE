@@ -57,6 +57,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -170,7 +171,9 @@ public class PartyService {
             offset = CursorKeyCodec.toIntCursorValue(CursorKeyCodec.decodeAsLongs(cursor, 1)[0]);
         }
 
-        LocalDate today = timeService.todayKst();
+        LocalDateTime now = timeService.nowKst();
+        LocalDate today = now.toLocalDate();
+        LocalTime currentTime = now.toLocalTime();
         List<Object[]> rows = partyRepository.findMyPartiesExcludingWaiting(userId, today);
 
         List<Long> partyIds = rows.stream().map(row -> (Long) row[0]).toList();
@@ -178,14 +181,16 @@ public class PartyService {
                 loadMembersWithTodayVerification(partyIds, today);
         Map<Long, Verification> myVerificationByParty =
                 loadMyTodayVerification(partyIds, userId, today);
+        Map<Long, Participation> myParticipationByParty =
+                findMyPartyParticipationsByPartyId(partyIds, userId);
 
         // HOME-09(상태 우선순위 → 마감 시각 → D-day → 챌린지ID)와 동일한 기준으로 정렬한다.
         // "오늘 나의 인증 상태"가 DB 컬럼이 아닌 계산값이라 결과 전체를 가져와 서비스에서 정렬하고,
         // 커서는 이 정렬된 목록 안에서의 위치(오프셋)를 가리킨다.
         List<PartyListSortEntry> sorted = rows.stream()
-                .map(row -> toSortEntry(row, today, membersByParty, myVerificationByParty))
+                .map(row -> toSortEntry(row, today, currentTime, membersByParty, myVerificationByParty, myParticipationByParty))
                 .sorted(Comparator
-                        .comparingInt((PartyListSortEntry entry) -> statusPriority(entry.item().myStatus()))
+                        .comparingInt((PartyListSortEntry entry) -> dailyStatusPriority(entry.item().myDailyStatus()))
                         .thenComparing(
                                 entry -> entry.item().verificationDeadline(),
                                 Comparator.nullsLast(Comparator.naturalOrder())
@@ -210,19 +215,28 @@ public class PartyService {
         );
     }
 
-    // 정렬 기준(챌린지ID)을 응답 DTO에 노출하지 않으면서 함께 들고 다니기 위한 내부 전용 래퍼
+    // 정렬 기준(챌린지ID)을 DTO와 함께 들고 다니기 위한 내부 전용 래퍼
     private record PartyListSortEntry(PartyListResDto item, Long challengeId) {
     }
 
     private PartyListSortEntry toSortEntry(
             Object[] row,
             LocalDate today,
+            LocalTime currentTime,
             Map<Long, List<PartyMemberVerificationResDto>> membersByParty,
-            Map<Long, Verification> myVerificationByParty
+            Map<Long, Verification> myVerificationByParty,
+            Map<Long, Participation> myParticipationByParty
     ) {
         Long partyId = (Long) row[0];
         Long challengeId = (Long) row[11];
-        PartyListResDto item = toPartyListResDto(row, today, membersByParty, myVerificationByParty.get(partyId));
+        PartyListResDto item = toPartyListResDto(
+                row,
+                today,
+                currentTime,
+                membersByParty,
+                myVerificationByParty.get(partyId),
+                myParticipationByParty.get(partyId)
+        );
         return new PartyListSortEntry(item, challengeId);
     }
 
@@ -280,10 +294,13 @@ public class PartyService {
     private PartyListResDto toPartyListResDto(
             Object[] row,
             LocalDate today,
+            LocalTime currentTime,
             Map<Long, List<PartyMemberVerificationResDto>> membersByParty,
-            Verification myVerification
+            Verification myVerification,
+            Participation myParticipation
     ) {
         Long partyId = (Long) row[0];
+        Long challengeId = (Long) row[11];
         PartyStatus status = (PartyStatus) row[4];
         LocalDate startDate = (LocalDate) row[5];
         LocalDate endDate = (LocalDate) row[6];
@@ -291,14 +308,22 @@ public class PartyService {
         int totalMemberCount = ((Long) row[8]).intValue();
         int verifiedMemberCount = ((Long) row[9]).intValue();
         long windowPassCount = (Long) row[10];
+        DailyChallengeStatus dailyStatus = dailyChallengeStatusResolver.resolve(
+                myParticipation,
+                myParticipation != null ? myParticipation.getChallenge() : null,
+                myVerification,
+                today,
+                currentTime
+        );
 
         return PartyListResDto.builder()
                 .partyId(partyId)
                 .name((String) row[1])
+                .challengeId(challengeId)
                 .challengeTitle((String) row[2])
                 .goal((String) row[3])
                 .status(status)
-                .myStatus(resolveMyStatus(myVerification, verificationDeadline, today))
+                .myDailyStatus(dailyStatus)
                 .endDate(endDate)
                 .dDay(calculateDDay(endDate, today))
                 .verificationDeadline(verificationDeadline)
@@ -308,20 +333,6 @@ public class PartyService {
                 .totalMemberCount(totalMemberCount)
                 .members(membersByParty.getOrDefault(partyId, List.of()))
                 .build();
-    }
-
-    // 오늘 나의 인증 상태 — 홈 "함께하는 파티" 카드 정책(generatePartyHomeItem)과 동일 기준
-    private PartyHomeCardStatus resolveMyStatus(Verification myVerification, LocalTime deadline, LocalDate today) {
-        if (myVerification == null) {
-            LocalDateTime deadlineAt = deadline != null ? LocalDateTime.of(today, deadline) : null;
-            boolean beforeDeadline = deadlineAt == null || timeService.nowKst().isBefore(deadlineAt);
-            return beforeDeadline ? PartyHomeCardStatus.NOT_VERIFIED : PartyHomeCardStatus.FAIL;
-        }
-        return switch (myVerification.getReview()) {
-            case PASS -> PartyHomeCardStatus.SUCCESS;
-            case AUTO_FAIL -> PartyHomeCardStatus.FAIL;
-            case PENDING, MANUAL_REVIEW -> PartyHomeCardStatus.PENDING;
-        };
     }
 
     private PartyHomeCardStatus toPartyHomeCardStatus(DailyChallengeStatus dailyStatus) {
@@ -551,6 +562,14 @@ public class PartyService {
         }
 
         List<Long> partyIds = parties.stream().map(Party::getId).toList();
+        return findMyPartyParticipationsByPartyId(partyIds, userId);
+    }
+
+    private Map<Long, Participation> findMyPartyParticipationsByPartyId(Collection<Long> partyIds, Long userId) {
+        if (partyIds.isEmpty()) {
+            return Map.of();
+        }
+
         return participationRepository
                 .findAllByParty_IdInAndUser_IdAndParticipationType(partyIds, userId, ParticipationType.PARTY)
                 .stream()
@@ -585,6 +604,10 @@ public class PartyService {
             case SUCCESS -> 2;
             case FAIL -> 3;
         };
+    }
+
+    private int dailyStatusPriority(DailyChallengeStatus status) {
+        return statusPriority(toPartyHomeCardStatus(status));
     }
 
     private HomeItemWithChallengeId generatePartyHomeItem(

@@ -12,6 +12,7 @@ import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,9 +20,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작, 진행 피드, 정산 결과, 홈 화면 관련 API")
 public interface PartyControllerDoc {
@@ -46,18 +47,15 @@ public interface PartyControllerDoc {
                     모집 중(WAITING)인 파티는 목록에서 제외되며, 진행 중/종료된 파티만 반환합니다.
                     파티 카드 UI(목표 문구, D-day, 마감 시각, 파티원별 오늘 인증 여부 아바타)를 그대로 그릴 수 있도록
                     goal, dDay, members(파티원별 isVerifiedToday) 필드를 함께 반환합니다.
-                    카드의 상태(myStatus)와 정렬 순서는 홈 "함께하는 파티" 섹션(HOME-09: 상태 우선순위 → 마감 시각 → D-day → 챌린지ID)과 동일한 정책을 따릅니다.
+                    카드의 상태(dailyStatus)와 정렬 순서는 홈 "함께하는 파티" 섹션(HOME-09: 상태 우선순위 → 마감 시각 → D-day → 챌린지ID)과 동일한 정책을 따릅니다.
                     """
     )
     @ApiResponse(responseCode = "200")
     CursorPageResponse<PartyListResDto> getMyParties(
             @AuthUser Long userId,
-            @Parameter(description = "이전 응답의 nextCursor 값. 첫 페이지는 비워둠")
-            @RequestParam(required = false)
-            String cursor,
-            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
-            @RequestParam(defaultValue = "10")
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     );
 
     @Operation(

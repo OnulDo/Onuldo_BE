@@ -143,6 +143,7 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             """)
     List<Participation> findAllByIdInWithChallengeAndParty(@Param("ids") Collection<Long> ids);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Participation> findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(
             Long userId,
             Long challengeId,
