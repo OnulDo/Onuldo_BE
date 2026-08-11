@@ -13,6 +13,9 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -95,6 +98,21 @@ public class ExceptionAdvice {
         return handleExceptionInternal(GlobalErrorStatus._BAD_REQUEST.getCode());
     }
 
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<BaseResponse<String>> handleMissingServletRequestParameterException() {
+        return handleExceptionInternal(GlobalErrorStatus._BAD_REQUEST.getCode());
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<BaseResponse<String>> handleHttpRequestMethodNotSupportedException() {
+        return handleExceptionInternal(GlobalErrorStatus._METHOD_NOT_ALLOWED.getCode());
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<BaseResponse<String>> handleHttpMediaTypeNotSupportedException() {
+        return handleExceptionInternal(GlobalErrorStatus._UNSUPPORTED_MEDIA_TYPE.getCode());
+    }
+
     /*
      * 일반적인 서버 에러에 대한 예외 처리
      */
@@ -103,7 +121,7 @@ public class ExceptionAdvice {
         e.printStackTrace(); //예외 정보 출력
 
         // 처리되지 않은 진짜 500 에러만 디스코드로 알림 (비즈니스 예외/검증 오류는 위에서 이미 처리됨)
-        // Spring이 던지는 4xx 예외(405, 415 등)까지 이 핸들러로 떨어지므로 서버 에러만 걸러서 알림한다.
+        // 여기서 다루지 않는 Spring의 나머지 4xx 예외(예: 406 등)까지 이 핸들러로 떨어질 수 있으므로 서버 에러만 걸러서 알림한다.
         if (isServerError(e)) {
             discordAlertSender.sendServerError(request.getRequestURI(), e);
         }
