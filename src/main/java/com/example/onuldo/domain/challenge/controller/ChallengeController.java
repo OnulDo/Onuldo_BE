@@ -8,10 +8,12 @@ import com.example.onuldo.domain.challenge.dto.request.ChallengeVerificationReqD
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.service.ChallengeService;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,7 @@ import com.example.onuldo.global.security.AuthUser;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/api/challenges")
 public class ChallengeController implements ChallengeControllerDoc {
 
@@ -30,16 +33,15 @@ public class ChallengeController implements ChallengeControllerDoc {
 
     @GetMapping
     public CursorPageResponse<ChallengeResDto> getChallenges(
-            @RequestParam(required = false)
-            String cursor,
-            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
-            int size,
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination,
             @RequestParam(required = false)
             ChallengeCategory category,
             @RequestParam(required = false)
             String keyword
     ) {
-        return challengeService.getChallenges(cursor, size, category, keyword);
+        return challengeService.getChallenges(pagination.getCursor(), pagination.getSize(), category, keyword);
     }
 
     @GetMapping("/{challengeId}")
@@ -49,7 +51,7 @@ public class ChallengeController implements ChallengeControllerDoc {
         return BaseResponse.onSuccess(challengeService.getChallenge(challengeId));
     }
 
-    @PostMapping("/{challengeId}/verification")
+    @PostMapping("/{challengeId}/verifications")
     public BaseResponse<ChallengeVerificationResDto> verifyChallenge(
             @AuthUser
             Long userId,
@@ -62,7 +64,7 @@ public class ChallengeController implements ChallengeControllerDoc {
         return BaseResponse.onSuccess(challengeService.verifyChallenge(userId, challengeId, request));
     }
 
-    @PostMapping("/{challengeId}/verification/manual-review")
+    @PostMapping("/{challengeId}/verification-review-requests")
     public BaseResponse<ChallengeManualReviewResDto> manualReviewVerification(
             @AuthUser
             Long userId,

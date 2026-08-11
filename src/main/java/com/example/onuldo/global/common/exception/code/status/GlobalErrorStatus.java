@@ -183,6 +183,11 @@ public enum GlobalErrorStatus implements BaseCodeInterface {
             "RETURN_RATE_OUT_OF_RANGE",
             "평균 환급률이 허용 범위를 초과했습니다."
     ),
+    _POINT_BALANCE_OVERFLOW(
+            HttpStatus.BAD_REQUEST,
+            "POINT_BALANCE_OVERFLOW",
+            "포인트 잔액이 허용 범위를 초과했습니다."
+    ),
     _INSUFFICIENT_POINT_FOR_WITHDRAW(HttpStatus.BAD_REQUEST, "INSUFFICIENT_POINT_FOR_WITHDRAW", "보유 포인트가 출금 요청 금액보다 부족합니다."),
 
     // 커서 페이지네이션 관련 에러

@@ -3,6 +3,7 @@ package com.example.onuldo.domain.party.controller;
 import com.example.onuldo.domain.party.controller.doc.PartyControllerDoc;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
+import com.example.onuldo.domain.party.dto.request.PartyReadyReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
 import com.example.onuldo.domain.party.dto.response.PartyHomeResDto;
@@ -16,12 +17,16 @@ import com.example.onuldo.domain.party.service.PartyLifecycleService;
 import com.example.onuldo.domain.party.service.PartyMemberService;
 import com.example.onuldo.domain.party.service.PartyService;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/api/parties")
 public class PartyController implements PartyControllerDoc {
 
@@ -54,12 +60,11 @@ public class PartyController implements PartyControllerDoc {
     public CursorPageResponse<PartyListResDto> getMyParties(
             @AuthUser
             Long userId,
-            @RequestParam(required = false)
-            String cursor,
-            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     ) {
-        return partyService.getMyParties(userId, cursor, size);
+        return partyService.getMyParties(userId, pagination.getCursor(), pagination.getSize());
     }
 
     @GetMapping("/{partyId}/waiting-room")
@@ -72,7 +77,7 @@ public class PartyController implements PartyControllerDoc {
         return BaseResponse.onSuccess(partyService.getPartyWaiting(partyId, userId));
     }
 
-    @PostMapping("/join")
+    @PostMapping("/members")
     public BaseResponse<PartyWaitingResDto> joinParty(
             @AuthUser
             Long userId,
@@ -83,7 +88,7 @@ public class PartyController implements PartyControllerDoc {
         return BaseResponse.onSuccess(partyMemberService.joinParty(userId, request));
     }
 
-    @PostMapping("/{partyId}/leave")
+    @DeleteMapping("/{partyId}/members/me")
     public BaseResponse<PartyLeaveResDto> leaveParty(
             @AuthUser
             Long userId,
@@ -93,17 +98,20 @@ public class PartyController implements PartyControllerDoc {
         return BaseResponse.onSuccess("파티 이탈에 성공했습니다.", partyMemberService.leaveParty(partyId, userId));
     }
 
-    @PostMapping("/{partyId}/ready")
-    public BaseResponse<PartyWaitingResDto> togglePartyMemberReady(
+    @PatchMapping("/{partyId}/members/me/readiness")
+    public BaseResponse<PartyWaitingResDto> updatePartyMemberReady(
             @AuthUser
             Long userId,
             @PathVariable
-            Long partyId
+            Long partyId,
+            @Valid
+            @RequestBody
+            PartyReadyReqDto request
     ) {
-        return BaseResponse.onSuccess(partyMemberService.togglePartyMemberReady(partyId, userId));
+        return BaseResponse.onSuccess(partyMemberService.updatePartyMemberReady(partyId, userId, request));
     }
 
-    @PostMapping("/{partyId}/start")
+    @PatchMapping("/{partyId}/status")
     public BaseResponse<PartyStartResDto> startParty(
             @AuthUser
             Long userId,

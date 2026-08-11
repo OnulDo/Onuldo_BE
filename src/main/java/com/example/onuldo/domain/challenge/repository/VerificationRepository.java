@@ -137,6 +137,7 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             SELECT v
             FROM Verification v
             JOIN FETCH v.participation p
+            JOIN FETCH p.user
             JOIN FETCH p.challenge
             LEFT JOIN FETCH p.party
             WHERE v.id IN :ids

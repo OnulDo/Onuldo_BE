@@ -16,6 +16,7 @@ import com.example.onuldo.domain.user.dto.response.UpdateProfileResDto;
 import com.example.onuldo.domain.user.dto.response.WithdrawPointResDto;
 import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -61,6 +63,8 @@ public interface UserControllerDoc {
     BaseResponse<UpdateProfileResDto> updateProfile(
             @AuthUser
             Long userId,
+
+            @Valid
             @RequestBody
             UpdateProfileReqDto request
     );
@@ -139,13 +143,9 @@ public interface UserControllerDoc {
             @AuthUser
             Long userId,
 
-            @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력")
-            @RequestParam(required = false)
-            String cursor,
-
-            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
-            @RequestParam(defaultValue = "10")
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     );
 
     @Operation(
@@ -238,12 +238,8 @@ public interface UserControllerDoc {
             @RequestParam(required = false)
             PointTransactionType type,
 
-            @Parameter(description = "이전 응답의 nextCursor 값. 첫 조회 시 미입력")
-            @RequestParam(required = false)
-            String cursor,
-
-            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
-            @RequestParam(defaultValue = "10")
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     );
 }

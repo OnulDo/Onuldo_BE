@@ -2,6 +2,7 @@ package com.example.onuldo.domain.party.controller.doc;
 
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
+import com.example.onuldo.domain.party.dto.request.PartyReadyReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
 import com.example.onuldo.domain.party.dto.response.PartyHomeResDto;
@@ -11,6 +12,7 @@ import com.example.onuldo.domain.party.dto.response.PartyResultResDto;
 import com.example.onuldo.domain.party.dto.response.PartyStartResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,9 +20,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Party", description = "파티 생성, 조회, 참여, 시작, 진행 피드, 정산 결과, 홈 화면 관련 API")
 public interface PartyControllerDoc {
@@ -51,12 +53,9 @@ public interface PartyControllerDoc {
     @ApiResponse(responseCode = "200")
     CursorPageResponse<PartyListResDto> getMyParties(
             @AuthUser Long userId,
-            @Parameter(description = "이전 응답의 nextCursor 값. 첫 페이지는 비워둠")
-            @RequestParam(required = false)
-            String cursor,
-            @Parameter(description = "조회할 개수. 기본값 10", example = "10")
-            @RequestParam(defaultValue = "10")
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     );
 
     @Operation(
@@ -99,15 +98,17 @@ public interface PartyControllerDoc {
     );
 
     @Operation(
-            summary = "파티원 준비완료 상태 토글",
-            description = "파티원이 대기방에서 [준비완료]/[대기] 상태를 전환합니다. "
+            summary = "파티원 준비완료 상태 변경",
+            description = "파티원이 대기방에서 요청 바디의 ready 값에 따라 [준비완료]/[대기] 상태를 변경합니다. "
                     + "방장은 준비완료 대상이 아닙니다. "
-                    + "준비완료로 전환 시 보유 포인트가 도전금보다 부족하면 전환에 실패합니다."
+                    + "ready=true로 변경 시 보유 포인트가 도전금보다 부족하면 전환에 실패합니다."
     )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody
     @ApiResponse(responseCode = "200")
-    BaseResponse<PartyWaitingResDto> togglePartyMemberReady(
+    BaseResponse<PartyWaitingResDto> updatePartyMemberReady(
             @AuthUser Long userId,
-            @PathVariable Long partyId
+            @PathVariable Long partyId,
+            @Valid @RequestBody PartyReadyReqDto request
     );
 
     @Operation(

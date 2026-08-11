@@ -20,11 +20,13 @@ import com.example.onuldo.domain.user.service.NotificationQueryService;
 import com.example.onuldo.domain.user.service.PointService;
 import com.example.onuldo.domain.user.service.UserService;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,6 +38,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/api/users/me")
 public class UserController implements UserControllerDoc {
 
@@ -94,13 +97,11 @@ public class UserController implements UserControllerDoc {
             @AuthUser
             Long userId,
 
-            @RequestParam(required = false)
-            String cursor,
-
-            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     ) {
-        return notificationQueryService.getNotifications(userId, cursor, size);
+        return notificationQueryService.getNotifications(userId, pagination.getCursor(), pagination.getSize());
     }
 
     @PostMapping("/wallet/charges")
@@ -115,7 +116,7 @@ public class UserController implements UserControllerDoc {
         return BaseResponse.onSuccess(pointService.chargePoint(userId, request));
     }
 
-    @PostMapping("/wallet/withdraw")
+    @PostMapping("/wallet/withdrawals")
     public BaseResponse<WithdrawPointResDto> withdrawPoint(
             @AuthUser
             Long userId,
@@ -160,12 +161,10 @@ public class UserController implements UserControllerDoc {
             @RequestParam(required = false)
             PointTransactionType type,
 
-            @RequestParam(required = false)
-            String cursor,
-
-            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     ) {
-        return pointService.getPointTransactions(userId, type, cursor, size);
+        return pointService.getPointTransactions(userId, type, pagination.getCursor(), pagination.getSize());
     }
 }

@@ -4,6 +4,7 @@ import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -143,11 +144,55 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             """)
     List<Participation> findAllByIdInWithChallengeAndParty(@Param("ids") Collection<Long> ids);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Participation> findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(
+    default Optional<Participation> findLatestByUserIdAndChallengeIdAndStatus(
             Long userId,
             Long challengeId,
             ParticipationStatus status
+    ) {
+        return findLatestRowsByUserIdAndChallengeIdAndStatus(
+                userId, challengeId, status, PageRequest.of(0, 1)
+        ).stream().findFirst();
+    }
+
+    @Query("""
+            SELECT p
+            FROM Participation p
+            WHERE p.user.id = :userId
+            AND p.challenge.id = :challengeId
+            AND p.status = :status
+            ORDER BY p.id DESC
+            """)
+    List<Participation> findLatestRowsByUserIdAndChallengeIdAndStatus(
+            @Param("userId") Long userId,
+            @Param("challengeId") Long challengeId,
+            @Param("status") ParticipationStatus status,
+            Pageable pageable
+    );
+
+    default Optional<Participation> findLatestByUserIdAndChallengeIdAndStatusForUpdate(
+            Long userId,
+            Long challengeId,
+            ParticipationStatus status
+    ) {
+        return findLatestRowsByUserIdAndChallengeIdAndStatusForUpdate(
+                userId, challengeId, status, PageRequest.of(0, 1)
+        ).stream().findFirst();
+    }
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT p
+            FROM Participation p
+            WHERE p.user.id = :userId
+            AND p.challenge.id = :challengeId
+            AND p.status = :status
+            ORDER BY p.id DESC
+            """)
+    List<Participation> findLatestRowsByUserIdAndChallengeIdAndStatusForUpdate(
+            @Param("userId") Long userId,
+            @Param("challengeId") Long challengeId,
+            @Param("status") ParticipationStatus status,
+            Pageable pageable
     );
 
     @Query("""

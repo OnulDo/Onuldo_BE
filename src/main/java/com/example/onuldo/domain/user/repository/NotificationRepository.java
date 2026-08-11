@@ -20,18 +20,27 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             Long refId
     );
 
+    Optional<Notification> findByUser_IdAndId(Long userId, Long id);
+
     @Query("""
             SELECT n
             FROM Notification n
+            LEFT JOIN NotificationDispatch nd ON nd.notification = n
             WHERE n.user.id = :userId
             AND n.createdAt >= :storedAfter
-            AND (:cursor IS NULL OR n.id < :cursor)
-            ORDER BY n.id DESC
+            AND (nd.id IS NULL OR nd.lastAttemptAt IS NOT NULL)
+            AND (
+                :cursorCreatedAt IS NULL
+                OR n.createdAt < :cursorCreatedAt
+                OR (n.createdAt = :cursorCreatedAt AND n.id < :cursorId)
+            )
+            ORDER BY n.createdAt DESC, n.id DESC
             """)
     List<Notification> findByUserIdWithCursor(
             @Param("userId") Long userId,
             @Param("storedAfter") LocalDateTime storedAfter,
-            @Param("cursor") Long cursor,
+            @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
+            @Param("cursorId") Long cursorId,
             Pageable pageable
     );
 }

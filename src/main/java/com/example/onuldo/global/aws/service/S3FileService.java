@@ -26,7 +26,7 @@ import com.example.onuldo.global.common.time.TimeService;
 @Service
 @RequiredArgsConstructor
 public class S3FileService {
-    // 회원가입 시점엔 인증 전이라 업로드 API(POST /api/file/images)를 쓸 수 없어, 지정 가능한 값이
+    // 회원가입 시점엔 인증 전이라 업로드 API(POST /api/files/images)를 쓸 수 없어, 지정 가능한 값이
     // 이 9개 기본 이미지뿐이다. 그래서 존재 여부뿐 아니라 이 allowlist까지 검증한다.
     private static final Set<String> DEFAULT_PROFILE_IMAGE_FILE_IDS = Set.of(
             "profile/1.png",

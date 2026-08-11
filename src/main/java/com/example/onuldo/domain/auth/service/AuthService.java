@@ -32,6 +32,7 @@ import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.global.ratelimit.EmailRateLimiter;
 import com.example.onuldo.global.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -98,7 +99,13 @@ public class AuthService {
                 .profileImageUrl(request.profileImageUrl())
                 .build();
 
-        User savedUser = userRepository.save(user);
+        User savedUser;
+        try {
+            savedUser = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+        }
+
         saveTermAgreements(savedUser, request.termAgreements());
         saveDefaultNotificationSetting(savedUser);
         saveDeviceLog(savedUser, request.device());
@@ -195,17 +202,22 @@ public class AuthService {
         validateRequiredTerms(request.termAgreements());
         s3FileService.verifyDefaultProfileImageUrl(request.profileImageUrl());
 
-        User user = userRepository.save(User.builder()
-                .email(info.email())
-                .nickname(request.nickname())
-                .profileImageUrl(request.profileImageUrl())
-                .socialId(info.socialId())
-                .socialProvider(info.provider())
-                .emailVerified(true)
-                .pointBalance(0L)
-                .status(UserStatus.ACTIVE)
-                .lastLoginAt(timeService.nowKst())
-                .build());
+        User user;
+        try {
+            user = userRepository.saveAndFlush(User.builder()
+                    .email(info.email())
+                    .nickname(request.nickname())
+                    .profileImageUrl(request.profileImageUrl())
+                    .socialId(info.socialId())
+                    .socialProvider(info.provider())
+                    .emailVerified(true)
+                    .pointBalance(0L)
+                    .status(UserStatus.ACTIVE)
+                    .lastLoginAt(timeService.nowKst())
+                    .build());
+        } catch (DataIntegrityViolationException e) {
+            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+        }
 
         saveTermAgreements(user, request.termAgreements());
         saveDefaultNotificationSetting(user);
