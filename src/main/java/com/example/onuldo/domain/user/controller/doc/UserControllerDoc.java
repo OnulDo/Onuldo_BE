@@ -63,6 +63,8 @@ public interface UserControllerDoc {
     BaseResponse<UpdateProfileResDto> updateProfile(
             @AuthUser
             Long userId,
+
+            @Valid
             @RequestBody
             UpdateProfileReqDto request
     );
