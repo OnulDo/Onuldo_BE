@@ -16,11 +16,13 @@ import com.example.onuldo.domain.party.service.PartyLifecycleService;
 import com.example.onuldo.domain.party.service.PartyMemberService;
 import com.example.onuldo.domain.party.service.PartyService;
 import com.example.onuldo.global.common.base.BaseResponse;
-import com.example.onuldo.global.common.cursor.CursorConstants;
+import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.security.AuthUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/api/parties")
 public class PartyController implements PartyControllerDoc {
 
@@ -54,12 +57,11 @@ public class PartyController implements PartyControllerDoc {
     public CursorPageResponse<PartyListResDto> getMyParties(
             @AuthUser
             Long userId,
-            @RequestParam(required = false)
-            String cursor,
-            @RequestParam(defaultValue = "" + CursorConstants.DEFAULT_SIZE)
-            int size
+            @Valid
+            @ParameterObject
+            CursorPaginationDto pagination
     ) {
-        return partyService.getMyParties(userId, cursor, size);
+        return partyService.getMyParties(userId, pagination.getCursor(), pagination.getSize());
     }
 
     @GetMapping("/{partyId}/waiting-room")
