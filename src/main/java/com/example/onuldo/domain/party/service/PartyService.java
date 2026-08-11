@@ -324,6 +324,7 @@ public class PartyService {
                 .goal((String) row[3])
                 .status(status)
                 .myDailyStatus(dailyStatus)
+                .verifiedAt(myVerification != null ? myVerification.getVerifiedAt() : null)
                 .endDate(endDate)
                 .dDay(calculateDDay(endDate, today))
                 .verificationDeadline(verificationDeadline)
