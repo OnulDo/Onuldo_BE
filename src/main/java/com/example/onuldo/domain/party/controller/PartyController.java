@@ -3,6 +3,7 @@ package com.example.onuldo.domain.party.controller;
 import com.example.onuldo.domain.party.controller.doc.PartyControllerDoc;
 import com.example.onuldo.domain.party.dto.request.PartyCreateReqDto;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
+import com.example.onuldo.domain.party.dto.request.PartyReadyReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyCreateResDto;
 import com.example.onuldo.domain.party.dto.response.PartyFeedResDto;
 import com.example.onuldo.domain.party.dto.response.PartyHomeResDto;
@@ -96,13 +97,16 @@ public class PartyController implements PartyControllerDoc {
     }
 
     @PatchMapping("/{partyId}/members/me/readiness")
-    public BaseResponse<PartyWaitingResDto> togglePartyMemberReady(
+    public BaseResponse<PartyWaitingResDto> updatePartyMemberReady(
             @AuthUser
             Long userId,
             @PathVariable
-            Long partyId
+            Long partyId,
+            @Valid
+            @RequestBody
+            PartyReadyReqDto request
     ) {
-        return BaseResponse.onSuccess(partyMemberService.togglePartyMemberReady(partyId, userId));
+        return BaseResponse.onSuccess(partyMemberService.updatePartyMemberReady(partyId, userId, request));
     }
 
     @PatchMapping("/{partyId}/status")

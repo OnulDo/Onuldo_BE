@@ -2,6 +2,7 @@ package com.example.onuldo.domain.party.service;
 
 import com.example.onuldo.domain.challenge.support.ParticipationValidator;
 import com.example.onuldo.domain.party.dto.request.PartyJoinReqDto;
+import com.example.onuldo.domain.party.dto.request.PartyReadyReqDto;
 import com.example.onuldo.domain.party.dto.response.PartyLeaveResDto;
 import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.domain.party.entity.Party;
@@ -144,7 +145,7 @@ public class PartyMemberService {
                 .build();
     }
 
-    public PartyWaitingResDto togglePartyMemberReady(Long partyId, Long userId) {
+    public PartyWaitingResDto updatePartyMemberReady(Long partyId, Long userId, PartyReadyReqDto request) {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
 
@@ -155,9 +156,7 @@ public class PartyMemberService {
             throw new RestApiException(GlobalErrorStatus._HOST_CANNOT_READY);
         }
 
-        if (member.isReady()) {
-            member.waiting();
-        } else {
+        if (request.ready()) {
             User user = member.getUser();
             if (user.getPointBalance() < party.getDepositAmount()) {
                 throw new InsufficientPointException(
@@ -167,6 +166,8 @@ public class PartyMemberService {
                 );
             }
             member.ready();
+        } else {
+            member.waiting();
         }
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
