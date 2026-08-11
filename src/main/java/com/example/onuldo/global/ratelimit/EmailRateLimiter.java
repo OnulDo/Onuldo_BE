@@ -14,7 +14,7 @@ import java.util.Locale;
 @Component
 public class EmailRateLimiter {
 
-    private static final int EMAIL_LIMIT_PER_MINUTE = 3;
+    private static final int EMAIL_LIMIT_PER_MINUTE = 20;
 
     // 단일 인스턴스 기준 인메모리 카운터. 서버가 여러 대로 늘어나면 Redis(INCR + TTL) 기반으로 교체 필요.
     private final Cache<String, Bucket> emailBuckets = Caffeine.newBuilder()

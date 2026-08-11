@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
 
-    private static final int IP_LIMIT_PER_MINUTE = 15;
+    private static final int IP_LIMIT_PER_MINUTE = 100;
     private static final String FORWARDED_FOR_HEADER = "X-Forwarded-For";
 
     // 단일 인스턴스 기준 인메모리 카운터. 서버가 여러 대로 늘어나면 Redis(INCR + TTL) 기반으로 교체 필요.
