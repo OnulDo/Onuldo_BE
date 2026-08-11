@@ -56,7 +56,7 @@ public interface UserChallengeControllerDoc {
     조건은 참여 타입이 'PERSONAL'이고 `ONGOING` 상태이면서 startDate <= date <= endDate 입니다.
     파티 챌린지는 이 API에 포함되지 않습니다.
 
-    각 챌린지에는 해당 날짜 인증 기록이 있는지 여부(`verifiedOnDate`)가 포함됩니다.
+    각 챌린지에는 해당 날짜 인증 기록이 있는지 여부(`verifiedOnDate`)와 당일 최신 인증 시각(`verifiedAt`)이 포함됩니다.
     """
     )
     BaseResponse<List<DailyChallengeResDto>> getDailyChallenges(
