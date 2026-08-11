@@ -11,6 +11,8 @@ import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
+import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +34,7 @@ import java.util.stream.Collectors;
 public class NotificationQueryService {
 
     private static final int RETENTION_DAYS = 30;
+    private static final DateTimeFormatter CURSOR_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssnnnnnnnnn");
 
     private final NotificationRepository notificationRepository;
     private final ParticipationRepository participationRepository;
@@ -44,13 +48,14 @@ public class NotificationQueryService {
             int size
     ) {
         int resolvedSize = CursorConstants.resolveSize(size);
-        Long lastId = CursorKeyCodec.isBlank(cursor) ? null : CursorKeyCodec.decodeAsLongs(cursor, 1)[0];
+        CursorPosition cursorPosition = decodeCursor(userId, cursor);
         LocalDateTime storedAfter = timeService.nowKst().minusDays(RETENTION_DAYS);
 
         List<Notification> notifications = notificationRepository.findByUserIdWithCursor(
                 userId,
                 storedAfter,
-                lastId,
+                cursorPosition.createdAt(),
+                cursorPosition.id(),
                 CursorPageable.of(resolvedSize)
         );
         Map<Long, NotificationTarget> targetByNotificationId = resolveTargets(notifications);
@@ -62,8 +67,43 @@ public class NotificationQueryService {
                         notification,
                         targetByNotificationId.getOrDefault(notification.getId(), NotificationTarget.empty())
                 ),
-                notification -> CursorKeyCodec.encode(notification.getId())
+                notification -> CursorKeyCodec.encode(formatCursorTime(notification.getCreatedAt()), notification.getId())
         );
+    }
+
+    private CursorPosition decodeCursor(Long userId, String cursor) {
+        if (CursorKeyCodec.isBlank(cursor)) {
+            return CursorPosition.empty();
+        }
+
+        try {
+            String[] parts = CursorKeyCodec.decode(cursor);
+            if (parts.length == 2) {
+                return new CursorPosition(
+                        LocalDateTime.parse(parts[0], CURSOR_TIME_FORMATTER),
+                        Long.parseLong(parts[1])
+                );
+            }
+            if (parts.length == 1) {
+                return decodeLegacyIdCursor(userId, parts[0]);
+            }
+
+            throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
+        } catch (RuntimeException e) {
+            throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
+        }
+    }
+
+    private CursorPosition decodeLegacyIdCursor(Long userId, String cursorId) {
+        Long notificationId = Long.parseLong(cursorId);
+        Notification notification = notificationRepository.findByUser_IdAndId(userId, notificationId)
+                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT));
+
+        return new CursorPosition(notification.getCreatedAt(), notification.getId());
+    }
+
+    private String formatCursorTime(LocalDateTime createdAt) {
+        return createdAt.format(CURSOR_TIME_FORMATTER);
     }
 
     private NotificationListItemResDto toNotificationListItemResDto(
@@ -217,6 +257,12 @@ public class NotificationQueryService {
     private record NotificationTarget(Long challengeId, Long partyId) {
         private static NotificationTarget empty() {
             return new NotificationTarget(null, null);
+        }
+    }
+
+    private record CursorPosition(LocalDateTime createdAt, Long id) {
+        private static CursorPosition empty() {
+            return new CursorPosition(null, null);
         }
     }
 }

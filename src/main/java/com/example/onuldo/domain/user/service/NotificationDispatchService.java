@@ -62,36 +62,35 @@ public class NotificationDispatchService {
 
     // 발송 시점에 알림함 기록을 만들 수 있도록 푸시 발송 대기열에 예약 정보만 등록하는 메서드
     public void enqueue(NotificationDispatchCommand command) {
-        Notification notification = createReferenceNotification(command);
         try {
-            executeWithoutResultInNewTransaction(status -> enqueueInTransaction(command, notification));
+            executeWithoutResultInNewTransaction(status -> enqueueInTransaction(command));
         } catch (DataIntegrityViolationException e) {
-            if (notification == null) {
+            if (!hasReference(command)) {
                 throw e;
             }
-            if (notificationDispatchRepository.findByNotification_Id(notification.getId()).isEmpty()) {
+            if (notificationDispatchRepository.findByUser_IdAndTypeAndRefTypeAndRefId(
+                    command.getUserId(),
+                    command.getType(),
+                    command.getRefType(),
+                    command.getRefId()
+            ).isEmpty()) {
                 throw e;
             }
         }
     }
 
-    private Notification createReferenceNotification(NotificationDispatchCommand command) {
-        if (command.getRefType() == null || command.getRefId() == null) {
-            return null;
-        }
+    private boolean hasReference(NotificationDispatchCommand command) {
+        return command.getRefType() != null && command.getRefId() != null;
+    }
 
-        return notificationCreateService.createIfAbsent(
+    private void enqueueInTransaction(NotificationDispatchCommand command) {
+        if (hasReference(command)
+                && notificationDispatchRepository.findByUser_IdAndTypeAndRefTypeAndRefId(
                 command.getUserId(),
                 command.getType(),
-                command.getTitle(),
-                command.getContent(),
                 command.getRefType(),
                 command.getRefId()
-        );
-    }
-
-    private void enqueueInTransaction(NotificationDispatchCommand command, Notification notification) {
-        if (notification != null && notificationDispatchRepository.findByNotification_Id(notification.getId()).isPresent()) {
+        ).isPresent()) {
             return;
         }
 
@@ -101,7 +100,6 @@ public class NotificationDispatchService {
         notificationDispatchRepository.save(
                 NotificationDispatch.builder()
                         .user(user)
-                        .notification(notification)
                         .type(command.getType())
                         .scheduledAt(command.getScheduledAt())
                         .title(command.getTitle())
@@ -280,7 +278,8 @@ public class NotificationDispatchService {
                                 dispatch.getTitle(),
                                 dispatch.getContent(),
                                 dispatch.getRefType(),
-                                dispatch.getRefId()
+                                dispatch.getRefId(),
+                                dispatch.getScheduledAt()
                         ));
     }
 

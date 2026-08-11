@@ -7,6 +7,7 @@ import com.example.onuldo.domain.user.repository.NotificationRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +35,18 @@ public class NotificationCreateService {
             String refType,
             Long refId
     ) {
+        return createIfAbsent(userId, type, title, content, refType, refId, null);
+    }
+
+    public Notification createIfAbsent(
+            Long userId,
+            NotificationType type,
+            String title,
+            String content,
+            String refType,
+            Long refId,
+            LocalDateTime createdAt
+    ) {
         try {
             return executeInNewTransaction(status -> createIfAbsentInTransaction(
                     userId,
@@ -39,7 +54,8 @@ public class NotificationCreateService {
                     title,
                     content,
                     refType,
-                    refId
+                    refId,
+                    createdAt
             ));
         } catch (DataIntegrityViolationException e) {
             if (refType == null || refId == null) {
@@ -61,7 +77,8 @@ public class NotificationCreateService {
             String title,
             String content,
             String refType,
-            Long refId
+            Long refId,
+            LocalDateTime createdAt
     ) {
         if (refType != null && refId != null) {
             var existing = notificationRepository.findByUser_IdAndTypeAndRefTypeAndRefId(
@@ -86,6 +103,7 @@ public class NotificationCreateService {
                         .content(content)
                         .refType(refType)
                         .refId(refId)
+                        .createdAt(createdAt == null ? TimeService.nowKstStatic() : createdAt)
                 .build()
         );
     }
