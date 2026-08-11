@@ -118,7 +118,7 @@ public class ExceptionAdvice {
      */
     @ExceptionHandler
     public ResponseEntity<BaseResponse<String>> handleException(Exception e, HttpServletRequest request) {
-        e.printStackTrace(); //예외 정보 출력
+        log.error("Unhandled exception occurred at [{}]", request.getRequestURI(), e);
 
         // 처리되지 않은 진짜 500 에러만 디스코드로 알림 (비즈니스 예외/검증 오류는 위에서 이미 처리됨)
         // 여기서 다루지 않는 Spring의 나머지 4xx 예외(예: 406 등)까지 이 핸들러로 떨어질 수 있으므로 서버 에러만 걸러서 알림한다.
