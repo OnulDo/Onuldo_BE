@@ -109,7 +109,7 @@ public class ChallengeService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
         Participation participationSnapshot = participationRepository
-                .findFirstByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
+                .findLatestByUserIdAndChallengeIdAndStatus(userId, challengeId, ParticipationStatus.ONGOING)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
         if (today.isBefore(participationSnapshot.getStartDate())) {
@@ -124,6 +124,10 @@ public class ChallengeService {
         }
 
         String photoUrl = s3FileService.getFileUrl(request.fileId()).url();
+        if (verificationRepository.existsByPhotoUrl(photoUrl)) {
+            throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
+        }
+
         List<String> detectedLabelNames = rekognitionService.detectLabelNamesByFileId(request.fileId());
 
         boolean matchedChallengeLabel = hasMatchingLabel(challenge.getVerificationLabelList(), detectedLabelNames);
@@ -176,7 +180,7 @@ public class ChallengeService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
         Participation participation = participationRepository
-                .findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
+                .findLatestByUserIdAndChallengeIdAndStatusForUpdate(userId, challengeId, ParticipationStatus.ONGOING)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
         if (today.isBefore(participation.getStartDate())) {
@@ -245,7 +249,7 @@ public class ChallengeService {
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
 
         Participation participation = participationRepository
-                .findTopByUser_IdAndChallenge_IdAndStatusOrderByIdDesc(userId, challengeId, ParticipationStatus.ONGOING)
+                .findLatestByUserIdAndChallengeIdAndStatusForUpdate(userId, challengeId, ParticipationStatus.ONGOING)
                 .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
 
         LocalDate today = timeService.todayKst();

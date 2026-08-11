@@ -90,7 +90,7 @@ public class ChallengeNotificationService {
         }
     }
 
-    // 파티원 인증 성공 알림을 인증 당사자를 제외한 파티원들에게 보내는 메서드
+    // verificationId로 인증 정보를 조회한 뒤 파티원 인증 성공 알림 생성을 위임하는 메서드
     @Transactional
     public void notifyPartyMemberVerified(Long verificationId) {
         Verification verification = verificationRepository.findAllByIdInWithParticipation(List.of(verificationId))
@@ -104,7 +104,7 @@ public class ChallengeNotificationService {
         notifyPartyMemberVerified(verification);
     }
 
-    // 파티원 인증 성공 알림을 인증 당사자를 제외한 파티원들에게 보내는 메서드
+    // 이미 조회된 인증 정보로 인증 당사자를 제외한 파티원들에게 성공 알림을 보내는 메서드
     @Transactional
     public void notifyPartyMemberVerified(Verification verification) {
         Participation participation = verification.getParticipation();
