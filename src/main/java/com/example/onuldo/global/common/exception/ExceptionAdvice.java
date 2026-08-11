@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.ErrorResponse;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -124,9 +125,18 @@ public class ExceptionAdvice {
         // 여기서 다루지 않는 Spring의 나머지 4xx 예외(예: 406 등)까지 이 핸들러로 떨어질 수 있으므로 서버 에러만 걸러서 알림한다.
         if (isServerError(e)) {
             discordAlertSender.sendServerError(request.getRequestURI(), e);
+            return handleExceptionInternalFalse(GlobalErrorStatus._INTERNAL_SERVER_ERROR.getCode(), e.getMessage());
         }
 
-        return handleExceptionInternalFalse(GlobalErrorStatus._INTERNAL_SERVER_ERROR.getCode(), e.getMessage());
+        // 여기서 별도 @ExceptionHandler로 다루지 않는 4xx 예외는 실제 상태 코드를 그대로 보존해서 응답한다.
+        HttpStatus status = HttpStatus.valueOf(((ErrorResponse) e).getStatusCode().value());
+        BaseCodeDto errorCode = BaseCodeDto.builder()
+                .httpStatus(status)
+                .isSuccess(false)
+                .code(status.name())
+                .message(status.getReasonPhrase())
+                .build();
+        return handleExceptionInternalFalse(errorCode, e.getMessage());
     }
 
     // 예외가 4xx 클라이언트 오류로 명시된 경우가 아니면 서버 에러(5xx)로 간주한다.
