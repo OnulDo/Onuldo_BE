@@ -3,7 +3,7 @@ package com.example.onuldo.global.common.exception;
 import com.example.onuldo.global.common.alert.DiscordAlertSender;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.exception.code.BaseCodeDto;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
@@ -69,7 +69,7 @@ public class ExceptionAdvice {
             errors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
         }
 
-        return handleExceptionInternalObject(GlobalErrorStatus._BAD_REQUEST.getCode(), errors);
+        return handleExceptionInternalObject(ErrorStatus._BAD_REQUEST.getCode(), errors);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -81,37 +81,37 @@ public class ExceptionAdvice {
                         (first, second) -> first
                 ));
 
-        return handleExceptionInternalObject(GlobalErrorStatus._BAD_REQUEST.getCode(), errors);
+        return handleExceptionInternalObject(ErrorStatus._BAD_REQUEST.getCode(), errors);
     }
 
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<BaseResponse<String>> handleHandlerMethodValidationException() {
-        return handleExceptionInternal(GlobalErrorStatus._BAD_REQUEST.getCode());
+        return handleExceptionInternal(ErrorStatus._BAD_REQUEST.getCode());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<BaseResponse<String>> handleHttpMessageNotReadableException() {
-        return handleExceptionInternal(GlobalErrorStatus._BAD_REQUEST.getCode());
+        return handleExceptionInternal(ErrorStatus._BAD_REQUEST.getCode());
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<BaseResponse<String>> handleMethodArgumentTypeMismatchException() {
-        return handleExceptionInternal(GlobalErrorStatus._BAD_REQUEST.getCode());
+        return handleExceptionInternal(ErrorStatus._BAD_REQUEST.getCode());
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<BaseResponse<String>> handleMissingServletRequestParameterException() {
-        return handleExceptionInternal(GlobalErrorStatus._BAD_REQUEST.getCode());
+        return handleExceptionInternal(ErrorStatus._BAD_REQUEST.getCode());
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<BaseResponse<String>> handleHttpRequestMethodNotSupportedException() {
-        return handleExceptionInternal(GlobalErrorStatus._METHOD_NOT_ALLOWED.getCode());
+        return handleExceptionInternal(ErrorStatus._METHOD_NOT_ALLOWED.getCode());
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<BaseResponse<String>> handleHttpMediaTypeNotSupportedException() {
-        return handleExceptionInternal(GlobalErrorStatus._UNSUPPORTED_MEDIA_TYPE.getCode());
+        return handleExceptionInternal(ErrorStatus._UNSUPPORTED_MEDIA_TYPE.getCode());
     }
 
     /*
@@ -125,7 +125,7 @@ public class ExceptionAdvice {
         // 여기서 다루지 않는 Spring의 나머지 4xx 예외(예: 406 등)까지 이 핸들러로 떨어질 수 있으므로 서버 에러만 걸러서 알림한다.
         if (isServerError(e)) {
             discordAlertSender.sendServerError(request.getRequestURI(), e);
-            return handleExceptionInternalFalse(GlobalErrorStatus._INTERNAL_SERVER_ERROR.getCode(), e.getMessage());
+            return handleExceptionInternal(ErrorStatus._INTERNAL_SERVER_ERROR.getCode());
         }
 
         // 여기서 별도 @ExceptionHandler로 다루지 않는 4xx 예외는 실제 상태 코드를 그대로 보존해서 응답한다.

@@ -32,8 +32,10 @@ import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.InsufficientPointException;
-import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.InternalServerException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
+import com.example.onuldo.global.common.exception.NotFoundException;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -76,11 +78,11 @@ public class ParticipationService {
             ParticipationReqDto request
     ) {
         User user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
         Challenge challenge = challengeRepository.findById(challengeId)
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._CHALLENGE_NOT_FOUND));
 
         challenge.validateDurationOption(request.durationWeeks());
         challenge.validateDepositOption(request.depositAmount());
@@ -98,7 +100,7 @@ public class ParticipationService {
 
         // 이 순간의 pot 운영 β를 참가에 스냅샷 — 이후 β가 재조정돼도 이 참가는 이 값으로 정산된다.
         ChallengePot pot = challengePotRepository.findByIdForUpdate(CHALLENGE_POT_ID)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_POT_NOT_FOUND));
+                .orElseThrow(() -> new InternalServerException(ErrorStatus._CHALLENGE_POT_NOT_FOUND));
         BigDecimal appliedBonusRate = pot.getCurrentBonusRate();
 
         Participation participation = createPersonalParticipation(
@@ -270,7 +272,7 @@ public class ParticipationService {
         long currentPoint = user.getPointBalance();
         if (depositAmount > currentPoint) {
             throw new InsufficientPointException(
-                    GlobalErrorStatus._INSUFFICIENT_POINT_FOR_CHALLENGE,
+                    ErrorStatus._INSUFFICIENT_POINT_FOR_CHALLENGE,
                     currentPoint,
                     depositAmount
             );
@@ -303,11 +305,11 @@ public class ParticipationService {
 
     private void validateParticipationState(Participation participation) {
         if (participation.getParticipationType() == ParticipationType.PERSONAL && participation.getParty() != null) {
-            throw new RestApiException(GlobalErrorStatus._PARTICIPATION_PARTY_NOT_ALLOWED);
+            throw new InvalidRequestException(ErrorStatus._PARTICIPATION_PARTY_NOT_ALLOWED);
         }
 
         if (participation.getParticipationType() == ParticipationType.PARTY && participation.getParty() == null) {
-            throw new RestApiException(GlobalErrorStatus._PARTICIPATION_PARTY_REQUIRED);
+            throw new InvalidRequestException(ErrorStatus._PARTICIPATION_PARTY_REQUIRED);
         }
     }
 

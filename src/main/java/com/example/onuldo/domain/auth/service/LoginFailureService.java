@@ -2,8 +2,8 @@ package com.example.onuldo.domain.auth.service;
 
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.repository.UserRepository;
-import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.NotFoundException;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +22,7 @@ public class LoginFailureService {
     @Transactional
     public void recordFailure(Long userId, LocalDateTime now) {
         User user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
         if (user.getLockedUntil() != null && !user.getLockedUntil().isAfter(now)) {
             user.setLoginFailCount(0);

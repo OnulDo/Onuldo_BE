@@ -4,7 +4,7 @@ import com.example.onuldo.global.common.exception.code.BaseCodeInterface;
 import lombok.Getter;
 
 @Getter
-public class InsufficientPointException extends RestApiException {
+public class InsufficientPointException extends BusinessRuleException {
 
     private final String errorDetail;
 

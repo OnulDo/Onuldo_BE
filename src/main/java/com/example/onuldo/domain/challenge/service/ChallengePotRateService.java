@@ -5,8 +5,8 @@ import com.example.onuldo.domain.challenge.entity.Settlement;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.repository.ChallengePotRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
-import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.InternalServerException;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,7 +80,7 @@ public class ChallengePotRateService {
                 .setScale(RATE_SCALE, RoundingMode.HALF_UP);
 
         ChallengePot pot = challengePotRepository.findByIdForUpdate(CHALLENGE_POT_ID)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_POT_NOT_FOUND));
+                .orElseThrow(() -> new InternalServerException(ErrorStatus._CHALLENGE_POT_NOT_FOUND));
         pot.updateCurrentBonusRate(clampedBeta);
 
         log.info(

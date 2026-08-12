@@ -16,8 +16,9 @@ import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.domain.user.support.PointBalanceCalculator;
 import com.example.onuldo.global.common.time.TimeService;
-import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.InternalServerException;
+import com.example.onuldo.global.common.exception.NotFoundException;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,7 +61,7 @@ public class PartySettlementService {
     @Transactional
     public void settleParty(Long partyId) {
         partyRepository.findByIdForUpdate(partyId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._PARTY_NOT_FOUND));
 
         // POI-08: 이미 정산된 파티면 재정산하지 않는다 (중복 정산·이중 지급 방어).
         if (settlementRepository.existsByParticipation_Party_Id(partyId)) {
@@ -136,7 +137,7 @@ public class PartySettlementService {
     private MemberSettlementDraft createMemberDraft(Participation participation) {
         long totalDays = participation.getDurationWeeks() * 7L;
         if (totalDays <= 0) {
-            throw new RestApiException(GlobalErrorStatus._SETTLEMENT_INVALID_PERIOD);
+            throw new InternalServerException(ErrorStatus._SETTLEMENT_INVALID_PERIOD);
         }
 
         long passDays = verificationRepository.countByParticipation_IdAndReview(
@@ -201,7 +202,7 @@ public class PartySettlementService {
     // 지갑 잔액 반영 + 원장 기록(REFUND, net) — 개인 환급과 동일한 방식으로 통일해 이중 지급 방어를 단순화
     private void payoutPoint(Participation participation, int payoutAmount) {
         User user = userRepository.findByIdForUpdate(participation.getUser().getId())
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
         long balanceAfter = PointBalanceCalculator.addToBalance(user.getPointBalance(), payoutAmount);
         user.setPointBalance(balanceAfter);
