@@ -1,6 +1,7 @@
 package com.example.onuldo.domain.challenge.dto.response;
 
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
+import com.example.onuldo.domain.challenge.enums.DailyChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -24,6 +25,8 @@ public record OngoingChallengeRecordResDto(
         @Schema(example = "30000")
         Integer depositAmount,
         @Schema(example = "PERSONAL")
-        ParticipationType type
+        ParticipationType type,
+        @Schema(example = "WAITING")
+        DailyChallengeStatus dailyStatus
 ) {
 }
