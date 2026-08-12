@@ -8,6 +8,7 @@ import com.example.onuldo.global.common.base.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,7 +21,7 @@ public class TermController implements TermControllerDoc {
     private final TermService termService;
 
     @GetMapping("/{termType}")
-    public BaseResponse<TermResDto> getTerm(TermType termType) {
+    public BaseResponse<TermResDto> getTerm(@PathVariable TermType termType) {
         return BaseResponse.onSuccess(termService.getTerm(termType));
     }
 }
