@@ -39,6 +39,11 @@ import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.BusinessRuleException;
+import com.example.onuldo.global.common.exception.ForbiddenException;
+import com.example.onuldo.global.common.exception.InternalServerException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
+import com.example.onuldo.global.common.exception.NotFoundException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
@@ -96,14 +101,14 @@ public class PartyService {
 
     public PartyCreateResDto createParty(Long userId, PartyCreateReqDto request) {
         if (request.maxMembers() < MIN_MEMBERS || request.maxMembers() > MAX_MEMBERS) {
-            throw new RestApiException(ErrorStatus._INVALID_MAX_MEMBERS);
+            throw new InvalidRequestException(ErrorStatus._INVALID_MAX_MEMBERS);
         }
 
         User host = userRepository.findById(userId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
         Challenge challenge = challengeRepository.findById(request.challengeId())
-                .orElseThrow(() -> new RestApiException(ErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._CHALLENGE_NOT_FOUND));
 
         participationValidator.validateNotOngoing(userId, challenge.getId());
 
@@ -398,10 +403,10 @@ public class PartyService {
     @Transactional(readOnly = true)
     public PartyWaitingResDto getPartyWaiting(Long partyId, Long userId) {
         Party party = partyRepository.findById(partyId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._PARTY_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._PARTY_NOT_FOUND));
 
         if (party.getStatus() == PartyStatus.DISSOLVED) {
-            throw new RestApiException(ErrorStatus._PARTY_DISSOLVED);
+            throw new BusinessRuleException(ErrorStatus._PARTY_DISSOLVED);
         }
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
@@ -409,7 +414,7 @@ public class PartyService {
         boolean isRequesterMember = partyMembers.stream()
                 .anyMatch(member -> member.getUser().getId().equals(userId));
         if (!isRequesterMember) {
-            throw new RestApiException(ErrorStatus._NOT_PARTY_MEMBER);
+            throw new ForbiddenException(ErrorStatus._NOT_PARTY_MEMBER);
         }
 
         return PartyWaitingResDto.of(party, partyMembers, userId);
@@ -419,14 +424,14 @@ public class PartyService {
     @Transactional
     public PartyResultResDto getPartyResult(Long partyId, Long userId) {
         Party party = partyRepository.findById(partyId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._PARTY_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._PARTY_NOT_FOUND));
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
 
         boolean isRequesterMember = partyMembers.stream()
                 .anyMatch(member -> member.getUser().getId().equals(userId));
         if (!isRequesterMember) {
-            throw new RestApiException(ErrorStatus._NOT_PARTY_MEMBER);
+            throw new ForbiddenException(ErrorStatus._NOT_PARTY_MEMBER);
         }
 
         List<Settlement> settlements = settlementRepository.findByPartyId(partyId);
@@ -443,12 +448,12 @@ public class PartyService {
         for (PartyMember member : partyMembers) {
             Settlement settlement = settlementByUserId.get(member.getUser().getId());
             if (settlement == null) {
-                throw new RestApiException(ErrorStatus._SETTLEMENT_NOT_COMPLETED);
+                throw new BusinessRuleException(ErrorStatus._SETTLEMENT_NOT_COMPLETED);
             }
 
             ParticipationStatus status = settlement.getParticipation().getStatus();
             if (status != ParticipationStatus.SUCCESS && status != ParticipationStatus.FAIL) {
-                throw new RestApiException(ErrorStatus._SETTLEMENT_NOT_COMPLETED);
+                throw new BusinessRuleException(ErrorStatus._SETTLEMENT_NOT_COMPLETED);
             }
 
             members.add(generatePartyMemberResult(member.getUser(), status, settlement));
@@ -469,7 +474,7 @@ public class PartyService {
         PartyMemberResultResDto myResult = members.stream()
                 .filter(m -> m.userId().equals(userId))
                 .findFirst()
-                .orElseThrow(() -> new RestApiException(ErrorStatus._NOT_PARTY_MEMBER));
+                .orElseThrow(() -> new ForbiddenException(ErrorStatus._NOT_PARTY_MEMBER));
 
         return PartyResultResDto.builder()
                 .partyId(party.getId())
@@ -488,7 +493,7 @@ public class PartyService {
             code = generateRandomCode();
             attempts++;
             if (attempts > MAX_INVITE_CODE_RETRY) {
-                throw new RestApiException(ErrorStatus._INVITE_CODE_GENERATION_FAILED);
+                throw new InternalServerException(ErrorStatus._INVITE_CODE_GENERATION_FAILED);
             }
         } while (partyRepository.existsByInviteCode(code));
         return code;

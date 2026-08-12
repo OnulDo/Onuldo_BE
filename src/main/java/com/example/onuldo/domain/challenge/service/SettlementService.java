@@ -22,6 +22,8 @@ import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.domain.user.support.PointBalanceCalculator;
 import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.InternalServerException;
+import com.example.onuldo.global.common.exception.NotFoundException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -61,7 +63,7 @@ public class SettlementService {
     @Transactional
     public void settleParticipatedChallenge(Long participationId) {
         Participation participation = participationRepository.findById(participationId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._PARTICIPATION_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._PARTICIPATION_NOT_FOUND));
 
         // 파티 참여는 개인 공식이 아니라 파티 단위(POI-07/08)로 정산한다.
         if (participation.getParticipationType() == ParticipationType.PARTY) {
@@ -74,7 +76,7 @@ public class SettlementService {
 
     private void settlePersonalChallenge(Long participationId) {
         Participation lockedParticipation = participationRepository.findByIdForUpdate(participationId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._PARTICIPATION_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._PARTICIPATION_NOT_FOUND));
 
         // 락 획득 후 다시 확인해서 동시성 중복 정산을 방지한다.
         if (settlementRepository.existsByParticipation_Id(participationId)) {
@@ -144,7 +146,7 @@ public class SettlementService {
         }
 
         ChallengePot pot = challengePotRepository.findByIdForUpdate(CHALLENGE_POT_ID)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._CHALLENGE_POT_NOT_FOUND));
+                .orElseThrow(() -> new InternalServerException(ErrorStatus._CHALLENGE_POT_NOT_FOUND));
         pot.accumulateForfeiture(penaltyAmount);
 
         potTransactionRepository.save(
@@ -165,7 +167,7 @@ public class SettlementService {
         }
 
         ChallengePot pot = challengePotRepository.findByIdForUpdate(CHALLENGE_POT_ID)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._CHALLENGE_POT_NOT_FOUND));
+                .orElseThrow(() -> new InternalServerException(ErrorStatus._CHALLENGE_POT_NOT_FOUND));
         pot.payBonus(bonusAmount);
 
         potTransactionRepository.save(
@@ -216,7 +218,7 @@ public class SettlementService {
             int adjustmentAmount
     ) {
         User user = userRepository.findByIdForUpdate(participation.getUser().getId())
-                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
         long balanceAfter = PointBalanceCalculator.addToBalance(user.getPointBalance(), refundAmount);
 

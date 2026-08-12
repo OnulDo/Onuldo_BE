@@ -3,6 +3,8 @@ package com.example.onuldo.domain.user.entity;
 import com.example.onuldo.domain.user.enums.NotificationSettingType;
 import com.example.onuldo.domain.user.enums.NotificationType;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.BusinessRuleException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -81,7 +83,7 @@ public class NotificationSetting {
                 }
                 refundComplete = true;
             }
-            default -> throw new RestApiException(ErrorStatus._BAD_REQUEST);
+            default -> throw new InvalidRequestException(ErrorStatus._BAD_REQUEST);
         }
     }
 
@@ -116,6 +118,6 @@ public class NotificationSetting {
     }
 
     private void throwRequiredSettlementNotificationException() {
-        throw new RestApiException(ErrorStatus._SETTLEMENT_COMPLETE_NOTIFICATION_REQUIRED);
+        throw new BusinessRuleException(ErrorStatus._SETTLEMENT_COMPLETE_NOTIFICATION_REQUIRED);
     }
 }

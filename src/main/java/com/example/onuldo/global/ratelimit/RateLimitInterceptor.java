@@ -1,6 +1,7 @@
 package com.example.onuldo.global.ratelimit;
 
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.RateLimitException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -46,7 +47,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         String clientIp = resolveClientIp(request);
         Bucket ipBucket = ipBuckets.get(clientIp, key -> newBucket(IP_LIMIT_PER_MINUTE, Duration.ofMinutes(1)));
         if (!ipBucket.tryConsume(1)) {
-            throw new RestApiException(ErrorStatus._RATE_LIMIT_EXCEEDED);
+            throw new RateLimitException(ErrorStatus._RATE_LIMIT_EXCEEDED);
         }
 
         return true;

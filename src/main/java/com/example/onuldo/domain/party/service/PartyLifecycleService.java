@@ -22,6 +22,11 @@ import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.BusinessRuleException;
+import com.example.onuldo.global.common.exception.DuplicateException;
+import com.example.onuldo.global.common.exception.ForbiddenException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
+import com.example.onuldo.global.common.exception.NotFoundException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
@@ -54,18 +59,18 @@ public class PartyLifecycleService {
 
     public PartyStartResDto startParty(Long partyId, Long userId) {
         Party party = partyRepository.findByIdForUpdate(partyId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._PARTY_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._PARTY_NOT_FOUND));
 
         if (!party.getHostUser().getId().equals(userId)) {
-            throw new RestApiException(ErrorStatus._NOT_PARTY_HOST);
+            throw new ForbiddenException(ErrorStatus._NOT_PARTY_HOST);
         }
 
         if (party.getStatus() != PartyStatus.WAITING) {
             throw switch (party.getStatus()) {
-                case ONGOING -> new RestApiException(ErrorStatus._PARTY_ALREADY_STARTED);
-                case FINISHED -> new RestApiException(ErrorStatus._PARTY_ALREADY_FINISHED);
-                case DISSOLVED -> new RestApiException(ErrorStatus._PARTY_DISSOLVED);
-                default -> new RestApiException(ErrorStatus._BAD_REQUEST);
+                case ONGOING -> new DuplicateException(ErrorStatus._PARTY_ALREADY_STARTED);
+                case FINISHED -> new DuplicateException(ErrorStatus._PARTY_ALREADY_FINISHED);
+                case DISSOLVED -> new BusinessRuleException(ErrorStatus._PARTY_DISSOLVED);
+                default -> new InvalidRequestException(ErrorStatus._BAD_REQUEST);
             };
         }
 
@@ -76,11 +81,11 @@ public class PartyLifecycleService {
                 .filter(member -> member.getRole() == PartyMemberRole.MEMBER)
                 .allMatch(PartyMember::isReady);
         if (partyMembers.size() < MIN_MEMBERS_TO_START || !allMembersReady) {
-            throw new RestApiException(ErrorStatus._PARTY_NOT_READY_TO_START);
+            throw new BusinessRuleException(ErrorStatus._PARTY_NOT_READY_TO_START);
         }
 
         PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(partyId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._CHALLENGE_NOT_FOUND));
         Challenge challenge = partyChallenge.getChallenge();
         String challengeName = challenge.getName();
 
@@ -124,7 +129,7 @@ public class PartyLifecycleService {
             LocalDate endDate
     ) {
         User user = userRepository.findByIdForUpdate(memberUserId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
         participationValidator.validateNotOngoing(memberUserId, challenge.getId());
 
@@ -166,11 +171,11 @@ public class PartyLifecycleService {
 
     private void validateParticipationState(Participation participation) {
         if (participation.getParticipationType() == ParticipationType.PERSONAL && participation.getParty() != null) {
-            throw new RestApiException(ErrorStatus._PARTICIPATION_PARTY_NOT_ALLOWED);
+            throw new InvalidRequestException(ErrorStatus._PARTICIPATION_PARTY_NOT_ALLOWED);
         }
 
         if (participation.getParticipationType() == ParticipationType.PARTY && participation.getParty() == null) {
-            throw new RestApiException(ErrorStatus._PARTICIPATION_PARTY_REQUIRED);
+            throw new InvalidRequestException(ErrorStatus._PARTICIPATION_PARTY_REQUIRED);
         }
     }
 }

@@ -2,6 +2,7 @@ package com.example.onuldo.global.security;
 
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.UnauthorizedException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -86,7 +87,7 @@ public class JwtTokenProvider {
         String tokenType = claims.get(TOKEN_TYPE_CLAIM, String.class);
 
         if (!expectedTokenType.name().equals(tokenType)) {
-            throw new RestApiException(ErrorStatus._UNAUTHORIZED);
+            throw new UnauthorizedException(ErrorStatus._UNAUTHORIZED);
         }
 
         return claims.get(USER_ID_CLAIM, Long.class);
@@ -100,9 +101,9 @@ public class JwtTokenProvider {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
-            throw new RestApiException(ErrorStatus._TOKEN_EXPIRED);
+            throw new UnauthorizedException(ErrorStatus._TOKEN_EXPIRED);
         } catch (JwtException | IllegalArgumentException e) {
-            throw new RestApiException(ErrorStatus._INVALID_TOKEN);
+            throw new UnauthorizedException(ErrorStatus._INVALID_TOKEN);
         }
     }
 }

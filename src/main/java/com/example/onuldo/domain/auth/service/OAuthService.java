@@ -4,6 +4,7 @@ import com.example.onuldo.domain.auth.service.client.OAuthApiClient;
 import com.example.onuldo.domain.auth.service.client.dto.OAuthUserInfo;
 import com.example.onuldo.domain.user.enums.SocialProvider;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import org.springframework.stereotype.Service;
 
@@ -25,7 +26,7 @@ public class OAuthService {
     public OAuthUserInfo fetchUserInfo(SocialProvider provider, String socialAccessToken) {
         OAuthApiClient client = clients.get(provider);
         if (client == null) {
-            throw new RestApiException(ErrorStatus._BAD_REQUEST);
+            throw new InvalidRequestException(ErrorStatus._BAD_REQUEST);
         }
         return client.fetchUserInfo(socialAccessToken);
     }

@@ -4,6 +4,9 @@ import com.example.onuldo.domain.file.dto.S3UploadResDto;
 import com.example.onuldo.domain.file.dto.S3FileUrlResDto;
 import com.example.onuldo.global.aws.config.AwsProperties;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.InternalServerException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
+import com.example.onuldo.global.common.exception.NotFoundException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -60,7 +63,7 @@ public class S3FileService {
                     RequestBody.fromBytes(payload.bytes())
             );
         } catch (RuntimeException e) {
-            throw new RestApiException(ErrorStatus._S3_UPLOAD_FAILED);
+            throw new InternalServerException(ErrorStatus._S3_UPLOAD_FAILED);
         }
 
         return S3UploadResDto.builder()
@@ -88,7 +91,7 @@ public class S3FileService {
         String bucket = resolveBucket();
         String fileId = extractFileIdFromPublicUrl(url);
         if (!DEFAULT_PROFILE_IMAGE_FILE_IDS.contains(fileId)) {
-            throw new RestApiException(ErrorStatus._INVALID_FILE_URL);
+            throw new InvalidRequestException(ErrorStatus._INVALID_FILE_URL);
         }
 
         verifyObjectExists(bucket, fileId);
@@ -97,17 +100,17 @@ public class S3FileService {
     private String extractFileIdFromPublicUrl(String url) {
         String publicBaseUrl = awsProperties.s3().publicBaseUrl();
         if (publicBaseUrl == null || publicBaseUrl.isBlank()) {
-            throw new RestApiException(ErrorStatus._S3_PUBLIC_BASE_URL_NOT_CONFIGURED);
+            throw new InternalServerException(ErrorStatus._S3_PUBLIC_BASE_URL_NOT_CONFIGURED);
         }
 
         String prefix = publicBaseUrl.replaceAll("/+$", "") + "/";
         if (url == null || !url.startsWith(prefix)) {
-            throw new RestApiException(ErrorStatus._INVALID_FILE_URL);
+            throw new InvalidRequestException(ErrorStatus._INVALID_FILE_URL);
         }
 
         String fileId = url.substring(prefix.length());
         if (fileId.isBlank()) {
-            throw new RestApiException(ErrorStatus._INVALID_FILE_URL);
+            throw new InvalidRequestException(ErrorStatus._INVALID_FILE_URL);
         }
 
         return fileId;
@@ -115,12 +118,12 @@ public class S3FileService {
 
     private ImageUploadPayload readAndValidateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new RestApiException(ErrorStatus._IMAGE_FILE_REQUIRED);
+            throw new InvalidRequestException(ErrorStatus._IMAGE_FILE_REQUIRED);
         }
 
         String contentType = normalizeImageContentType(file.getContentType());
         if (contentType == null) {
-            throw new RestApiException(ErrorStatus._UNSUPPORTED_IMAGE_TYPE);
+            throw new InvalidRequestException(ErrorStatus._UNSUPPORTED_IMAGE_TYPE);
         }
 
         try {
@@ -129,27 +132,27 @@ public class S3FileService {
             boolean png = isPng(bytes);
 
             if (!jpeg && !png) {
-                throw new RestApiException(ErrorStatus._INVALID_IMAGE_FORMAT);
+                throw new InvalidRequestException(ErrorStatus._INVALID_IMAGE_FORMAT);
             }
 
             if (jpeg && !"image/jpeg".equals(contentType)) {
-                throw new RestApiException(ErrorStatus._JPEG_CONTENT_TYPE_MISMATCH);
+                throw new InvalidRequestException(ErrorStatus._JPEG_CONTENT_TYPE_MISMATCH);
             }
 
             if (png && !"image/png".equals(contentType)) {
-                throw new RestApiException(ErrorStatus._PNG_CONTENT_TYPE_MISMATCH);
+                throw new InvalidRequestException(ErrorStatus._PNG_CONTENT_TYPE_MISMATCH);
             }
 
             return new ImageUploadPayload(contentType, bytes);
         } catch (IOException e) {
-            throw new RestApiException(ErrorStatus._IMAGE_READ_FAILED);
+            throw new InternalServerException(ErrorStatus._IMAGE_READ_FAILED);
         }
     }
 
     private String resolveBucket() {
         String bucket = awsProperties.s3().bucket();
         if (bucket == null || bucket.isBlank()) {
-            throw new RestApiException(ErrorStatus._S3_BUCKET_NOT_CONFIGURED);
+            throw new InternalServerException(ErrorStatus._S3_BUCKET_NOT_CONFIGURED);
         }
 
         return bucket;
@@ -157,7 +160,7 @@ public class S3FileService {
 
     private void validateFileId(String fileId) {
         if (fileId == null || fileId.isBlank()) {
-            throw new RestApiException(ErrorStatus._FILE_ID_REQUIRED);
+            throw new InvalidRequestException(ErrorStatus._FILE_ID_REQUIRED);
         }
     }
 
@@ -170,14 +173,14 @@ public class S3FileService {
                             .build()
             );
         } catch (NoSuchKeyException e) {
-            throw new RestApiException(ErrorStatus._FILE_NOT_FOUND);
+            throw new NotFoundException(ErrorStatus._FILE_NOT_FOUND);
         } catch (S3Exception e) {
             if (e.statusCode() == HttpStatus.NOT_FOUND.value()) {
-                throw new RestApiException(ErrorStatus._FILE_NOT_FOUND);
+                throw new NotFoundException(ErrorStatus._FILE_NOT_FOUND);
             }
-            throw new RestApiException(ErrorStatus._FILE_EXISTENCE_CHECK_FAILED);
+            throw new InternalServerException(ErrorStatus._FILE_EXISTENCE_CHECK_FAILED);
         } catch (SdkException | IllegalArgumentException e) {
-            throw new RestApiException(ErrorStatus._FILE_EXISTENCE_CHECK_FAILED);
+            throw new InternalServerException(ErrorStatus._FILE_EXISTENCE_CHECK_FAILED);
         }
     }
 
@@ -196,7 +199,7 @@ public class S3FileService {
     private String createAccessUrl(String bucket, String key) {
         String publicBaseUrl = awsProperties.s3().publicBaseUrl();
         if (publicBaseUrl == null || publicBaseUrl.isBlank()) {
-            throw new RestApiException(ErrorStatus._S3_PUBLIC_BASE_URL_NOT_CONFIGURED);
+            throw new InternalServerException(ErrorStatus._S3_PUBLIC_BASE_URL_NOT_CONFIGURED);
         }
 
         return publicBaseUrl.replaceAll("/+$", "") + "/" + key;

@@ -5,6 +5,9 @@ import com.example.onuldo.domain.auth.enums.TermType;
 import com.example.onuldo.domain.auth.repository.TermRepository;
 import com.example.onuldo.domain.user.dto.response.TermResDto;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.InternalServerException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
+import com.example.onuldo.global.common.exception.NotFoundException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,11 +23,11 @@ public class TermService {
 
     public TermResDto getTerm(TermType termType) {
         if (termType != TermType.SERVICE && termType != TermType.PRIVACY && termType != TermType.REFUND) {
-            throw new RestApiException(ErrorStatus._INVALID_TERM_TYPE);
+            throw new InvalidRequestException(ErrorStatus._INVALID_TERM_TYPE);
         }
 
         Term term = termRepository.findByType(termType)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._TERM_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._TERM_NOT_FOUND));
 
         try {
             return TermResDto.builder()
@@ -34,7 +37,7 @@ public class TermService {
                     .content(term.getContent())
                     .build();
         } catch (Exception e) {
-            throw new RestApiException(ErrorStatus._TERM_CONTENT_PARSING_FAILED);
+            throw new InternalServerException(ErrorStatus._TERM_CONTENT_PARSING_FAILED);
         }
     }
 }

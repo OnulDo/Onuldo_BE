@@ -5,6 +5,7 @@ import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -88,11 +89,11 @@ public class Participation {
     @PreUpdate
     private void validateParticipationType() {
         if (participationType == ParticipationType.PERSONAL && party != null) {
-            throw new RestApiException(ErrorStatus._PARTICIPATION_PARTY_NOT_ALLOWED);
+            throw new InvalidRequestException(ErrorStatus._PARTICIPATION_PARTY_NOT_ALLOWED);
         }
 
         if (participationType == ParticipationType.PARTY && party == null) {
-            throw new RestApiException(ErrorStatus._PARTICIPATION_PARTY_REQUIRED);
+            throw new InvalidRequestException(ErrorStatus._PARTICIPATION_PARTY_REQUIRED);
         }
     }
 }

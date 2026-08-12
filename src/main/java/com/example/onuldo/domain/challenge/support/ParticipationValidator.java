@@ -5,6 +5,7 @@ import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.party.enums.PartyStatus;
 import com.example.onuldo.domain.party.repository.PartyMemberRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.DuplicateException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -28,13 +29,13 @@ public class ParticipationValidator {
         boolean hasWaitingPartyMembership = partyMemberRepository
                 .existsActiveMembershipByUser_IdAndChallenge_Id(userId, challengeId, WAITING_PARTY_STATUSES);
         if (hasWaitingPartyMembership) {
-            throw new RestApiException(ErrorStatus._CHALLENGE_PARTY_ALREADY_WAITING);
+            throw new DuplicateException(ErrorStatus._CHALLENGE_PARTY_ALREADY_WAITING);
         }
 
         boolean hasOngoingParticipation = participationRepository
                 .existsByUser_IdAndChallenge_IdAndStatus(userId, challengeId, ParticipationStatus.ONGOING);
         if (hasOngoingParticipation) {
-            throw new RestApiException(ErrorStatus._ALREADY_PARTICIPATING_CHALLENGE);
+            throw new DuplicateException(ErrorStatus._ALREADY_PARTICIPATING_CHALLENGE);
         }
     }
 }

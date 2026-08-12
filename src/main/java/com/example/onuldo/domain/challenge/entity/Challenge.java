@@ -3,6 +3,7 @@ package com.example.onuldo.domain.challenge.entity;
 import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.domain.challenge.enums.ChallengeStatus;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.dto.response.ContentBlockResDto;
 import jakarta.persistence.Column;
@@ -105,13 +106,13 @@ public class Challenge {
 
     public void validateDurationOption(Integer durationWeeks) {
         if (durationOptionList == null || !durationOptionList.contains(durationWeeks)) {
-            throw new RestApiException(ErrorStatus._INVALID_DURATION_OPTION);
+            throw new InvalidRequestException(ErrorStatus._INVALID_DURATION_OPTION);
         }
     }
 
     public void validateDepositOption(Integer depositAmount) {
         if (depositOptionList == null || !depositOptionList.contains(depositAmount)) {
-            throw new RestApiException(ErrorStatus._INVALID_DEPOSIT_OPTION);
+            throw new InvalidRequestException(ErrorStatus._INVALID_DEPOSIT_OPTION);
         }
     }
 }

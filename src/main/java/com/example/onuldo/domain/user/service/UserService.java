@@ -16,6 +16,9 @@ import com.example.onuldo.domain.user.enums.UserStatus;
 import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.BusinessRuleException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
+import com.example.onuldo.global.common.exception.NotFoundException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
@@ -62,7 +65,7 @@ public class UserService {
         boolean hasProfileImageUrl = request.profileImageUrl() != null && !request.profileImageUrl().isBlank();
 
         if (request.nickname() == null && !hasProfileImageUrl) {
-            throw new RestApiException(ErrorStatus._PROFILE_UPDATE_FIELD_REQUIRED);
+            throw new InvalidRequestException(ErrorStatus._PROFILE_UPDATE_FIELD_REQUIRED);
         }
 
         if (request.nickname() != null) {
@@ -111,7 +114,7 @@ public class UserService {
         User user = getActiveUserForUpdate(userId);
 
         if (participationRepository.existsByUser_IdAndStatus(userId, ParticipationStatus.ONGOING)) {
-            throw new RestApiException(ErrorStatus._WITHDRAWAL_BLOCKED_BY_ONGOING_CHALLENGE);
+            throw new BusinessRuleException(ErrorStatus._WITHDRAWAL_BLOCKED_BY_ONGOING_CHALLENGE);
         }
 
         user.setStatus(UserStatus.WITHDRAWN);
@@ -132,10 +135,10 @@ public class UserService {
 
     private User getActiveUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new RestApiException(ErrorStatus._USER_NOT_FOUND);
+            throw new NotFoundException(ErrorStatus._USER_NOT_FOUND);
         }
 
         return user;
@@ -143,10 +146,10 @@ public class UserService {
 
     private User getActiveUserForUpdate(Long userId) {
         User user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new RestApiException(ErrorStatus._USER_NOT_FOUND);
+            throw new NotFoundException(ErrorStatus._USER_NOT_FOUND);
         }
 
         return user;

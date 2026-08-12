@@ -6,6 +6,7 @@ import com.example.onuldo.domain.user.enums.NotificationType;
 import com.example.onuldo.domain.user.repository.NotificationRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.NotFoundException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
@@ -93,7 +94,7 @@ public class NotificationCreateService {
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
         return notificationRepository.saveAndFlush(
                 Notification.builder()
