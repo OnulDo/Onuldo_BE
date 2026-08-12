@@ -13,6 +13,7 @@ public abstract class RestApiException extends RuntimeException {
     }
 
     protected RestApiException(BaseCodeInterface errorCode, String detailMessage) {
+        super(detailMessage);
         this.errorCode = errorCode;
         this.detailMessage = detailMessage;
     }
