@@ -21,7 +21,6 @@ import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.domain.user.repository.PointTransactionRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.InsufficientPointException;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.BusinessRuleException;
 import com.example.onuldo.global.common.exception.DuplicateException;
 import com.example.onuldo.global.common.exception.ForbiddenException;

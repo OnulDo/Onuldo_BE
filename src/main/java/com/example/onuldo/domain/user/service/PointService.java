@@ -18,7 +18,6 @@ import com.example.onuldo.global.common.cursor.CursorConstants;
 import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.BusinessRuleException;
 import com.example.onuldo.global.common.exception.DuplicateException;
 import com.example.onuldo.global.common.exception.InternalServerException;

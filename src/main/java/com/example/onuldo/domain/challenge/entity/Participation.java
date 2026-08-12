@@ -4,7 +4,6 @@ import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationType;
 import com.example.onuldo.domain.party.entity.Party;
 import com.example.onuldo.domain.user.entity.User;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.InvalidRequestException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import jakarta.persistence.Column;

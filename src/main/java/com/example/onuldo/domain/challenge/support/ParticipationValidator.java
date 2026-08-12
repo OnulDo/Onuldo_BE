@@ -4,7 +4,6 @@ import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.party.enums.PartyStatus;
 import com.example.onuldo.domain.party.repository.PartyMemberRepository;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.DuplicateException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;

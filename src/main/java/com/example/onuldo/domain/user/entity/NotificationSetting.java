@@ -2,7 +2,6 @@ package com.example.onuldo.domain.user.entity;
 
 import com.example.onuldo.domain.user.enums.NotificationSettingType;
 import com.example.onuldo.domain.user.enums.NotificationType;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.BusinessRuleException;
 import com.example.onuldo.global.common.exception.InvalidRequestException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;

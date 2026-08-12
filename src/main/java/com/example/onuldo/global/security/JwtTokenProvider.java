@@ -1,7 +1,6 @@
 package com.example.onuldo.global.security;
 
 import com.example.onuldo.domain.user.entity.User;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.UnauthorizedException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import io.jsonwebtoken.Claims;

@@ -4,7 +4,6 @@ import com.example.onuldo.domain.auth.service.client.dto.KakaoErrorResDto;
 import com.example.onuldo.domain.auth.service.client.dto.KakaoUserInfoResDto;
 import com.example.onuldo.domain.auth.service.client.dto.OAuthUserInfo;
 import com.example.onuldo.domain.user.enums.SocialProvider;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.InternalServerException;
 import com.example.onuldo.global.common.exception.UnauthorizedException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;

@@ -21,7 +21,6 @@ import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.challenge.dto.request.ChallengeVerificationReqDto;
 import com.example.onuldo.global.aws.service.RekognitionService;
 import com.example.onuldo.global.aws.service.S3FileService;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.BusinessRuleException;
 import com.example.onuldo.global.common.exception.DuplicateException;
 import com.example.onuldo.global.common.exception.InternalServerException;

@@ -4,7 +4,6 @@ import com.example.onuldo.domain.auth.entity.Term;
 import com.example.onuldo.domain.auth.enums.TermType;
 import com.example.onuldo.domain.auth.repository.TermRepository;
 import com.example.onuldo.domain.user.dto.response.TermResDto;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.InternalServerException;
 import com.example.onuldo.global.common.exception.InvalidRequestException;
 import com.example.onuldo.global.common.exception.NotFoundException;

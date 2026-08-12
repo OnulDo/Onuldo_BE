@@ -3,7 +3,6 @@ package com.example.onuldo.global.aws.service;
 import com.example.onuldo.domain.file.dto.S3UploadResDto;
 import com.example.onuldo.domain.file.dto.S3FileUrlResDto;
 import com.example.onuldo.global.aws.config.AwsProperties;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.InternalServerException;
 import com.example.onuldo.global.common.exception.InvalidRequestException;
 import com.example.onuldo.global.common.exception.NotFoundException;

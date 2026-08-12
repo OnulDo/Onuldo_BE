@@ -1,6 +1,5 @@
 package com.example.onuldo.global.ratelimit;
 
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.RateLimitException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.github.benmanes.caffeine.cache.Cache;

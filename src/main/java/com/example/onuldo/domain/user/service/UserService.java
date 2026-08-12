@@ -15,7 +15,6 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.UserStatus;
 import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.BusinessRuleException;
 import com.example.onuldo.global.common.exception.InvalidRequestException;
 import com.example.onuldo.global.common.exception.NotFoundException;

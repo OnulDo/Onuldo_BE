@@ -11,7 +11,6 @@ import com.example.onuldo.domain.party.repository.PartyChallengeRepository;
 import com.example.onuldo.domain.party.repository.PartyMemberRepository;
 import com.example.onuldo.domain.party.repository.PartyRepository;
 import com.example.onuldo.domain.user.entity.User;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.ForbiddenException;
 import com.example.onuldo.global.common.exception.NotFoundException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;

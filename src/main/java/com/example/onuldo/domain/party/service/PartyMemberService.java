@@ -17,7 +17,6 @@ import com.example.onuldo.domain.party.repository.PartyRepository;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.InsufficientPointException;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.BusinessRuleException;
 import com.example.onuldo.global.common.exception.DuplicateException;
 import com.example.onuldo.global.common.exception.ForbiddenException;

@@ -1,6 +1,5 @@
 package com.example.onuldo.global.common.cursor;
 
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.InvalidRequestException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 

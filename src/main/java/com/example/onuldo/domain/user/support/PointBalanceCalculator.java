@@ -1,6 +1,5 @@
 package com.example.onuldo.domain.user.support;
 
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.BusinessRuleException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 

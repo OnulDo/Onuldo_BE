@@ -2,7 +2,6 @@ package com.example.onuldo.domain.auth.service;
 
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.repository.UserRepository;
-import com.example.onuldo.global.common.exception.RestApiException;
 import com.example.onuldo.global.common.exception.NotFoundException;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
