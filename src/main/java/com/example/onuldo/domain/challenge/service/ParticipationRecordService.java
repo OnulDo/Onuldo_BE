@@ -6,6 +6,7 @@ import com.example.onuldo.domain.challenge.dto.response.OngoingChallengeRecordRe
 import com.example.onuldo.domain.challenge.entity.Participation;
 import com.example.onuldo.domain.challenge.entity.Settlement;
 import com.example.onuldo.domain.challenge.entity.Verification;
+import com.example.onuldo.domain.challenge.enums.DailyChallengeStatus;
 import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.domain.challenge.enums.SettlementStatus;
 import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
@@ -19,8 +20,11 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,9 +44,12 @@ public class ParticipationRecordService {
     private final VerificationRepository verificationRepository;
     private final SettlementRepository settlementRepository;
     private final TimeService timeService;
+    private final DailyChallengeStatusResolver dailyChallengeStatusResolver;
 
     public List<OngoingChallengeRecordResDto> getOngoingChallengeRecords(Long userId) {
-        LocalDate date = timeService.todayKst();
+        LocalDateTime now = timeService.nowKst();
+        LocalDate date = now.toLocalDate();
+        LocalTime currentTime = now.toLocalTime();
 
         List<Participation> ongoingParticipations =
                 participationRepository.findAllWithChallengeByUserIdAndStatusOrderByIdDesc(
@@ -51,14 +58,18 @@ public class ParticipationRecordService {
                 );
 
         Map<Long, Set<LocalDate>> verifiedDatesByParticipationId = getVerifiedDatesByParticipationId(ongoingParticipations, date);
-        Set<Long> verifiedParticipationIds = getVerifiedParticipationIds(ongoingParticipations, date);
+        Map<Long, Verification> latestVerificationByParticipationId = findLatestVerificationByParticipationId(
+                ongoingParticipations.stream().map(Participation::getId).toList(),
+                date
+        );
 
         return ongoingParticipations.stream()
                 .map(participation -> toOngoingChallengeRecordResDto(
                         participation,
                         calculateOngoingAchievementRate(participation, date, verifiedDatesByParticipationId),
                         date,
-                        verifiedParticipationIds.contains(participation.getId())
+                        currentTime,
+                        latestVerificationByParticipationId.get(participation.getId())
                 )
             ).toList();
     }
@@ -96,20 +107,29 @@ public class ParticipationRecordService {
             Participation participation,
             Integer achievementRate,
             LocalDate date,
-            Boolean isVerifiedToday
+            LocalTime currentTime,
+            Verification latestVerification
     ) {
         var challenge = participation.getChallenge();
+        DailyChallengeStatus dailyStatus = dailyChallengeStatusResolver.resolve(
+                participation,
+                challenge,
+                latestVerification,
+                date,
+                currentTime
+        );
 
         return OngoingChallengeRecordResDto.builder()
                 .participationId(participation.getId())
                 .challengeId(challenge.getId())
                 .challengeTitle(challenge.getName())
                 .category(challenge.getCategory())
-                .isVerifiedToday(isVerifiedToday)
+                .isVerifiedToday(dailyStatus == DailyChallengeStatus.SUCCESS)
                 .daysUntilEnd(calculateDaysUntilEnd(date, participation.getEndDate()))
                 .achievementRate(achievementRate)
                 .depositAmount(participation.getDepositAmount())
                 .type(participation.getParticipationType())
+                .dailyStatus(dailyStatus)
                 .build();
     }
 
@@ -266,18 +286,22 @@ public class ParticipationRecordService {
                 ));
     }
 
-    private Set<Long> getVerifiedParticipationIds(List<Participation> participations, LocalDate date) {
-        if (participations.isEmpty()) {
-            return Set.of();
+    private Map<Long, Verification> findLatestVerificationByParticipationId(
+            List<Long> participationIds,
+            LocalDate date
+    ) {
+        if (participationIds.isEmpty()) {
+            return Map.of();
         }
 
-        Set<Long> participationIds = participations.stream()
-                .map(Participation::getId)
-                .collect(Collectors.toSet());
-
-        return verificationRepository.findAllByParticipation_IdInAndVerificationDate(participationIds, date).stream()
-                .filter(verification -> verification.getReview() == VerificationReviewStatus.PASS)
-                .map(verification -> verification.getParticipation().getId())
-                .collect(Collectors.toSet());
+        return verificationRepository
+                .findAllByParticipationIdInAndVerificationDateOrderByLatest(participationIds, date)
+                .stream()
+                .collect(Collectors.toMap(
+                        verification -> verification.getParticipation().getId(),
+                        verification -> verification,
+                        (latest, ignored) -> latest,
+                        LinkedHashMap::new
+                ));
     }
 }
