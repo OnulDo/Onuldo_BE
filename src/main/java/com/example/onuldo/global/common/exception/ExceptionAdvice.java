@@ -125,7 +125,7 @@ public class ExceptionAdvice {
         // 여기서 다루지 않는 Spring의 나머지 4xx 예외(예: 406 등)까지 이 핸들러로 떨어질 수 있으므로 서버 에러만 걸러서 알림한다.
         if (isServerError(e)) {
             discordAlertSender.sendServerError(request.getRequestURI(), e);
-            return handleExceptionInternalFalse(ErrorStatus._INTERNAL_SERVER_ERROR.getCode(), e.getMessage());
+            return handleExceptionInternal(ErrorStatus._INTERNAL_SERVER_ERROR.getCode());
         }
 
         // 여기서 별도 @ExceptionHandler로 다루지 않는 4xx 예외는 실제 상태 코드를 그대로 보존해서 응답한다.
