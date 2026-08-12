@@ -50,13 +50,13 @@ public class Challenge {
     @Column(name = "description", nullable = false, columnDefinition = "TEXT")
     private List<ContentBlockResDto> description;
 
-    @Column(name = "caption_img_url", nullable = false, length = 500)
+    @Column(name = "caption_img_url", nullable = false, length = 255)
     private String captionImgUrl;
 
     @Column(name = "verify_method_content", nullable = false, columnDefinition = "TEXT")
     private String verifyMethodContent;
 
-    @Column(name = "verification_example_photo_url", nullable = false, length = 500)
+    @Column(name = "verification_example_photo_url", nullable = false, length = 255)
     private String verificationExamplePhotoUrl;
 
     @Column(name = "participant_count", nullable = false)

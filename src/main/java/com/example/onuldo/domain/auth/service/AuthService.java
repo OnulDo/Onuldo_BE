@@ -63,7 +63,8 @@ public class AuthService {
     private static final Set<TermType> REQUIRED_TERM_TYPES = Set.of(
             TermType.SERVICE,
             TermType.PRIVACY,
-            TermType.AGE_14
+            TermType.AGE_14,
+            TermType.REFUND
     );
 
     private final UserRepository userRepository;

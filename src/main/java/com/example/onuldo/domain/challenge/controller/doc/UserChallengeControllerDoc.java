@@ -85,7 +85,7 @@ public interface UserChallengeControllerDoc {
 
     @Operation(
             summary = "내 진행 중 챌린지 기록 조회",
-            description = "진행 중 챌린지의 제목, 당일 인증 여부, 종료까지 남은 날짜, 달성률, 도전금, 타입을 조회합니다."
+            description = "진행 중 챌린지의 제목, 당일 인증 여부, 당일 인증 상태(dailyStatus), 종료까지 남은 날짜, 달성률, 도전금, 타입을 조회합니다."
     )
     BaseResponse<List<OngoingChallengeRecordResDto>> getOngoingChallengeRecords(
             @AuthUser
