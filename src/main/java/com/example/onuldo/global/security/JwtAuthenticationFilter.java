@@ -51,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 User user = userRepository.findById(userId).orElse(null);
 
                 if (user == null || user.getStatus() != UserStatus.ACTIVE) {
-                    request.setAttribute(AUTH_ERROR_ATTRIBUTE, ErrorStatus._USER_NOT_FOUND);
+                    request.setAttribute(AUTH_ERROR_ATTRIBUTE, ErrorStatus._USER_NOT_FOUND.getCode());
                 } else {
                     authenticate(request, userId);
                 }
