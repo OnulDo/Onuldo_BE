@@ -27,8 +27,9 @@ public class NicknameValidator {
             throw new InvalidRequestException(ErrorStatus._INVALID_NICKNAME);
         }
 
+        String normalizedNickname = nickname.toLowerCase(Locale.ROOT);
         for (String bannedWord : NicknameBannedWords.VALUES) {
-            if (nickname.contains(bannedWord.toLowerCase(Locale.ROOT))) {
+            if (normalizedNickname.contains(bannedWord.toLowerCase(Locale.ROOT))) {
                 throw new InvalidRequestException(ErrorStatus._INVALID_NICKNAME);
             }
         }
