@@ -27,7 +27,7 @@ import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.aws.service.S3FileService;
 import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import com.example.onuldo.global.ratelimit.EmailRateLimiter;
 import com.example.onuldo.global.security.JwtTokenProvider;
@@ -80,7 +80,7 @@ public class AuthService {
         emailRateLimiter.consume(request.email(), "signup");
 
         if (userRepository.existsByEmail(request.email())) {
-            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+            throw new RestApiException(ErrorStatus._DUPLICATE_EMAIL);
         }
 
         nicknameValidator.validate(request.nickname());
@@ -103,7 +103,7 @@ public class AuthService {
         try {
             savedUser = userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException e) {
-            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+            throw new RestApiException(ErrorStatus._DUPLICATE_EMAIL);
         }
 
         saveTermAgreements(savedUser, request.termAgreements());
@@ -118,20 +118,20 @@ public class AuthService {
         // 미리 막아버리는 걸 방지. 로그인 남용은 IP 제한(RateLimitInterceptor) +
         // 실패 횟수 기반 잠금(LoginFailureService/_LOGIN_LOCKED)으로 방어한다.
         User user = userRepository.findByEmailForUpdate(request.email())
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_LOGIN));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._INVALID_LOGIN));
 
         LocalDateTime now = timeService.nowKst();
         if (isLocked(user, now)) {
-            throw new RestApiException(GlobalErrorStatus._LOGIN_LOCKED);
+            throw new RestApiException(ErrorStatus._LOGIN_LOCKED);
         }
 
         if (user.getPasswordHash() == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             loginFailureService.recordFailure(user.getId(), now);
-            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
+            throw new RestApiException(ErrorStatus._INVALID_LOGIN);
         }
 
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
+            throw new RestApiException(ErrorStatus._INVALID_LOGIN);
         }
 
         user.setLoginFailCount(0);
@@ -146,10 +146,10 @@ public class AuthService {
     public AuthResDto refresh(RefreshTokenReqDto request) {
         Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
         User user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
 
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
+            throw new RestApiException(ErrorStatus._INVALID_LOGIN);
         }
 
         saveDeviceLog(user, request.device());
@@ -169,13 +169,13 @@ public class AuthService {
         }
 
         User user = userRepository.findByIdForUpdate(existingUser.get().getId())
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
         if (user.getSocialProvider() != info.provider()) {
-            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+            throw new RestApiException(ErrorStatus._DUPLICATE_EMAIL);
         }
 
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_LOGIN);
+            throw new RestApiException(ErrorStatus._INVALID_LOGIN);
         }
 
         user.setLastLoginAt(timeService.nowKst());
@@ -195,7 +195,7 @@ public class AuthService {
         emailRateLimiter.consume(info.email(), "oauth-signup");
 
         if (userRepository.existsByEmail(info.email())) {
-            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+            throw new RestApiException(ErrorStatus._DUPLICATE_EMAIL);
         }
 
         nicknameValidator.validate(request.nickname());
@@ -216,7 +216,7 @@ public class AuthService {
                     .lastLoginAt(timeService.nowKst())
                     .build());
         } catch (DataIntegrityViolationException e) {
-            throw new RestApiException(GlobalErrorStatus._DUPLICATE_EMAIL);
+            throw new RestApiException(ErrorStatus._DUPLICATE_EMAIL);
         }
 
         saveTermAgreements(user, request.termAgreements());
@@ -255,21 +255,21 @@ public class AuthService {
 
     private void validatePassword(String password) {
         if (password.length() < MIN_PASSWORD_LENGTH) {
-            throw new RestApiException(GlobalErrorStatus._PASSWORD_TOO_SHORT);
+            throw new RestApiException(ErrorStatus._PASSWORD_TOO_SHORT);
         }
 
         if (password.length() > MAX_PASSWORD_LENGTH) {
-            throw new RestApiException(GlobalErrorStatus._PASSWORD_TOO_LONG);
+            throw new RestApiException(ErrorStatus._PASSWORD_TOO_LONG);
         }
 
         if (!PASSWORD_PATTERN.matcher(password).matches()) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_PASSWORD);
+            throw new RestApiException(ErrorStatus._INVALID_PASSWORD);
         }
     }
 
     private void validateRequiredTerms(List<TermAgreementReqDto> termAgreements) {
         if (termAgreements == null || termAgreements.isEmpty()) {
-            throw new RestApiException(GlobalErrorStatus._TERMS_REQUIRED);
+            throw new RestApiException(ErrorStatus._TERMS_REQUIRED);
         }
 
         Map<TermType, Boolean> agreementMap = termAgreements.stream()
@@ -281,7 +281,7 @@ public class AuthService {
 
         for (TermType requiredType : REQUIRED_TERM_TYPES) {
             if (!Boolean.TRUE.equals(agreementMap.get(requiredType))) {
-                throw new RestApiException(GlobalErrorStatus._TERMS_REQUIRED);
+                throw new RestApiException(ErrorStatus._TERMS_REQUIRED);
             }
         }
     }

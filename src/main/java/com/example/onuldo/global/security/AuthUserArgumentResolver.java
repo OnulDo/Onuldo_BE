@@ -1,7 +1,7 @@
 package com.example.onuldo.global.security;
 
 import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;
@@ -32,7 +32,7 @@ public class AuthUserArgumentResolver implements HandlerMethodArgumentResolver {
                 : null;
 
         if (!(userId instanceof Long)) {
-            throw new RestApiException(GlobalErrorStatus._UNAUTHORIZED);
+            throw new RestApiException(ErrorStatus._UNAUTHORIZED);
         }
 
         return userId;

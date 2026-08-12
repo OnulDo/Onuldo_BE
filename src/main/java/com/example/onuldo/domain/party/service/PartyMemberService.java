@@ -18,7 +18,7 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.InsufficientPointException;
 import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,36 +43,36 @@ public class PartyMemberService {
     //  먼저 읽은 상태값으로 통과해버리는 레이스 컨디션이 있어 단일 조회 방식으로 변경)
     public PartyWaitingResDto joinParty(Long userId, PartyJoinReqDto request) {
         Party party = partyRepository.findByInviteCodeForUpdate(request.inviteCode())
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._INVALID_INVITE_CODE));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._INVALID_INVITE_CODE));
 
         if (party.getStatus() != PartyStatus.WAITING) {
             throw switch (party.getStatus()) {
-                case ONGOING -> new RestApiException(GlobalErrorStatus._PARTY_ALREADY_STARTED);
-                case FINISHED -> new RestApiException(GlobalErrorStatus._PARTY_ALREADY_FINISHED);
-                case DISSOLVED -> new RestApiException(GlobalErrorStatus._PARTY_DISSOLVED);
-                default -> new RestApiException(GlobalErrorStatus._BAD_REQUEST);
+                case ONGOING -> new RestApiException(ErrorStatus._PARTY_ALREADY_STARTED);
+                case FINISHED -> new RestApiException(ErrorStatus._PARTY_ALREADY_FINISHED);
+                case DISSOLVED -> new RestApiException(ErrorStatus._PARTY_DISSOLVED);
+                default -> new RestApiException(ErrorStatus._BAD_REQUEST);
             };
         }
 
         if (party.getInviteExpiresAt() != null && party.getInviteExpiresAt().isBefore(timeService.nowKst())) {
-            throw new RestApiException(GlobalErrorStatus._INVITE_CODE_EXPIRED);
+            throw new RestApiException(ErrorStatus._INVITE_CODE_EXPIRED);
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
 
         // 파티 중복 참여 방지용 코드 (정책서 근거 없음)
         if (partyMemberRepository.existsByParty_IdAndUser_Id(party.getId(), userId)) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_PARTY_MEMBER);
+            throw new RestApiException(ErrorStatus._ALREADY_PARTY_MEMBER);
         }
 
         PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(party.getId())
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._CHALLENGE_NOT_FOUND));
         participationValidator.validateNotOngoing(userId, partyChallenge.getChallenge().getId());
 
         int currentMembers = partyMemberRepository.countByParty_Id(party.getId());
         if (currentMembers >= party.getMaxMembers()) {
-            throw new RestApiException(GlobalErrorStatus._PARTY_FULL);
+            throw new RestApiException(ErrorStatus._PARTY_FULL);
         }
 
         PartyMember member = PartyMember.builder()
@@ -89,19 +89,19 @@ public class PartyMemberService {
 
     public PartyLeaveResDto leaveParty(Long partyId, Long userId) {
         Party party = partyRepository.findByIdForUpdate(partyId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._PARTY_NOT_FOUND));
 
         if (party.getStatus() != PartyStatus.WAITING) {
             throw switch (party.getStatus()) {
-                case ONGOING -> new RestApiException(GlobalErrorStatus._PARTY_ALREADY_STARTED);
-                case FINISHED -> new RestApiException(GlobalErrorStatus._PARTY_ALREADY_FINISHED);
-                case DISSOLVED -> new RestApiException(GlobalErrorStatus._PARTY_DISSOLVED);
-                default -> new RestApiException(GlobalErrorStatus._BAD_REQUEST);
+                case ONGOING -> new RestApiException(ErrorStatus._PARTY_ALREADY_STARTED);
+                case FINISHED -> new RestApiException(ErrorStatus._PARTY_ALREADY_FINISHED);
+                case DISSOLVED -> new RestApiException(ErrorStatus._PARTY_DISSOLVED);
+                default -> new RestApiException(ErrorStatus._BAD_REQUEST);
             };
         }
 
         PartyMember leavingMember = partyMemberRepository.findById(new PartyMemberId(partyId, userId))
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._NOT_PARTY_MEMBER));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._NOT_PARTY_MEMBER));
 
         boolean wasHost = leavingMember.getRole() == PartyMemberRole.HOST;
         partyMemberRepository.delete(leavingMember);
@@ -147,20 +147,20 @@ public class PartyMemberService {
 
     public PartyWaitingResDto updatePartyMemberReady(Long partyId, Long userId, PartyReadyReqDto request) {
         Party party = partyRepository.findById(partyId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._PARTY_NOT_FOUND));
 
         PartyMember member = partyMemberRepository.findById(new PartyMemberId(partyId, userId))
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._NOT_PARTY_MEMBER));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._NOT_PARTY_MEMBER));
 
         if (member.getRole() == PartyMemberRole.HOST) {
-            throw new RestApiException(GlobalErrorStatus._HOST_CANNOT_READY);
+            throw new RestApiException(ErrorStatus._HOST_CANNOT_READY);
         }
 
         if (request.ready()) {
             User user = member.getUser();
             if (user.getPointBalance() < party.getDepositAmount()) {
                 throw new InsufficientPointException(
-                        GlobalErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+                        ErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
                         user.getPointBalance(),
                         party.getDepositAmount()
                 );

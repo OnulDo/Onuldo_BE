@@ -19,7 +19,7 @@ import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,7 +43,7 @@ public class PointService {
     @Transactional
     public ChargePointResDto chargePoint(Long userId, ChargePointReqDto request) {
         User user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
 
         long balanceAfter = PointBalanceCalculator.addToBalance(user.getPointBalance(), request.point());
         user.setPointBalance(balanceAfter);
@@ -67,10 +67,10 @@ public class PointService {
     @Transactional
     public WithdrawPointResDto withdrawPoint(Long userId, WithdrawPointReqDto request) {
         User user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
 
         if (user.getPointBalance() < request.point()) {
-            throw new RestApiException(GlobalErrorStatus._INSUFFICIENT_POINT_FOR_WITHDRAW);
+            throw new RestApiException(ErrorStatus._INSUFFICIENT_POINT_FOR_WITHDRAW);
         }
 
         long balanceAfter = user.getPointBalance() - request.point();
@@ -96,10 +96,10 @@ public class PointService {
     @Transactional
     public ChargePointResDto grantSignupBonus(Long userId) {
         User user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
 
         if (pointTransactionRepository.existsByUser_IdAndDescription(userId, SIGNUP_BONUS_DESCRIPTION)) {
-            throw new RestApiException(GlobalErrorStatus._SIGNUP_BONUS_ALREADY_GRANTED);
+            throw new RestApiException(ErrorStatus._SIGNUP_BONUS_ALREADY_GRANTED);
         }
 
         long balanceAfter = PointBalanceCalculator.addToBalance(user.getPointBalance(), SIGNUP_BONUS);
@@ -124,7 +124,7 @@ public class PointService {
     @Transactional(readOnly = true)
     public PointWalletSummaryResDto getPointWalletSummary(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._USER_NOT_FOUND));
 
         long totalDeposit = participationRepository.sumDepositAmountByUserIdAndStatusNot(
                 userId,
@@ -183,7 +183,7 @@ public class PointService {
         try {
             return averageReturnRate.intValueExact();
         } catch (ArithmeticException e) {
-            throw new RestApiException(GlobalErrorStatus._RETURN_RATE_OUT_OF_RANGE);
+            throw new RestApiException(ErrorStatus._RETURN_RATE_OUT_OF_RANGE);
         }
     }
 

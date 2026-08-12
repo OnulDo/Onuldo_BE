@@ -1,7 +1,7 @@
 package com.example.onuldo.global.ratelimit;
 
 import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
@@ -28,7 +28,7 @@ public class EmailRateLimiter {
         String bucketKey = scope + ":" + email.toLowerCase(Locale.ROOT);
         Bucket bucket = emailBuckets.get(bucketKey, key -> newBucket(EMAIL_LIMIT_PER_MINUTE, Duration.ofMinutes(1)));
         if (!bucket.tryConsume(1)) {
-            throw new RestApiException(GlobalErrorStatus._RATE_LIMIT_EXCEEDED);
+            throw new RestApiException(ErrorStatus._RATE_LIMIT_EXCEEDED);
         }
     }
 

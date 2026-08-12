@@ -12,7 +12,7 @@ import com.example.onuldo.global.common.cursor.CursorKeyCodec;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
 import com.example.onuldo.global.common.cursor.CursorPageable;
 import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -88,16 +88,16 @@ public class NotificationQueryService {
                 return decodeLegacyIdCursor(userId, parts[0]);
             }
 
-            throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
+            throw new RestApiException(ErrorStatus._CURSOR_INVALID_FORMAT);
         } catch (RuntimeException e) {
-            throw new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT);
+            throw new RestApiException(ErrorStatus._CURSOR_INVALID_FORMAT);
         }
     }
 
     private CursorPosition decodeLegacyIdCursor(Long userId, String cursorId) {
         Long notificationId = Long.parseLong(cursorId);
         Notification notification = notificationRepository.findByUser_IdAndId(userId, notificationId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CURSOR_INVALID_FORMAT));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._CURSOR_INVALID_FORMAT));
 
         return new CursorPosition(notification.getCreatedAt(), notification.getId());
     }

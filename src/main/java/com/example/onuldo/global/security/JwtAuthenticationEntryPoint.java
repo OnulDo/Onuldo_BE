@@ -2,7 +2,7 @@ package com.example.onuldo.global.security;
 
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.exception.code.BaseCodeDto;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -52,6 +52,6 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         if (attribute instanceof BaseCodeDto errorCode) {
             return errorCode;
         }
-        return GlobalErrorStatus._UNAUTHORIZED.getCode();
+        return ErrorStatus._UNAUTHORIZED.getCode();
     }
 }

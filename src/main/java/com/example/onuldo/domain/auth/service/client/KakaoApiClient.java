@@ -5,7 +5,7 @@ import com.example.onuldo.domain.auth.service.client.dto.KakaoUserInfoResDto;
 import com.example.onuldo.domain.auth.service.client.dto.OAuthUserInfo;
 import com.example.onuldo.domain.user.enums.SocialProvider;
 import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -47,12 +47,12 @@ public class KakaoApiClient implements OAuthApiClient {
         } catch (RestClientResponseException e) {
             log.warn("카카오 유저 정보 조회 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
             if (isInvalidTokenError(e)) {
-                throw new RestApiException(GlobalErrorStatus._INVALID_SOCIAL_TOKEN);
+                throw new RestApiException(ErrorStatus._INVALID_SOCIAL_TOKEN);
             }
-            throw new RestApiException(GlobalErrorStatus._OAUTH_PROVIDER_ERROR);
+            throw new RestApiException(ErrorStatus._OAUTH_PROVIDER_ERROR);
         } catch (RestClientException e) {
             log.error("카카오 유저 정보 API 호출 중 오류", e);
-            throw new RestApiException(GlobalErrorStatus._OAUTH_PROVIDER_ERROR);
+            throw new RestApiException(ErrorStatus._OAUTH_PROVIDER_ERROR);
         }
     }
 

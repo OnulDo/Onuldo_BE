@@ -12,7 +12,7 @@ import com.example.onuldo.domain.party.repository.PartyMemberRepository;
 import com.example.onuldo.domain.party.repository.PartyRepository;
 import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,18 +35,18 @@ public class PartyFeedService {
 
     public PartyFeedResDto getPartyFeed(Long partyId, Long userId) {
         Party party = partyRepository.findById(partyId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTY_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._PARTY_NOT_FOUND));
 
         List<PartyMember> partyMembers = partyMemberRepository.findByParty_IdOrderByJoinedAtAsc(partyId);
 
         boolean isRequesterMember = partyMembers.stream()
                 .anyMatch(member -> member.getUser().getId().equals(userId));
         if (!isRequesterMember) {
-            throw new RestApiException(GlobalErrorStatus._NOT_PARTY_MEMBER);
+            throw new RestApiException(ErrorStatus._NOT_PARTY_MEMBER);
         }
 
         PartyChallenge partyChallenge = partyChallengeRepository.findByParty_Id(partyId)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new RestApiException(ErrorStatus._CHALLENGE_NOT_FOUND));
 
         List<Verification> todayVerifications =
                 verificationRepository.findTodayAutoPassVerificationsByPartyId(partyId, timeService.todayKst());
