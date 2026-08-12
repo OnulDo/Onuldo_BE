@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -89,7 +90,7 @@ public class NotificationQueryService {
             }
 
             throw new InvalidRequestException(ErrorStatus._CURSOR_INVALID_FORMAT);
-        } catch (RuntimeException e) {
+        } catch (DateTimeParseException | NumberFormatException e) {
             throw new InvalidRequestException(ErrorStatus._CURSOR_INVALID_FORMAT);
         }
     }
