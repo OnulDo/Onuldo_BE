@@ -30,7 +30,7 @@ public record OAuthSignupReqDto(
                 example = "[{\"termType\":\"SERVICE\",\"value\":true}," +
                         "{\"termType\":\"PRIVACY\",\"value\":true}," +
                         "{\"termType\":\"AGE_14\",\"value\":true}," +
-                        "{\"termType\":\"MARKETING\",\"value\":false}]"
+                        "{\"termType\":\"REFUND\",\"value\":true}]"
         )
         @NotNull(message = "약관 동의 목록은 필수입니다.")
         List<@NotNull @Valid TermAgreementReqDto> termAgreements,
