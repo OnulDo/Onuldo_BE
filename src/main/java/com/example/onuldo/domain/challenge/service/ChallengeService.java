@@ -29,6 +29,7 @@ import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -48,6 +49,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ChallengeService {
+
+    private static final String PHOTO_URL_UNIQUE_CONSTRAINT = "uk_verification_photo_url";
 
     private final ChallengeRepository challengeRepository;
     private final ParticipationRepository participationRepository;
@@ -213,7 +216,10 @@ public class ChallengeService {
                     .verifiedAt(timeService.nowKst())
                     .build());
         } catch (DataIntegrityViolationException e) {
-            throw new DuplicateException(ErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
+            if (isPhotoUrlUniqueViolation(e)) {
+                throw new DuplicateException(ErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
+            }
+            throw new InternalServerException(ErrorStatus._INTERNAL_SERVER_ERROR);
         }
 
         return new VerificationWriteResult(
@@ -243,6 +249,15 @@ public class ChallengeService {
         )) {
             throw new BusinessRuleException(ErrorStatus._CHALLENGE_VERIFICATION_TIME_UNAVAILABLE);
         }
+    }
+
+    private boolean isPhotoUrlUniqueViolation(DataIntegrityViolationException e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException cve) {
+                return PHOTO_URL_UNIQUE_CONSTRAINT.equals(cve.getConstraintName());
+            }
+        }
+        return false;
     }
 
     @Transactional
