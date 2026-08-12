@@ -21,11 +21,15 @@ import com.example.onuldo.domain.challenge.repository.VerificationRepository;
 import com.example.onuldo.domain.challenge.dto.request.ChallengeVerificationReqDto;
 import com.example.onuldo.global.aws.service.RekognitionService;
 import com.example.onuldo.global.aws.service.S3FileService;
-import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.BusinessRuleException;
+import com.example.onuldo.global.common.exception.DuplicateException;
+import com.example.onuldo.global.common.exception.InternalServerException;
+import com.example.onuldo.global.common.exception.NotFoundException;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -35,6 +39,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -45,6 +50,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ChallengeService {
+
+    private static final String PHOTO_URL_UNIQUE_CONSTRAINT = "uk_verification_photo_url";
+    private static final int MYSQL_DUPLICATE_ENTRY_ERROR_CODE = 1062;
 
     private final ChallengeRepository challengeRepository;
     private final ParticipationRepository participationRepository;
@@ -94,7 +102,7 @@ public class ChallengeService {
     public ChallengeResDto getChallenge(Long challengeId) {
         Challenge challenge = challengeRepository.findById(challengeId)
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._CHALLENGE_NOT_FOUND));
 
         return toChallengeResDto(challenge);
     }
@@ -106,26 +114,26 @@ public class ChallengeService {
 
         Challenge challenge = challengeRepository.findById(challengeId)
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._CHALLENGE_NOT_FOUND));
 
         Participation participationSnapshot = participationRepository
                 .findLatestByUserIdAndChallengeIdAndStatus(userId, challengeId, ParticipationStatus.ONGOING)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._PARTICIPATION_NOT_FOUND));
 
         if (today.isBefore(participationSnapshot.getStartDate())) {
-            throw new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_STARTED);
+            throw new BusinessRuleException(ErrorStatus._CHALLENGE_NOT_STARTED);
         }
 
         validateVerificationAvailableTime(challenge, participationSnapshot, today, nowKst.toLocalTime());
 
         if (verificationRepository.existsByParticipation_IdAndVerificationDateAndReview(
                 participationSnapshot.getId(), today, VerificationReviewStatus.PASS)) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
+            throw new DuplicateException(ErrorStatus._ALREADY_VERIFIED_TODAY);
         }
 
         String photoUrl = s3FileService.getFileUrl(request.fileId()).url();
         if (verificationRepository.existsByPhotoUrl(photoUrl)) {
-            throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
+            throw new DuplicateException(ErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
         }
 
         List<String> detectedLabelNames = rekognitionService.detectLabelNamesByFileId(request.fileId());
@@ -177,25 +185,25 @@ public class ChallengeService {
     ) {
         Challenge challenge = challengeRepository.findById(challengeId)
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._CHALLENGE_NOT_FOUND));
 
         Participation participation = participationRepository
                 .findLatestByUserIdAndChallengeIdAndStatusForUpdate(userId, challengeId, ParticipationStatus.ONGOING)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._PARTICIPATION_NOT_FOUND));
 
         if (today.isBefore(participation.getStartDate())) {
-            throw new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_STARTED);
+            throw new BusinessRuleException(ErrorStatus._CHALLENGE_NOT_STARTED);
         }
 
         validateVerificationAvailableTime(challenge, participation, today, currentTime);
 
         if (verificationRepository.existsByParticipation_IdAndVerificationDateAndReview(
                 participation.getId(), today, VerificationReviewStatus.PASS)) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
+            throw new DuplicateException(ErrorStatus._ALREADY_VERIFIED_TODAY);
         }
 
         if (verificationRepository.existsByPhotoUrl(photoUrl)) {
-            throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
+            throw new DuplicateException(ErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
         }
 
         Verification verification;
@@ -210,7 +218,10 @@ public class ChallengeService {
                     .verifiedAt(timeService.nowKst())
                     .build());
         } catch (DataIntegrityViolationException e) {
-            throw new RestApiException(GlobalErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
+            if (isPhotoUrlUniqueViolation(e)) {
+                throw new DuplicateException(ErrorStatus._DUPLICATE_VERIFICATION_PHOTO);
+            }
+            throw new InternalServerException(ErrorStatus._INTERNAL_SERVER_ERROR);
         }
 
         return new VerificationWriteResult(
@@ -230,7 +241,7 @@ public class ChallengeService {
             LocalTime currentTime
     ) {
         if (participation.getEndDate() != null && today.isAfter(participation.getEndDate())) {
-            throw new RestApiException(GlobalErrorStatus._CHALLENGE_PARTICIPATION_ENDED);
+            throw new BusinessRuleException(ErrorStatus._CHALLENGE_PARTICIPATION_ENDED);
         }
 
         if (!ChallengeVerificationTimePolicy.isWithinVerificationTime(
@@ -238,19 +249,44 @@ public class ChallengeService {
                 challenge.getTimeEnd(),
                 currentTime
         )) {
-            throw new RestApiException(GlobalErrorStatus._CHALLENGE_VERIFICATION_TIME_UNAVAILABLE);
+            throw new BusinessRuleException(ErrorStatus._CHALLENGE_VERIFICATION_TIME_UNAVAILABLE);
         }
+    }
+
+    private boolean isPhotoUrlUniqueViolation(DataIntegrityViolationException e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException cve) {
+                return matchesPhotoUrlConstraint(cve);
+            }
+        }
+        return false;
+    }
+
+    private boolean matchesPhotoUrlConstraint(ConstraintViolationException cve) {
+        if (PHOTO_URL_UNIQUE_CONSTRAINT.equals(cve.getConstraintName())) {
+            return true;
+        }
+
+        // MySQL은 constraint name을 못 채워주는 경우가 있어, 중복 키 오류 코드(1062)와
+        // 원본 SQL 메시지에 담긴 제약조건명으로 한 번 더 판별한다.
+        SQLException sqlException = cve.getSQLException();
+        if (sqlException == null || sqlException.getErrorCode() != MYSQL_DUPLICATE_ENTRY_ERROR_CODE) {
+            return false;
+        }
+
+        String message = sqlException.getMessage();
+        return message != null && message.contains(PHOTO_URL_UNIQUE_CONSTRAINT);
     }
 
     @Transactional
     public ChallengeManualReviewResDto manualReviewVerification(Long userId, Long challengeId) {
         challengeRepository.findById(challengeId)
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._CHALLENGE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._CHALLENGE_NOT_FOUND));
 
         Participation participation = participationRepository
                 .findLatestByUserIdAndChallengeIdAndStatusForUpdate(userId, challengeId, ParticipationStatus.ONGOING)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._PARTICIPATION_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._PARTICIPATION_NOT_FOUND));
 
         LocalDate today = timeService.todayKst();
 
@@ -266,12 +302,12 @@ public class ChallengeService {
 
         if (verificationRepository.existsByParticipation_IdAndVerificationDateAndReview(
                 participation.getId(), today, VerificationReviewStatus.PASS)) {
-            throw new RestApiException(GlobalErrorStatus._ALREADY_VERIFIED_TODAY);
+            throw new DuplicateException(ErrorStatus._ALREADY_VERIFIED_TODAY);
         }
 
         Verification autoFail = verificationRepository.findFirstByParticipation_IdAndVerificationDateAndReviewOrderByVerifiedAtDescIdDesc(
                         participation.getId(), today, VerificationReviewStatus.AUTO_FAIL)
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._AUTO_FAIL_VERIFICATION_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._AUTO_FAIL_VERIFICATION_NOT_FOUND));
 
         Verification manualReview = verificationRepository.save(Verification.builder()
                 .participation(participation)
@@ -367,7 +403,7 @@ public class ChallengeService {
         try {
             return objectMapper.writeValueAsString(detectedLabelNames);
         } catch (JsonProcessingException e) {
-            throw new RestApiException(GlobalErrorStatus._VERIFICATION_RESULT_SERIALIZATION_FAILED);
+            throw new InternalServerException(ErrorStatus._VERIFICATION_RESULT_SERIALIZATION_FAILED);
         }
     }
 }

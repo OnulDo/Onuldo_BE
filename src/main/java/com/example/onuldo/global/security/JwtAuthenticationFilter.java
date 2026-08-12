@@ -4,7 +4,7 @@ import com.example.onuldo.domain.user.entity.User;
 import com.example.onuldo.domain.user.enums.UserStatus;
 import com.example.onuldo.domain.user.repository.UserRepository;
 import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -51,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 User user = userRepository.findById(userId).orElse(null);
 
                 if (user == null || user.getStatus() != UserStatus.ACTIVE) {
-                    request.setAttribute(AUTH_ERROR_ATTRIBUTE, GlobalErrorStatus._USER_NOT_FOUND);
+                    request.setAttribute(AUTH_ERROR_ATTRIBUTE, ErrorStatus._USER_NOT_FOUND.getCode());
                 } else {
                     authenticate(request, userId);
                 }

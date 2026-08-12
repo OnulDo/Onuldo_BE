@@ -14,8 +14,8 @@ import com.example.onuldo.domain.user.enums.NotificationType;
 import com.example.onuldo.domain.user.repository.NotificationDispatchRepository;
 import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
 import com.example.onuldo.domain.user.repository.UserRepository;
-import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.NotFoundException;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.common.time.TimeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -95,7 +95,7 @@ public class NotificationDispatchService {
         }
 
         User user = userRepository.findById(command.getUserId())
-                .orElseThrow(() -> new RestApiException(GlobalErrorStatus._USER_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
         notificationDispatchRepository.save(
                 NotificationDispatch.builder()

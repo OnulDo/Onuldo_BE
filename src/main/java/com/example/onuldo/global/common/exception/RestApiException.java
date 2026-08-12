@@ -3,16 +3,17 @@ package com.example.onuldo.global.common.exception;
 import com.example.onuldo.global.common.exception.code.BaseCodeDto;
 import com.example.onuldo.global.common.exception.code.BaseCodeInterface;
 
-public class RestApiException extends RuntimeException {
+public abstract class RestApiException extends RuntimeException {
 
     private final BaseCodeInterface errorCode; //추상화 시킨 인터페이스를 받아서 사용
     private final String detailMessage;
 
-    public RestApiException(BaseCodeInterface errorCode) {
+    protected RestApiException(BaseCodeInterface errorCode) {
         this(errorCode, null);
     }
 
-    public RestApiException(BaseCodeInterface errorCode, String detailMessage) {
+    protected RestApiException(BaseCodeInterface errorCode, String detailMessage) {
+        super(detailMessage);
         this.errorCode = errorCode;
         this.detailMessage = detailMessage;
     }

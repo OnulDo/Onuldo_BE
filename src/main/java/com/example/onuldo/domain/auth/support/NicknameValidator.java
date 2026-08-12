@@ -1,7 +1,7 @@
 package com.example.onuldo.domain.auth.support;
 
-import com.example.onuldo.global.common.exception.RestApiException;
-import com.example.onuldo.global.common.exception.code.status.GlobalErrorStatus;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.Locale;
@@ -16,20 +16,21 @@ public class NicknameValidator {
 
     public void validate(String nickname) {
         if (nickname.length() < MIN_NICKNAME_LENGTH) {
-            throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_SHORT);
+            throw new InvalidRequestException(ErrorStatus._NICKNAME_TOO_SHORT);
         }
 
         if (nickname.length() > MAX_NICKNAME_LENGTH) {
-            throw new RestApiException(GlobalErrorStatus._NICKNAME_TOO_LONG);
+            throw new InvalidRequestException(ErrorStatus._NICKNAME_TOO_LONG);
         }
 
         if (!NICKNAME_PATTERN.matcher(nickname).matches()) {
-            throw new RestApiException(GlobalErrorStatus._INVALID_NICKNAME);
+            throw new InvalidRequestException(ErrorStatus._INVALID_NICKNAME);
         }
 
+        String normalizedNickname = nickname.toLowerCase(Locale.ROOT);
         for (String bannedWord : NicknameBannedWords.VALUES) {
-            if (nickname.contains(bannedWord.toLowerCase(Locale.ROOT))) {
-                throw new RestApiException(GlobalErrorStatus._INVALID_NICKNAME);
+            if (normalizedNickname.contains(bannedWord.toLowerCase(Locale.ROOT))) {
+                throw new InvalidRequestException(ErrorStatus._INVALID_NICKNAME);
             }
         }
     }
