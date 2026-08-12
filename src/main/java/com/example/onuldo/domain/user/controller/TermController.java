@@ -21,7 +21,10 @@ public class TermController implements TermControllerDoc {
     private final TermService termService;
 
     @GetMapping("/{termType}")
-    public BaseResponse<TermResDto> getTerm(@PathVariable TermType termType) {
+    public BaseResponse<TermResDto> getTerm(
+            @PathVariable
+            TermType termType
+    ) {
         return BaseResponse.onSuccess(termService.getTerm(termType));
     }
 }
