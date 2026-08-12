@@ -65,7 +65,6 @@ public class PartyMemberService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
 
-        // 파티 중복 참여 방지용 코드 (정책서 근거 없음)
         if (partyMemberRepository.existsByParty_IdAndUser_Id(party.getId(), userId)) {
             throw new DuplicateException(ErrorStatus._ALREADY_PARTY_MEMBER);
         }
