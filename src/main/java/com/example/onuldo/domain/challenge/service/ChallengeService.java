@@ -39,6 +39,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -51,6 +52,7 @@ import java.util.Optional;
 public class ChallengeService {
 
     private static final String PHOTO_URL_UNIQUE_CONSTRAINT = "uk_verification_photo_url";
+    private static final int MYSQL_DUPLICATE_ENTRY_ERROR_CODE = 1062;
 
     private final ChallengeRepository challengeRepository;
     private final ParticipationRepository participationRepository;
@@ -254,10 +256,26 @@ public class ChallengeService {
     private boolean isPhotoUrlUniqueViolation(DataIntegrityViolationException e) {
         for (Throwable cause = e; cause != null; cause = cause.getCause()) {
             if (cause instanceof ConstraintViolationException cve) {
-                return PHOTO_URL_UNIQUE_CONSTRAINT.equals(cve.getConstraintName());
+                return matchesPhotoUrlConstraint(cve);
             }
         }
         return false;
+    }
+
+    private boolean matchesPhotoUrlConstraint(ConstraintViolationException cve) {
+        if (PHOTO_URL_UNIQUE_CONSTRAINT.equals(cve.getConstraintName())) {
+            return true;
+        }
+
+        // MySQL은 constraint name을 못 채워주는 경우가 있어, 중복 키 오류 코드(1062)와
+        // 원본 SQL 메시지에 담긴 제약조건명으로 한 번 더 판별한다.
+        SQLException sqlException = cve.getSQLException();
+        if (sqlException == null || sqlException.getErrorCode() != MYSQL_DUPLICATE_ENTRY_ERROR_CODE) {
+            return false;
+        }
+
+        String message = sqlException.getMessage();
+        return message != null && message.contains(PHOTO_URL_UNIQUE_CONSTRAINT);
     }
 
     @Transactional
