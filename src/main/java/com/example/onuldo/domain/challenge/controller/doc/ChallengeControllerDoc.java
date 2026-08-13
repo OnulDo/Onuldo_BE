@@ -8,6 +8,8 @@ import com.example.onuldo.domain.challenge.enums.ChallengeCategory;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
+import com.example.onuldo.global.config.swagger.ApiErrorCodes;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,6 +38,11 @@ public interface ChallengeControllerDoc {
                     - blockquote
                     """
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._CURSOR_INVALID_FORMAT,
+            ErrorStatus._CURSOR_SIZE_INVALID
+    })
     CursorPageResponse<ChallengeResDto> getChallenges(
             @Valid
             @ParameterObject
@@ -54,6 +61,10 @@ public interface ChallengeControllerDoc {
             summary = "챌린지 상세 조회",
             description = "활성 상태의 챌린지 1건을 조회합니다."
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._CHALLENGE_NOT_FOUND
+    })
     BaseResponse<ChallengeResDto> getChallenge(
             @Parameter(description = "챌린지 ID", example = "1")
             @PathVariable Long challengeId
@@ -63,6 +74,28 @@ public interface ChallengeControllerDoc {
             summary = "챌린지 인증",
             description = "challengeId로 참여 중인 챌린지를 찾아 fileId 기준 AWS Rekognition 라벨을 검사하고 인증합니다."
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._CHALLENGE_NOT_FOUND,
+            ErrorStatus._PARTICIPATION_NOT_FOUND,
+            ErrorStatus._FILE_NOT_FOUND,
+            ErrorStatus._S3_FILE_ID_REQUIRED,
+            ErrorStatus._S3_BUCKET_REQUIRED,
+            ErrorStatus._CHALLENGE_NOT_STARTED,
+            ErrorStatus._CHALLENGE_PARTICIPATION_ENDED,
+            ErrorStatus._CHALLENGE_VERIFICATION_TIME_UNAVAILABLE,
+            ErrorStatus._ALREADY_VERIFIED_TODAY,
+            ErrorStatus._DUPLICATE_VERIFICATION_PHOTO,
+            ErrorStatus._INTERNAL_SERVER_ERROR,
+            ErrorStatus._S3_BUCKET_NOT_CONFIGURED,
+            ErrorStatus._FILE_EXISTENCE_CHECK_FAILED,
+            ErrorStatus._S3_PUBLIC_BASE_URL_NOT_CONFIGURED,
+            ErrorStatus._VERIFICATION_RESULT_SERIALIZATION_FAILED
+    })
     BaseResponse<ChallengeVerificationResDto> verifyChallenge(
             @AuthUser
             Long userId,
@@ -84,6 +117,17 @@ public interface ChallengeControllerDoc {
                     정산/달성률 계산에는 반영되지 않으며, 재검토가 요청되었다는 기록만 남깁니다.
                     """
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._CHALLENGE_NOT_FOUND,
+            ErrorStatus._PARTICIPATION_NOT_FOUND,
+            ErrorStatus._AUTO_FAIL_VERIFICATION_NOT_FOUND,
+            ErrorStatus._ALREADY_VERIFIED_TODAY
+    })
     BaseResponse<ChallengeManualReviewResDto> manualReviewVerification(
             @AuthUser
             Long userId,

@@ -14,6 +14,8 @@ import com.example.onuldo.domain.party.dto.response.PartyWaitingResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
+import com.example.onuldo.global.config.swagger.ApiErrorCodes;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,6 +37,17 @@ public interface PartyControllerDoc {
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._CHALLENGE_NOT_FOUND,
+            ErrorStatus._INVALID_MAX_MEMBERS,
+            ErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+            ErrorStatus._INVITE_CODE_GENERATION_FAILED
+    })
     BaseResponse<PartyCreateResDto> createParty(
             @AuthUser Long userId,
             @Valid @RequestBody PartyCreateReqDto request
@@ -51,6 +64,15 @@ public interface PartyControllerDoc {
                     """
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._CURSOR_INVALID_FORMAT,
+            ErrorStatus._CURSOR_SIZE_INVALID
+    })
     CursorPageResponse<PartyListResDto> getMyParties(
             @AuthUser Long userId,
             @Valid
@@ -65,6 +87,15 @@ public interface PartyControllerDoc {
                     + "isHost, canStart 필드로 방장 여부와 [시작하기] 버튼 활성화 여부를 판단할 수 있습니다."
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._PARTY_NOT_FOUND,
+            ErrorStatus._PARTY_DISSOLVED,
+            ErrorStatus._NOT_PARTY_MEMBER
+    })
     BaseResponse<PartyWaitingResDto> getPartyWaiting(
             @AuthUser Long userId,
             @PathVariable Long partyId
@@ -78,6 +109,21 @@ public interface PartyControllerDoc {
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._CHALLENGE_NOT_FOUND,
+            ErrorStatus._INVALID_INVITE_CODE,
+            ErrorStatus._PARTY_ALREADY_STARTED,
+            ErrorStatus._PARTY_ALREADY_FINISHED,
+            ErrorStatus._PARTY_DISSOLVED,
+            ErrorStatus._INVITE_CODE_EXPIRED,
+            ErrorStatus._ALREADY_PARTY_MEMBER,
+            ErrorStatus._PARTY_FULL
+    })
     BaseResponse<PartyWaitingResDto> joinParty(
             @AuthUser Long userId,
             @Valid @RequestBody PartyJoinReqDto request
@@ -92,6 +138,17 @@ public interface PartyControllerDoc {
                     + "이미 시작되었거나 종료된 파티는 이탈할 수 없습니다."
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._PARTY_NOT_FOUND,
+            ErrorStatus._NOT_PARTY_MEMBER,
+            ErrorStatus._PARTY_ALREADY_STARTED,
+            ErrorStatus._PARTY_ALREADY_FINISHED,
+            ErrorStatus._PARTY_DISSOLVED
+    })
     BaseResponse<PartyLeaveResDto> leaveParty(
             @AuthUser Long userId,
             @PathVariable Long partyId
@@ -105,6 +162,17 @@ public interface PartyControllerDoc {
     )
     @io.swagger.v3.oas.annotations.parameters.RequestBody
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._PARTY_NOT_FOUND,
+            ErrorStatus._NOT_PARTY_MEMBER,
+            ErrorStatus._HOST_CANNOT_READY,
+            ErrorStatus._INSUFFICIENT_POINT_FOR_PARTY
+    })
     BaseResponse<PartyWaitingResDto> updatePartyMemberReady(
             @AuthUser Long userId,
             @PathVariable Long partyId,
@@ -118,6 +186,22 @@ public interface PartyControllerDoc {
                     + "파티원별 챌린지 참여 기록도 이 시점에 생성됩니다."
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._PARTY_NOT_FOUND,
+            ErrorStatus._CHALLENGE_NOT_FOUND,
+            ErrorStatus._NOT_PARTY_HOST,
+            ErrorStatus._PARTY_ALREADY_STARTED,
+            ErrorStatus._PARTY_ALREADY_FINISHED,
+            ErrorStatus._PARTY_DISSOLVED,
+            ErrorStatus._PARTY_NOT_READY_TO_START,
+            ErrorStatus._INSUFFICIENT_POINT_FOR_PARTY,
+            ErrorStatus._PARTICIPATION_PARTY_NOT_ALLOWED,
+            ErrorStatus._PARTICIPATION_PARTY_REQUIRED
+    })
     BaseResponse<PartyStartResDto> startParty(
             @AuthUser Long userId,
             @PathVariable Long partyId
@@ -130,6 +214,15 @@ public interface PartyControllerDoc {
                     + "요청자가 해당 파티의 파티원이 아니면 조회할 수 없습니다."
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._PARTY_NOT_FOUND,
+            ErrorStatus._CHALLENGE_NOT_FOUND,
+            ErrorStatus._NOT_PARTY_MEMBER
+    })
     BaseResponse<PartyFeedResDto> getPartyFeed(
             @AuthUser Long userId,
             @PathVariable Long partyId
@@ -146,6 +239,15 @@ public interface PartyControllerDoc {
                     """
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._PARTY_NOT_FOUND,
+            ErrorStatus._NOT_PARTY_MEMBER,
+            ErrorStatus._SETTLEMENT_NOT_COMPLETED
+    })
     BaseResponse<PartyResultResDto> getPartyResult(
             @AuthUser Long userId,
             @PathVariable Long partyId
@@ -162,6 +264,12 @@ public interface PartyControllerDoc {
                     """
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND
+    })
     BaseResponse<PartyHomeResDto> getHomeParties(
             @AuthUser
             Long userId
