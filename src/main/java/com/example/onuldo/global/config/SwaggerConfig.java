@@ -3,6 +3,7 @@ package com.example.onuldo.global.config;
 import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
 import com.example.onuldo.global.config.swagger.ApiErrorCodes;
 import com.example.onuldo.global.config.swagger.SwaggerErrorResponse;
+import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Paths;
@@ -60,8 +61,7 @@ public class SwaggerConfig {
                                 .name(BEARER_AUTH)
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
-                                .bearerFormat("JWT")))
-                .addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH));
+                                .bearerFormat("JWT")));
     }
 
     @Bean
@@ -110,6 +110,16 @@ public class SwaggerConfig {
             errorsByStatus.forEach((status, errorStatuses) ->
                     operation.getResponses().addApiResponse(String.valueOf(status), apiResponse(errorStatuses)));
 
+            return operation;
+        };
+    }
+
+    @Bean
+    public OperationCustomizer authUserSecurityCustomizer() {
+        return (operation, handlerMethod) -> {
+            if (hasAuthUserParameter(handlerMethod)) {
+                operation.addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH));
+            }
             return operation;
         };
     }
@@ -178,6 +188,11 @@ public class SwaggerConfig {
         } catch (NoSuchMethodException e) {
             return null;
         }
+    }
+
+    private boolean hasAuthUserParameter(HandlerMethod handlerMethod) {
+        return Arrays.stream(handlerMethod.getMethod().getParameters())
+                .anyMatch(parameter -> parameter.isAnnotationPresent(AuthUser.class));
     }
 
     private int resourceOrder(String path) {
