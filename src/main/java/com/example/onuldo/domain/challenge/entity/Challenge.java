@@ -114,4 +114,8 @@ public class Challenge {
             throw new InvalidRequestException(ErrorStatus._INVALID_DEPOSIT_OPTION);
         }
     }
+
+    public void updateParticipantCount(Integer participantCount) {
+        this.participantCount = participantCount;
+    }
 }
