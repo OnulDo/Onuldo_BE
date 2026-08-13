@@ -281,6 +281,19 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             @Param("status") ParticipationStatus status
     );
 
+    @Query("""
+        SELECT new com.example.onuldo.domain.challenge.repository.ChallengeParticipantCountProjection(
+            p.challenge.id,
+            COUNT(p)
+        )
+        FROM Participation p
+        WHERE p.status <> :excludedStatus
+        GROUP BY p.challenge.id
+    """)
+    List<ChallengeParticipantCountProjection> countByChallengeIdExcludingStatus(
+            @Param("excludedStatus") ParticipationStatus excludedStatus
+    );
+
     // HOME-07 코드리뷰 반영
     Optional<Participation> findByParty_IdAndUser_IdAndParticipationType(
             Long partyId,
