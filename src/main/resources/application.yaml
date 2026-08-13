@@ -13,8 +13,8 @@ spring:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
-    operations-sorter: method
-    tags-sorter: alpha
+    operations-sorter: none
+    tags-sorter: none
   api-docs:
     path: /v3/api-docs
 
