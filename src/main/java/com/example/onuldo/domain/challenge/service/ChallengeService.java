@@ -44,7 +44,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -138,12 +141,12 @@ public class ChallengeService {
 
         List<String> detectedLabelNames = rekognitionService.detectLabelNamesByFileId(request.fileId());
 
-        boolean matchedChallengeLabel = hasMatchingLabel(challenge.getVerificationLabelList(), detectedLabelNames);
-        VerificationReviewStatus review = matchedChallengeLabel
+        boolean matchedAllChallengeLabels = hasAllChallengeLabels(challenge.getVerificationLabelList(), detectedLabelNames);
+        VerificationReviewStatus review = matchedAllChallengeLabels
                 ? VerificationReviewStatus.PASS
                 : VerificationReviewStatus.AUTO_FAIL;
 
-        BigDecimal dayScore = matchedChallengeLabel ? BigDecimal.valueOf(100) : BigDecimal.ZERO;
+        BigDecimal dayScore = matchedAllChallengeLabels ? BigDecimal.valueOf(100) : BigDecimal.ZERO;
         String rekognitionResult = toJson(detectedLabelNames);
 
         VerificationWriteResult saved = executeInTransaction(status -> saveVerificationInTransaction(
@@ -378,25 +381,35 @@ public class ChallengeService {
         return s.trim();
     }
 
-    private boolean hasMatchingLabel(List<String> challengeLabels, List<String> detectedLabels) {
-        if(challengeLabels == null || challengeLabels.isEmpty()) {
+    private boolean hasAllChallengeLabels(List<String> challengeLabels, List<String> detectedLabels) {
+        if (challengeLabels == null || challengeLabels.isEmpty()) {
             return false;
         }
         if (detectedLabels == null || detectedLabels.isEmpty()) {
             return false;
         }
 
-        return challengeLabels.stream()
-                .filter(label -> label != null && !label.isBlank())
-                .map(String::trim)
-                .map(String::toUpperCase)
-                .anyMatch(normalizedChallengeLabel ->
-                        detectedLabels.stream()
-                                .filter(label -> label != null && !label.isBlank())
-                                .map(String::trim)
-                                .map(String::toUpperCase)
-                                .anyMatch(normalizedChallengeLabel::equals)
-                );
+        Set<String> normalizedChallengeLabels = challengeLabels.stream()
+                .map(this::normalizeLabel)
+                .filter(label -> !label.isBlank())
+                .collect(Collectors.toSet());
+        if (normalizedChallengeLabels.isEmpty()) {
+            return false;
+        }
+
+        Set<String> normalizedDetectedLabels = detectedLabels.stream()
+                .map(this::normalizeLabel)
+                .filter(label -> !label.isBlank())
+                .collect(Collectors.toSet());
+
+        return normalizedDetectedLabels.containsAll(normalizedChallengeLabels);
+    }
+
+    private String normalizeLabel(String label) {
+        if (label == null) {
+            return "";
+        }
+        return label.trim().toUpperCase(Locale.ROOT);
     }
 
     private String toJson(List<String> detectedLabelNames) {
