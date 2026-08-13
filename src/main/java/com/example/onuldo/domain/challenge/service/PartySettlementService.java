@@ -8,6 +8,8 @@ import com.example.onuldo.domain.challenge.enums.VerificationReviewStatus;
 import com.example.onuldo.domain.challenge.repository.ParticipationRepository;
 import com.example.onuldo.domain.challenge.repository.SettlementRepository;
 import com.example.onuldo.domain.challenge.repository.VerificationRepository;
+import com.example.onuldo.domain.party.entity.Party;
+import com.example.onuldo.domain.party.enums.PartyStatus;
 import com.example.onuldo.domain.party.repository.PartyRepository;
 import com.example.onuldo.domain.user.entity.PointTransaction;
 import com.example.onuldo.domain.user.entity.User;
@@ -60,7 +62,7 @@ public class PartySettlementService {
      */
     @Transactional
     public void settleParty(Long partyId) {
-        partyRepository.findByIdForUpdate(partyId)
+        Party party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus._PARTY_NOT_FOUND));
 
         // POI-08: 이미 정산된 파티면 재정산하지 않는다 (중복 정산·이중 지급 방어).
@@ -80,6 +82,8 @@ public class PartySettlementService {
         }
 
         processSettlement(participations);
+        // 정산 완료 후 파티 상태를 확정해야 홈 "함께하는 파티"(status=ONGOING 필터)에서 빠진다.
+        party.updateStatus(PartyStatus.FINISHED);
     }
 
     private boolean isSettlementWindowClosed(List<Participation> participations) {
