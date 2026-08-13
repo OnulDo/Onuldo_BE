@@ -9,6 +9,8 @@ import com.example.onuldo.domain.challenge.enums.ParticipationStatus;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
+import com.example.onuldo.global.config.swagger.ApiErrorCodes;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,6 +39,15 @@ public interface UserChallengeControllerDoc {
                     - blockquote
                     """
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._CURSOR_INVALID_FORMAT,
+            ErrorStatus._CURSOR_SIZE_INVALID
+    })
     CursorPageResponse<UserChallengeResDto> getUserChallenges(
             @AuthUser
             Long userId,
@@ -59,6 +70,12 @@ public interface UserChallengeControllerDoc {
     각 챌린지에는 해당 날짜 인증 기록이 있는지 여부(`verifiedOnDate`)와 당일 최신 인증 시각(`verifiedAt`)이 포함됩니다.
     """
     )
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND
+    })
     BaseResponse<List<DailyChallengeResDto>> getDailyChallenges(
             @AuthUser
             Long userId
@@ -78,6 +95,12 @@ public interface UserChallengeControllerDoc {
     파티 항목은 총 참여 인원/오늘 인증 완료 인원을, 개인 챌린지 항목은 연속 성공 일수(streakDays)를 포함합니다.
     """
     )
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND
+    })
     BaseResponse<DailyCompletedChallengeListResDto> getDailyCompletedChallenges(
             @AuthUser
             Long userId
@@ -87,6 +110,12 @@ public interface UserChallengeControllerDoc {
             summary = "내 진행 중 챌린지 기록 조회",
             description = "진행 중 챌린지의 제목, 당일 인증 여부, 당일 인증 상태(dailyStatus), 종료까지 남은 날짜, 달성률, 도전금, 타입을 조회합니다."
     )
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND
+    })
     BaseResponse<List<OngoingChallengeRecordResDto>> getOngoingChallengeRecords(
             @AuthUser
             Long userId
@@ -96,6 +125,14 @@ public interface UserChallengeControllerDoc {
             summary = "내 완료 챌린지 기록 조회",
             description = "완료 챌린지의 총 완료 개수, 성공률, 총 적립, 성공/실패 목록, 환급금, 종료일, 달성률을 조회합니다."
     )
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._SETTLEMENT_INVALID_PERIOD,
+            ErrorStatus._CHALLENGE_POT_NOT_FOUND
+    })
     BaseResponse<CompletedChallengeRecordSummaryResDto> getCompletedChallengeRecords(
             @AuthUser
             Long userId

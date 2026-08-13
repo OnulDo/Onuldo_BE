@@ -9,6 +9,8 @@ import com.example.onuldo.domain.auth.dto.response.AuthResDto;
 import com.example.onuldo.domain.auth.dto.response.EmailExistsResDto;
 import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
 import com.example.onuldo.global.common.base.BaseResponse;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
+import com.example.onuldo.global.config.swagger.ApiErrorCodes;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -29,6 +31,19 @@ public interface AuthControllerDoc {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._DUPLICATE_EMAIL,
+            ErrorStatus._NICKNAME_TOO_SHORT,
+            ErrorStatus._NICKNAME_TOO_LONG,
+            ErrorStatus._INVALID_NICKNAME,
+            ErrorStatus._PASSWORD_TOO_SHORT,
+            ErrorStatus._PASSWORD_TOO_LONG,
+            ErrorStatus._INVALID_PASSWORD,
+            ErrorStatus._TERMS_REQUIRED,
+            ErrorStatus._INVALID_FILE_URL,
+            ErrorStatus._RATE_LIMIT_EXCEEDED
+    })
     BaseResponse<AuthResDto> signup(
             @Valid
             @RequestBody
@@ -42,23 +57,15 @@ public interface AuthControllerDoc {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._INVALID_LOGIN,
+            ErrorStatus._LOGIN_LOCKED
+    })
     BaseResponse<AuthResDto> login(
             @Valid
             @RequestBody
             EmailLoginReqDto request
-    );
-
-    @Operation(
-            summary = "JWT 재발급",
-            description = "refreshToken으로 새로운 accessToken 및 refreshToken을 발급합니다."
-    )
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            content = @Content(mediaType = "application/json")
-    )
-    BaseResponse<AuthResDto> refresh(
-            @Valid
-            @RequestBody
-            RefreshTokenReqDto request
     );
 
     @Operation(
@@ -71,6 +78,15 @@ public interface AuthControllerDoc {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._INVALID_SOCIAL_TOKEN,
+            ErrorStatus._INVALID_LOGIN,
+            ErrorStatus._DUPLICATE_EMAIL,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._RATE_LIMIT_EXCEEDED,
+            ErrorStatus._OAUTH_PROVIDER_ERROR
+    })
     BaseResponse<OAuthResDto> oauthLogin(
             @Valid
             @RequestBody
@@ -86,6 +102,18 @@ public interface AuthControllerDoc {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._INVALID_SOCIAL_TOKEN,
+            ErrorStatus._DUPLICATE_EMAIL,
+            ErrorStatus._NICKNAME_TOO_SHORT,
+            ErrorStatus._NICKNAME_TOO_LONG,
+            ErrorStatus._INVALID_NICKNAME,
+            ErrorStatus._TERMS_REQUIRED,
+            ErrorStatus._INVALID_FILE_URL,
+            ErrorStatus._RATE_LIMIT_EXCEEDED,
+            ErrorStatus._OAUTH_PROVIDER_ERROR
+    })
     BaseResponse<AuthResDto> oauthSignup(
             @Valid
             @RequestBody
@@ -99,6 +127,10 @@ public interface AuthControllerDoc {
                     실제 가입 시점의 중복 여부는 signup API에서 별도로 최종 검증합니다.
                     """
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._RATE_LIMIT_EXCEEDED
+    })
     BaseResponse<EmailExistsResDto> checkEmailExists(
             @Parameter(description = "확인할 이메일", example = "onuldo@onuldo.com")
             @NotBlank(message = "이메일은 필수입니다.")
@@ -109,5 +141,26 @@ public interface AuthControllerDoc {
             )
             @RequestParam
             String email
+    );
+
+    @Operation(
+            summary = "JWT 재발급",
+            description = "refreshToken으로 새로운 accessToken 및 refreshToken을 발급합니다."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(mediaType = "application/json")
+    )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._INVALID_LOGIN,
+            ErrorStatus._USER_NOT_FOUND
+    })
+    BaseResponse<AuthResDto> refresh(
+            @Valid
+            @RequestBody
+            RefreshTokenReqDto request
     );
 }

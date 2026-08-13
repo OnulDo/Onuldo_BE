@@ -18,6 +18,8 @@ import com.example.onuldo.domain.user.enums.PointTransactionType;
 import com.example.onuldo.global.common.base.BaseResponse;
 import com.example.onuldo.global.common.cursor.CursorPaginationDto;
 import com.example.onuldo.global.common.cursor.CursorPageResponse;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
+import com.example.onuldo.global.config.swagger.ApiErrorCodes;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,6 +38,12 @@ public interface UserControllerDoc {
             summary = "프로필 조회",
             description = "현재 로그인한 사용자의 프로필 정보를 조회합니다."
     )
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND
+    })
     BaseResponse<GetProfileResDto> getProfile(
             @AuthUser
             Long userId
@@ -45,6 +53,12 @@ public interface UserControllerDoc {
             summary = "마이페이지 메인 조회",
             description = "현재 로그인한 사용자의 마이페이지 메인 정보를 조회합니다."
     )
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND
+    })
     BaseResponse<GetMyPageResDto> getMyPage(
             @AuthUser
             Long userId
@@ -60,6 +74,17 @@ public interface UserControllerDoc {
                     - 두 필드를 모두 채워 보내면 둘 다 한 번에 변경됩니다.
                     """
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._PROFILE_UPDATE_FIELD_REQUIRED,
+            ErrorStatus._NICKNAME_TOO_SHORT,
+            ErrorStatus._NICKNAME_TOO_LONG,
+            ErrorStatus._INVALID_NICKNAME
+    })
     BaseResponse<UpdateProfileResDto> updateProfile(
             @AuthUser
             Long userId,
@@ -84,6 +109,12 @@ public interface UserControllerDoc {
                     - settlementComplete: 정산/환급 완료
                     """
     )
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND
+    })
     BaseResponse<GetNotificationResDto> getNotification(
             @AuthUser
             Long userId
@@ -110,6 +141,14 @@ public interface UserControllerDoc {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             content = @Content(mediaType = "application/json")
     )
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._SETTLEMENT_COMPLETE_NOTIFICATION_REQUIRED
+    })
     BaseResponse<UpdateNotificationResDto> updateNotification(
             @AuthUser
             Long userId,
@@ -139,6 +178,15 @@ public interface UserControllerDoc {
                     """
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._CURSOR_INVALID_FORMAT,
+            ErrorStatus._CURSOR_SIZE_INVALID
+    })
     CursorPageResponse<NotificationListItemResDto> getNotifications(
             @AuthUser
             Long userId,
@@ -156,6 +204,14 @@ public interface UserControllerDoc {
             content = @Content(mediaType = "application/json")
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._POINT_BALANCE_OVERFLOW
+    })
     BaseResponse<ChargePointResDto> chargePoint(
             @AuthUser
             Long userId,
@@ -173,6 +229,14 @@ public interface UserControllerDoc {
             content = @Content(mediaType = "application/json")
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._INSUFFICIENT_POINT_FOR_WITHDRAW
+    })
     BaseResponse<WithdrawPointResDto> withdrawPoint(
             @AuthUser
             Long userId,
@@ -190,6 +254,14 @@ public interface UserControllerDoc {
                     """
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._SIGNUP_BONUS_ALREADY_GRANTED,
+            ErrorStatus._POINT_BALANCE_OVERFLOW
+    })
     BaseResponse<ChargePointResDto> grantSignupBonus(
             @AuthUser
             Long userId
@@ -200,6 +272,13 @@ public interface UserControllerDoc {
             description = "잔액, 예치 중인 포인트, 누적 예치액, 누적 환급액, 누적 차감액, 평균 환급률을 조회합니다."
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._RETURN_RATE_OUT_OF_RANGE
+    })
     BaseResponse<PointWalletSummaryResDto> getPointWalletSummary(
             @AuthUser
             Long userId
@@ -210,6 +289,13 @@ public interface UserControllerDoc {
             description = "현재 로그인한 사용자의 계정을 탈퇴 처리합니다. 탈퇴 후에는 기존 토큰으로 API 접근이 차단됩니다."
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._WITHDRAWAL_BLOCKED_BY_ONGOING_CHALLENGE
+    })
     BaseResponse<Void> withdraw(
             @AuthUser
             Long userId
@@ -230,6 +316,15 @@ public interface UserControllerDoc {
                     """
     )
     @ApiResponse(responseCode = "200")
+    @ApiErrorCodes({
+            ErrorStatus._BAD_REQUEST,
+            ErrorStatus._UNAUTHORIZED,
+            ErrorStatus._INVALID_TOKEN,
+            ErrorStatus._TOKEN_EXPIRED,
+            ErrorStatus._USER_NOT_FOUND,
+            ErrorStatus._CURSOR_INVALID_FORMAT,
+            ErrorStatus._CURSOR_SIZE_INVALID
+    })
     CursorPageResponse<PointTransactionResDto> getPointTransactions(
             @AuthUser
             Long userId,
