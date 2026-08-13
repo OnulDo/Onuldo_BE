@@ -5,7 +5,9 @@ import com.example.onuldo.global.config.swagger.ApiErrorCodes;
 import com.example.onuldo.global.config.swagger.SwaggerErrorResponse;
 import com.example.onuldo.global.security.AuthUser;
 import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.Paths;
 import io.swagger.v3.oas.models.examples.Example;
 import io.swagger.v3.oas.models.info.Info;
@@ -39,6 +41,12 @@ public class SwaggerConfig {
 
     private static final String BEARER_AUTH = "bearerAuth";
     private static final String APPLICATION_JSON = "application/json";
+    private static final List<String> SECURED_PATHS_WITHOUT_AUTH_USER = List.of(
+            "/api/challenges",
+            "/api/challenges/{challengeId}",
+            "/api/files/images",
+            "/api/files/url"
+    );
 
     @Bean
     public OpenAPI openAPI() {
@@ -71,7 +79,7 @@ public class SwaggerConfig {
             Paths paths = openApi.getPaths();
             if (paths != null) {
                 Paths sortedPaths = paths.entrySet().stream()
-                        .sorted(Map.Entry.comparingByKey(this::comparePaths))
+                        .sorted(this::comparePathEntries)
                         .collect(Collectors.toMap(
                                 Map.Entry::getKey,
                                 Map.Entry::getValue,
@@ -80,6 +88,7 @@ public class SwaggerConfig {
                         ));
 
                 openApi.setPaths(sortedPaths);
+                addSecurityToSecuredPathsWithoutAuthUser(sortedPaths);
             }
 
             if (openApi.getTags() != null) {
@@ -133,7 +142,6 @@ public class SwaggerConfig {
             example.put("timestamp", "2026-08-13T12:00:00");
             example.put("code", errorCode(errorStatus));
             example.put("message", errorStatus.getMessage());
-            example.put("result", null);
 
             mediaType.addExamples(errorCode(errorStatus), new Example()
                         .summary(errorCode(errorStatus))
@@ -195,43 +203,21 @@ public class SwaggerConfig {
                 .anyMatch(parameter -> parameter.isAnnotationPresent(AuthUser.class));
     }
 
-    private int resourceOrder(String path) {
-        if (path.startsWith("/api/auth")) {
-            return 1;
-        }
-        if (path.startsWith("/api/challenges")) {
-            return 2;
-        }
-        if (path.startsWith("/api/files")) {
-            return 3;
-        }
-        if (path.startsWith("/api/parties")) {
-            return 4;
-        }
-        if (path.startsWith("/api/terms")) {
-            return 5;
-        }
-        if (path.startsWith("/api/users")) {
-            return 6;
-        }
-        return 100;
-    }
-
-    private int comparePaths(String first, String second) {
+    private int comparePathEntries(Map.Entry<String, PathItem> first, Map.Entry<String, PathItem> second) {
         return Comparator
-                .comparingInt(this::resourceOrder)
-                .thenComparingInt(this::endpointOrder)
-                .thenComparing(String::compareTo)
+                .comparingInt((Map.Entry<String, PathItem> entry) -> tagOrder(representativeTagName(entry.getValue())))
+                .thenComparingInt(entry -> endpointOrder(entry.getKey()))
+                .thenComparing(Map.Entry::getKey)
                 .compare(first, second);
     }
 
     private int endpointOrder(String path) {
         return switch (path) {
-            case "/api/auth/signup" -> 1;
-            case "/api/auth/login" -> 2;
-            case "/api/auth/oauth/login" -> 3;
+            case "/api/auth/email/exists" -> 1;
+            case "/api/auth/signup" -> 2;
+            case "/api/auth/login" -> 3;
             case "/api/auth/oauth/signup" -> 4;
-            case "/api/auth/email/exists" -> 5;
+            case "/api/auth/oauth/login" -> 5;
             case "/api/auth/refresh" -> 6;
             default -> 100;
         };
@@ -247,6 +233,23 @@ public class SwaggerConfig {
             case "User" -> 6;
             default -> 100;
         };
+    }
+
+    private String representativeTagName(PathItem pathItem) {
+        return pathItem.readOperations().stream()
+                .map(Operation::getTags)
+                .filter(tags -> tags != null && !tags.isEmpty())
+                .map(tags -> tags.get(0))
+                .findFirst()
+                .orElse("");
+    }
+
+    private void addSecurityToSecuredPathsWithoutAuthUser(Paths paths) {
+        SECURED_PATHS_WITHOUT_AUTH_USER.stream()
+                .map(paths::get)
+                .filter(Objects::nonNull)
+                .flatMap(pathItem -> pathItem.readOperations().stream())
+                .forEach(operation -> operation.addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH)));
     }
 
 }
