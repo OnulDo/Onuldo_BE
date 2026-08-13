@@ -29,13 +29,18 @@ public class ChallengeParticipantCountService {
                         projection -> Math.toIntExact(projection.count())
                 ));
 
-        var challenges = challengeRepository.findAll();
-        challenges.forEach(challenge -> updateParticipantCount(challenge, countByChallengeId));
-
-        return challenges.size();
+        return (int) challengeRepository.findAll().stream()
+                .filter(challenge -> updateParticipantCount(challenge, countByChallengeId))
+                .count();
     }
 
-    private void updateParticipantCount(Challenge challenge, Map<Long, Integer> countByChallengeId) {
-        challenge.updateParticipantCount(countByChallengeId.getOrDefault(challenge.getId(), 0));
+    private boolean updateParticipantCount(Challenge challenge, Map<Long, Integer> countByChallengeId) {
+        int participantCount = countByChallengeId.getOrDefault(challenge.getId(), 0);
+        if (challenge.getParticipantCount().equals(participantCount)) {
+            return false;
+        }
+
+        challenge.updateParticipantCount(participantCount);
+        return true;
     }
 }
