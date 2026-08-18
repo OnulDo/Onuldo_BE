@@ -1,0 +1,51 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  servlet:
+    multipart:
+      max-file-size: 20MB      # 파일 하나당 최대 크기
+      max-request-size: 20MB
+
+jwt:
+  token:
+    secretKey: ${JWT_SECRET_KEY}
+    refreshKey: ${JWT_TOKEN_REFRESH_KEY}
+    expiration:
+      access: ${JWT_TOKEN_EXPIRATION_ACCESS}
+      refresh: ${JWT_TOKEN_EXPIRATION_REFRESH}
+
+server:
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+
+aws:
+  region: ${AWS_REGION:ap-northeast-2}
+  credentials:
+    access-key-id: ${AWS_ACCESS_KEY_ID:}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    public-base-url: ${AWS_S3_PUBLIC_BASE_URL}
+    upload-prefix: ${AWS_S3_UPLOAD_PREFIX:uploads}
+  rekognition:
+    max-labels: ${AWS_REKOGNITION_MAX_LABELS:30}
+    min-confidence: ${AWS_REKOGNITION_MIN_CONFIDENCE:40}
+
+fcm:
+  service-account-path: ${FIREBASE_CREDENTIALS_PATH}

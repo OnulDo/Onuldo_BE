@@ -1,0 +1,341 @@
+package com.example.onuldo.domain.auth.service;
+
+import com.example.onuldo.domain.auth.dto.request.DeviceLogReqDto;
+import com.example.onuldo.domain.auth.dto.request.EmailLoginReqDto;
+import com.example.onuldo.domain.auth.dto.request.EmailSignupReqDto;
+import com.example.onuldo.domain.auth.dto.request.OAuthLoginReqDto;
+import com.example.onuldo.domain.auth.dto.request.OAuthSignupReqDto;
+import com.example.onuldo.domain.auth.dto.request.RefreshTokenReqDto;
+import com.example.onuldo.domain.auth.dto.request.TermAgreementReqDto;
+import com.example.onuldo.domain.auth.dto.response.AuthResDto;
+import com.example.onuldo.domain.auth.dto.response.EmailExistsResDto;
+import com.example.onuldo.domain.auth.dto.response.OAuthResDto;
+import com.example.onuldo.domain.auth.entity.Term;
+import com.example.onuldo.domain.auth.entity.TermAgreement;
+import com.example.onuldo.domain.auth.entity.TermAgreementId;
+import com.example.onuldo.domain.auth.enums.TermType;
+import com.example.onuldo.domain.auth.repository.DeviceLogRepository;
+import com.example.onuldo.domain.auth.repository.TermAgreementRepository;
+import com.example.onuldo.domain.auth.repository.TermRepository;
+import com.example.onuldo.domain.auth.service.client.dto.OAuthUserInfo;
+import com.example.onuldo.domain.auth.support.NicknameValidator;
+import com.example.onuldo.domain.user.entity.NotificationSetting;
+import com.example.onuldo.domain.user.entity.User;
+import com.example.onuldo.domain.user.enums.SocialProvider;
+import com.example.onuldo.domain.user.enums.UserStatus;
+import com.example.onuldo.domain.user.repository.NotificationSettingRepository;
+import com.example.onuldo.domain.user.repository.UserRepository;
+import com.example.onuldo.global.aws.service.S3FileService;
+import com.example.onuldo.global.common.exception.RestApiException;
+import com.example.onuldo.global.common.exception.DuplicateException;
+import com.example.onuldo.global.common.exception.InvalidRequestException;
+import com.example.onuldo.global.common.exception.NotFoundException;
+import com.example.onuldo.global.common.exception.RateLimitException;
+import com.example.onuldo.global.common.exception.UnauthorizedException;
+import com.example.onuldo.global.common.exception.code.status.ErrorStatus;
+import com.example.onuldo.global.common.time.TimeService;
+import com.example.onuldo.global.ratelimit.EmailRateLimiter;
+import com.example.onuldo.global.security.JwtTokenProvider;
+import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class AuthService {
+
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile(
+            "^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*\\p{Punct})[a-zA-Z0-9\\p{Punct}]+$"
+    );
+    private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final int MAX_PASSWORD_LENGTH = 20;
+    private static final Set<TermType> REQUIRED_TERM_TYPES = Set.of(
+            TermType.SERVICE,
+            TermType.PRIVACY,
+            TermType.AGE_14,
+            TermType.REFUND
+    );
+
+    private final UserRepository userRepository;
+    private final TermRepository termRepository;
+    private final TermAgreementRepository termAgreementRepository;
+    private final DeviceLogRepository deviceLogRepository;
+    private final NotificationSettingRepository notificationSettingRepository;
+    private final LoginFailureService loginFailureService;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final OAuthService oAuthService;
+    private final TimeService timeService;
+    private final NicknameValidator nicknameValidator;
+    private final S3FileService s3FileService;
+    private final EmailRateLimiter emailRateLimiter;
+
+    @Transactional
+    public AuthResDto signup(EmailSignupReqDto request) {
+        emailRateLimiter.consume(request.email(), "signup");
+
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateException(ErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        nicknameValidator.validate(request.nickname());
+        validateRequiredTerms(request.termAgreements());
+        validatePassword(request.password());
+        s3FileService.verifyDefaultProfileImageUrl(request.profileImageUrl());
+
+        User user = User.builder()
+                .email(request.email())
+                .nickname(request.nickname())
+                .passwordHash(passwordEncoder.encode(request.password()))
+                .socialProvider(SocialProvider.EMAIL)
+                .emailVerified(false)
+                .pointBalance(0L)
+                .status(UserStatus.ACTIVE)
+                .profileImageUrl(request.profileImageUrl())
+                .build();
+
+        User savedUser;
+        try {
+            savedUser = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateException(ErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        saveTermAgreements(savedUser, request.termAgreements());
+        saveDefaultNotificationSetting(savedUser);
+        saveDeviceLog(savedUser, request.device());
+        return createAuthResponse(savedUser);
+    }
+
+    @Transactional(noRollbackFor = RestApiException.class)
+    public AuthResDto login(EmailLoginReqDto request) {
+        // 이메일 단독 키로 소진하지 않음: 공개 email/exists 요청으로 특정 유저의 로그인을
+        // 미리 막아버리는 걸 방지. 로그인 남용은 IP 제한(RateLimitInterceptor) +
+        // 실패 횟수 기반 잠금(LoginFailureService/_LOGIN_LOCKED)으로 방어한다.
+        User user = userRepository.findByEmailForUpdate(request.email())
+                .orElseThrow(() -> new UnauthorizedException(ErrorStatus._INVALID_LOGIN));
+
+        LocalDateTime now = timeService.nowKst();
+        if (isLocked(user, now)) {
+            throw new RateLimitException(ErrorStatus._LOGIN_LOCKED);
+        }
+
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            loginFailureService.recordFailure(user.getId(), now);
+            throw new UnauthorizedException(ErrorStatus._INVALID_LOGIN);
+        }
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new UnauthorizedException(ErrorStatus._INVALID_LOGIN);
+        }
+
+        user.setLoginFailCount(0);
+        user.setLockedUntil(null);
+        user.setLastLoginAt(timeService.nowKst());
+        userRepository.save(user);
+        saveDeviceLog(user, request.device());
+        return createAuthResponse(user);
+    }
+
+    @Transactional
+    public AuthResDto refresh(RefreshTokenReqDto request) {
+        Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new UnauthorizedException(ErrorStatus._INVALID_LOGIN);
+        }
+
+        saveDeviceLog(user, request.device());
+        return createAuthResponse(user);
+    }
+
+    @Transactional
+    public OAuthResDto oauthLogin(OAuthLoginReqDto request) {
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
+        emailRateLimiter.consume(info.email(), "oauth-login");
+
+        Optional<User> existingUser = userRepository.findByEmail(info.email());
+        if (existingUser.isEmpty()) {
+            return OAuthResDto.builder()
+                    .isNewUser(true)
+                    .build();
+        }
+
+        User user = userRepository.findByIdForUpdate(existingUser.get().getId())
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._USER_NOT_FOUND));
+        if (user.getSocialProvider() != info.provider()) {
+            throw new DuplicateException(ErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new UnauthorizedException(ErrorStatus._INVALID_LOGIN);
+        }
+
+        user.setLastLoginAt(timeService.nowKst());
+        userRepository.save(user);
+        saveDeviceLog(user, request.device());
+
+        return OAuthResDto.builder()
+                .accessToken(jwtTokenProvider.createAccessToken(user))
+                .refreshToken(jwtTokenProvider.createRefreshToken(user))
+                .isNewUser(false)
+                .build();
+    }
+
+    @Transactional
+    public AuthResDto oauthSignup(OAuthSignupReqDto request) {
+        OAuthUserInfo info = oAuthService.fetchUserInfo(request.provider(), request.socialAccessToken());
+        emailRateLimiter.consume(info.email(), "oauth-signup");
+
+        if (userRepository.existsByEmail(info.email())) {
+            throw new DuplicateException(ErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        nicknameValidator.validate(request.nickname());
+        validateRequiredTerms(request.termAgreements());
+        s3FileService.verifyDefaultProfileImageUrl(request.profileImageUrl());
+
+        User user;
+        try {
+            user = userRepository.saveAndFlush(User.builder()
+                    .email(info.email())
+                    .nickname(request.nickname())
+                    .profileImageUrl(request.profileImageUrl())
+                    .socialId(info.socialId())
+                    .socialProvider(info.provider())
+                    .emailVerified(true)
+                    .pointBalance(0L)
+                    .status(UserStatus.ACTIVE)
+                    .lastLoginAt(timeService.nowKst())
+                    .build());
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateException(ErrorStatus._DUPLICATE_EMAIL);
+        }
+
+        saveTermAgreements(user, request.termAgreements());
+        saveDefaultNotificationSetting(user);
+        saveDeviceLog(user, request.device());
+        return createAuthResponse(user);
+    }
+
+    public EmailExistsResDto checkEmailExists(String email) {
+        emailRateLimiter.consume(email, "email-exists");
+
+        return EmailExistsResDto.builder()
+                .exists(userRepository.existsByEmail(email))
+                .build();
+    }
+
+    private void saveDeviceLog(User user, DeviceLogReqDto device) {
+        LocalDateTime now = timeService.nowKst();
+        String fcmToken = normalizeFcmToken(device.fcmToken());
+        deviceLogRepository.upsert(user.getId(), device.deviceId(), fcmToken, now);
+    }
+
+    private String normalizeFcmToken(String fcmToken) {
+        if (fcmToken == null || fcmToken.isBlank()) {
+            return null;
+        }
+        return fcmToken;
+    }
+
+    private AuthResDto createAuthResponse(User user) {
+        return AuthResDto.builder()
+                .accessToken(jwtTokenProvider.createAccessToken(user))
+                .refreshToken(jwtTokenProvider.createRefreshToken(user))
+                .build();
+    }
+
+    private void validatePassword(String password) {
+        if (password.length() < MIN_PASSWORD_LENGTH) {
+            throw new InvalidRequestException(ErrorStatus._PASSWORD_TOO_SHORT);
+        }
+
+        if (password.length() > MAX_PASSWORD_LENGTH) {
+            throw new InvalidRequestException(ErrorStatus._PASSWORD_TOO_LONG);
+        }
+
+        if (!PASSWORD_PATTERN.matcher(password).matches()) {
+            throw new InvalidRequestException(ErrorStatus._INVALID_PASSWORD);
+        }
+    }
+
+    private void validateRequiredTerms(List<TermAgreementReqDto> termAgreements) {
+        if (termAgreements == null || termAgreements.isEmpty()) {
+            throw new InvalidRequestException(ErrorStatus._TERMS_REQUIRED);
+        }
+
+        Map<TermType, Boolean> agreementMap = termAgreements.stream()
+                .collect(Collectors.toMap(
+                        TermAgreementReqDto::termType,
+                        TermAgreementReqDto::value,
+                        (first, second) -> second
+                ));
+
+        for (TermType requiredType : REQUIRED_TERM_TYPES) {
+            if (!Boolean.TRUE.equals(agreementMap.get(requiredType))) {
+                throw new InvalidRequestException(ErrorStatus._TERMS_REQUIRED);
+            }
+        }
+    }
+
+    private void saveDefaultNotificationSetting(User user) {
+        notificationSettingRepository.save(
+                NotificationSetting.builder()
+                        .user(user)
+                        .build()
+        );
+    }
+
+    private void saveTermAgreements(User user, List<TermAgreementReqDto> termAgreements) {
+        Map<TermType, Boolean> agreementMap = termAgreements.stream()
+                .collect(
+                        Collectors.toMap(
+                                TermAgreementReqDto::termType,
+                                TermAgreementReqDto::value,
+                                (first, second) -> second
+                        )
+                );
+
+        for (TermType requiredType : REQUIRED_TERM_TYPES) {
+            termRepository.findByType(requiredType)
+                    .ifPresent(term -> {
+                        if (Boolean.TRUE.equals(agreementMap.get(requiredType))) {
+                            termAgreementRepository.save(createTermAgreement(user, term, true));
+                        }
+                    });
+        }
+
+        termRepository.findByType(TermType.MARKETING)
+                .ifPresent(term -> {
+                    boolean agreed = Boolean.TRUE.equals(agreementMap.get(TermType.MARKETING));
+                    termAgreementRepository.save(createTermAgreement(user, term, agreed));
+                });
+    }
+
+    private TermAgreement createTermAgreement(User user, Term term, boolean agreed) {
+        return TermAgreement.builder()
+                .id(new TermAgreementId(user.getId(), term.getId()))
+                .user(user)
+                .term(term)
+                .agreed(agreed)
+                .build();
+    }
+
+    private boolean isLocked(User user, LocalDateTime now) {
+        return user.getLockedUntil() != null && user.getLockedUntil().isAfter(now);
+    }
+}
