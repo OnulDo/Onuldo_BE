@@ -30,7 +30,7 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
      * 반환 컬럼: [partyId, name, challengeTitle, goal, status, startDate, endDate, verificationDeadline,
      * totalMemberCount, verifiedMemberCount(오늘 인증 인원), windowPassCount(수행일 기간 내 팀 PASS 수), challengeId]
      *
-     * <p>windowPassCount는 예치일(시작일) 당일 인증을 수행일로 치지 않는다 — 포함하면 진행률이 100%를 넘을 수 있다.
+     * windowPassCount는 시작일 당일 인증도 수행일로 포함한다(당일 시작·당일 인증 정책과 동일 기준).
      * startDate/endDate는 파티원 전체의 MIN이 아니라 본인(:userId)의 Participation 기준(PartyService.generatePartyHomeItem과 동일).
      * 정렬(HOME-09)은 "오늘 나의 인증 상태" 같은 계산값 기준이라 DB가 아닌 서비스 계층에서 전체를 가져와 처리한다.
      */
@@ -51,7 +51,7 @@ public interface PartyRepository extends JpaRepository<Party, Long> {
                 AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS),
             (SELECT COUNT(v2) FROM Verification v2
                 WHERE v2.participation.party.id = p.id
-                AND v2.verificationDate > en.startDate
+                AND v2.verificationDate >= en.startDate
                 AND v2.verificationDate <= :today
                 AND v2.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS),
             c.id
