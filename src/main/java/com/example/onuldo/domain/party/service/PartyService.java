@@ -675,7 +675,6 @@ public class PartyService {
                 && now.isBefore(deadlineAt);
 
         // startDate/endDate는 startParty()에서 생성된 Participation을 단일 원본으로 사용한다
-        // (party.getStartTriggeredAt() 기준으로 재계산하면 익일(+1일) 반영이 빠져 날짜가 하루 어긋남)
         LocalDate startDate = myParticipation != null ? myParticipation.getStartDate() : null;
         LocalDate endDate = myParticipation != null ? myParticipation.getEndDate() : null;
 
