@@ -364,7 +364,7 @@ public class PartyService {
     }
 
     // REC-02 팀 달성률: 팀 전체 PASS 인증 수 ÷ (인원 × 판정 기준일수).
-    // 진행중은 분모가 경과일수, 완료는 전체 진행일수. (수행일은 시작일 다음 날부터 산정)
+    // 진행중은 분모가 경과일수, 완료는 전체 진행일수. (수행일은 시작일 당일부터 산정, ParticipationRecordService.calculateInclusiveDays와 동일 기준)
     private double calculateTeamProgressRate(
             PartyStatus status,
             LocalDate startDate,
@@ -377,7 +377,7 @@ public class PartyService {
             return 0.0;
         }
 
-        long totalDays = ChronoUnit.DAYS.between(startDate, endDate);
+        long totalDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
         if (totalDays <= 0) {
             return 0.0;
         }
@@ -395,7 +395,7 @@ public class PartyService {
 
     private long elapsedPerformanceDays(LocalDate startDate, LocalDate endDate, LocalDate today) {
         LocalDate cappedToday = today.isAfter(endDate) ? endDate : today;
-        long elapsed = ChronoUnit.DAYS.between(startDate, cappedToday);
+        long elapsed = ChronoUnit.DAYS.between(startDate, cappedToday) + 1;
         return Math.max(elapsed, 0);
     }
 
