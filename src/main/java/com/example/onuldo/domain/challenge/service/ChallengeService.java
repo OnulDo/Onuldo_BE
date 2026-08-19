@@ -293,13 +293,31 @@ public class ChallengeService {
 
         LocalDate today = timeService.todayKst();
 
-        Optional<Verification> existingManualReview = verificationRepository
-                .findFirstByParticipation_IdAndVerificationDateAndReviewOrderByVerifiedAtDescIdDesc(
-                        participation.getId(), today, VerificationReviewStatus.MANUAL_REVIEW);
-        if (existingManualReview.isPresent()) {
-            // 이미 직접 검토 요청이 접수된 상태이므로, 재요청도 동일 결과로 idempotent하게 성공 처리
+        Verification autoFail = verificationRepository.findFirstByParticipation_IdAndVerificationDateAndReviewOrderByVerifiedAtDescIdDesc(
+                        participation.getId(), today, VerificationReviewStatus.AUTO_FAIL)
+                .orElseThrow(() -> new NotFoundException(ErrorStatus._AUTO_FAIL_VERIFICATION_NOT_FOUND));
+
+        Verification manualReview = verificationRepository
+                .findFirstByOriginalVerification_IdAndReviewOrderByVerifiedAtDescIdDesc(
+                        autoFail.getId(), VerificationReviewStatus.MANUAL_REVIEW)
+                .orElseGet(() -> verificationRepository.saveAndFlush(Verification.builder()
+                        .participation(participation)
+                        .originalVerification(autoFail)
+                        .verificationDate(autoFail.getVerificationDate())
+                        .photoUrl(null)
+                        .exifData(autoFail.getExifData())
+                        .rekognitionResult(autoFail.getRekognitionResult())
+                        .aiScore(autoFail.getAiScore())
+                        .review(VerificationReviewStatus.MANUAL_REVIEW)
+                        .dayScore(autoFail.getDayScore())
+                        .verifiedAt(timeService.nowKst())
+                        .build()));
+
+        Optional<Verification> existingApprovedReview = findExistingApprovedReview(autoFail, manualReview);
+        if (existingApprovedReview.isPresent()) {
+            // 이미 재검토 승인 데이터가 생성된 상태이므로, 재요청도 동일 결과로 idempotent하게 성공 처리
             return ChallengeManualReviewResDto.builder()
-                    .manualReviewRequestedAt(existingManualReview.get().getVerifiedAt())
+                    .manualReviewRequestedAt(manualReview.getVerifiedAt())
                     .build();
         }
 
@@ -308,26 +326,38 @@ public class ChallengeService {
             throw new DuplicateException(ErrorStatus._ALREADY_VERIFIED_TODAY);
         }
 
-        Verification autoFail = verificationRepository.findFirstByParticipation_IdAndVerificationDateAndReviewOrderByVerifiedAtDescIdDesc(
-                        participation.getId(), today, VerificationReviewStatus.AUTO_FAIL)
-                .orElseThrow(() -> new NotFoundException(ErrorStatus._AUTO_FAIL_VERIFICATION_NOT_FOUND));
-
-        Verification manualReview = verificationRepository.save(Verification.builder()
+        Verification approvedReview = verificationRepository.saveAndFlush(Verification.builder()
                 .participation(participation)
-                .originalVerification(autoFail)
+                .originalVerification(manualReview)
                 .verificationDate(autoFail.getVerificationDate())
                 .photoUrl(null)
                 .exifData(autoFail.getExifData())
                 .rekognitionResult(autoFail.getRekognitionResult())
                 .aiScore(autoFail.getAiScore())
-                .review(VerificationReviewStatus.MANUAL_REVIEW)
-                .dayScore(autoFail.getDayScore())
+                .review(VerificationReviewStatus.PASS)
+                .dayScore(BigDecimal.valueOf(100))
                 .verifiedAt(timeService.nowKst())
                 .build());
+
+        challengeNotificationService.notifyManualReviewPassed(approvedReview);
+        triggerSettlementIfLastDay(participation.getId(), participation.getEndDate(), approvedReview.getVerificationDate());
 
         return ChallengeManualReviewResDto.builder()
                 .manualReviewRequestedAt(manualReview.getVerifiedAt())
                 .build();
+    }
+
+    private Optional<Verification> findExistingApprovedReview(Verification autoFail, Verification manualReview) {
+        Optional<Verification> approvedByManualReview = verificationRepository
+                .findFirstByOriginalVerification_IdAndReviewOrderByVerifiedAtDescIdDesc(
+                        manualReview.getId(), VerificationReviewStatus.PASS);
+        if (approvedByManualReview.isPresent()) {
+            return approvedByManualReview;
+        }
+
+        // 이전 버전에서 AUTO_FAIL을 직접 원본으로 삼아 만든 승인 데이터가 있으면 중복 생성하지 않는다.
+        return verificationRepository.findFirstByOriginalVerification_IdAndReviewOrderByVerifiedAtDescIdDesc(
+                autoFail.getId(), VerificationReviewStatus.PASS);
     }
 
     private <T> T executeInTransaction(TransactionCallback<T> callback) {
