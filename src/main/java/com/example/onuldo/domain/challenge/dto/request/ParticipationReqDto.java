@@ -11,9 +11,9 @@ public record ParticipationReqDto(
         @NotNull(message = "도전금은 필수입니다.")
         Integer depositAmount,
 
-        @Schema(example = "4")
+        @Schema(description = "진행 기간(일)", example = "1")
         @NotNull(message = "진행 기간은 필수입니다.")
-        @Min(value = 1, message = "진행 기간은 1주 이상이어야 합니다.")
-        Integer durationWeeks
+        @Min(value = 1, message = "진행 기간은 1일 이상이어야 합니다.")
+        Integer durationDays
 ) {
 }

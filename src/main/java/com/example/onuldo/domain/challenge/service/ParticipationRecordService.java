@@ -33,7 +33,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ParticipationRecordService {
-    private static final int DAYS_PER_WEEK = 7;
     private static final int PERCENT_MULTIPLIER = 100;
     private static final List<ParticipationStatus> COMPLETED_STATUSES = List.of(
             ParticipationStatus.SUCCESS,
@@ -175,7 +174,7 @@ public class ParticipationRecordService {
             Participation participation,
             Map<LocalDate, BigDecimal> dayScoreByDate
     ) {
-        int durationDays = participation.getDurationWeeks() * DAYS_PER_WEEK;
+        int durationDays = participation.getDurationDays();
         if (durationDays <= 0 || dayScoreByDate.isEmpty()) {
             return 0;
         }

@@ -76,8 +76,9 @@ public class PartySettlementService {
             return;
         }
 
-        // 전원 마지막 일 인증 마감 전이거나, 직접검토 중인 인증의 유예 기간이 안 지났으면 정산 보류
-        if (!isSettlementWindowClosed(participations)) {
+        // 전원 마지막 날 PASS가 끝났으면 하루 챌린지는 인증 직후 정산한다.
+        // 그 외에는 마지막 일 인증 마감 전이거나, 직접검토 중인 인증의 유예 기간이 안 지났으면 정산 보류.
+        if (!isAllMembersPassedOnEndDate(participations) && !isSettlementWindowClosed(participations)) {
             return;
         }
 
@@ -113,6 +114,13 @@ public class PartySettlementService {
         return !hasPendingManualReview;
     }
 
+    private boolean isAllMembersPassedOnEndDate(List<Participation> participations) {
+        LocalDate endDate = participations.get(0).getEndDate();
+        return participations.stream()
+                .allMatch(participation -> verificationRepository.existsByParticipation_IdAndVerificationDateAndReview(
+                        participation.getId(), endDate, VerificationReviewStatus.PASS));
+    }
+
     private void processSettlement(List<Participation> participations) {
         int memberCount = participations.size();
         List<MemberSettlementDraft> drafts = participations.stream()
@@ -139,7 +147,7 @@ public class PartySettlementService {
     }
 
     private MemberSettlementDraft createMemberDraft(Participation participation) {
-        long totalDays = participation.getDurationWeeks() * 7L;
+        long totalDays = participation.getDurationDays();
         if (totalDays <= 0) {
             throw new InternalServerException(ErrorStatus._SETTLEMENT_INVALID_PERIOD);
         }

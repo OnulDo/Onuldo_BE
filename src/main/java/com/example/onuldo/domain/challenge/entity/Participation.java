@@ -84,6 +84,10 @@ public class Participation {
         this.status = status;
     }
 
+    public int getDurationDays() {
+        return durationWeeks;
+    }
+
     @PrePersist
     @PreUpdate
     private void validateParticipationType() {

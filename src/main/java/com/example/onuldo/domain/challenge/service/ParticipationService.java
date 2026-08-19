@@ -84,15 +84,15 @@ public class ParticipationService {
                 .filter(found -> found.getStatus() == ChallengeStatus.ACTIVE)
                 .orElseThrow(() -> new NotFoundException(ErrorStatus._CHALLENGE_NOT_FOUND));
 
-        challenge.validateDurationOption(request.durationWeeks());
+        challenge.validateDurationOption(request.durationDays());
         challenge.validateDepositOption(request.depositAmount());
         participationValidator.validateNotOngoing(userId, challengeId);
         validatePointBalance(user, request.depositAmount());
 
-        // durationWeeks*7일은 시작일·종료일을 포함한 총 수행일수 (ParticipationRecordService.calculateInclusiveDays와 동일 기준)
+        // participation.duration_weeks 컬럼은 기존 스키마 호환을 위해 유지하되, 값은 일 단위 기간으로 저장한다.
         LocalDate startDate = timeService.todayKst();
-        LocalDate endDate = startDate.plusWeeks(request.durationWeeks()).minusDays(1);
-        Integer durationDays = request.durationWeeks() * 7;
+        Integer durationDays = request.durationDays();
+        LocalDate endDate = startDate.plusDays(durationDays - 1L);
 
         long balanceAfter = user.getPointBalance() - request.depositAmount();
         user.setPointBalance(balanceAfter);
@@ -104,7 +104,7 @@ public class ParticipationService {
         BigDecimal appliedBonusRate = pot.getCurrentBonusRate();
 
         Participation participation = createPersonalParticipation(
-                user, challenge, request.depositAmount(), request.durationWeeks(), startDate, endDate, appliedBonusRate
+                user, challenge, request.depositAmount(), durationDays, startDate, endDate, appliedBonusRate
         );
         participationRepository.save(participation);
         challengeNotificationService.scheduleChallengeLifecycleNotifications(participation);
@@ -127,7 +127,6 @@ public class ParticipationService {
         return ParticipationResDto.builder()
                 .startDate(startDate)
                 .endDate(endDate)
-                .durationWeeks(request.durationWeeks())
                 .durationDays(durationDays)
                 .depositAmount(request.depositAmount())
                 .expectedRefundAmount(expectedRefundAmount)
@@ -283,7 +282,7 @@ public class ParticipationService {
             User user,
             Challenge challenge,
             Integer depositAmount,
-            Integer durationWeeks,
+            Integer durationDays,
             LocalDate startDate,
             LocalDate endDate,
             BigDecimal appliedBonusRate
@@ -294,7 +293,7 @@ public class ParticipationService {
                 .party(null)
                 .participationType(ParticipationType.PERSONAL)
                 .depositAmount(depositAmount)
-                .durationWeeks(durationWeeks)
+                .durationWeeks(durationDays)
                 .startDate(startDate)
                 .endDate(endDate)
                 .appliedBonusRate(appliedBonusRate)
@@ -332,7 +331,7 @@ public class ParticipationService {
                 .timeStart(challenge.getTimeStart())
                 .timeEnd(challenge.getTimeEnd())
                 .depositAmount(participation.getDepositAmount())
-                .durationWeeks(participation.getDurationWeeks())
+                .durationDays(participation.getDurationDays())
                 .startDate(participation.getStartDate())
                 .endDate(participation.getEndDate())
                 .build();
@@ -368,7 +367,7 @@ public class ParticipationService {
                 .timeStart(challenge.getTimeStart())
                 .timeEnd(challenge.getTimeEnd())
                 .depositAmount(participation.getDepositAmount())
-                .durationWeeks(participation.getDurationWeeks())
+                .durationDays(participation.getDurationDays())
                 .startDate(participation.getStartDate())
                 .endDate(participation.getEndDate())
                 .dailyStatus(dailyStatus)

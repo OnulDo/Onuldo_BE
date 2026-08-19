@@ -11,9 +11,7 @@ public record ParticipationResDto(
         LocalDate startDate,
         @Schema(example = "2026-08-24")
         LocalDate endDate,
-        @Schema(example = "4")
-        Integer durationWeeks,
-        @Schema(example = "28")
+        @Schema(example = "1")
         Integer durationDays,
         @Schema(example = "30000")
         Integer depositAmount,

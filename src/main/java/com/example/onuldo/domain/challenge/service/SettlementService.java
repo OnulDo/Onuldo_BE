@@ -82,7 +82,7 @@ public class SettlementService {
             return;
         }
 
-        long totalDays = lockedParticipation.getDurationWeeks() * 7L;
+        long totalDays = lockedParticipation.getDurationDays();
         long passDays = verificationRepository.countByParticipation_IdAndReview(
                 lockedParticipation.getId(),
                 VerificationReviewStatus.PASS
