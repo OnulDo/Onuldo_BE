@@ -39,8 +39,8 @@ public record DailyChallengeResDto(
         LocalTime timeEnd,
         @Schema(example = "30000")
         Integer depositAmount,
-        @Schema(example = "4")
-        Integer durationWeeks,
+        @Schema(description = "진행 기간(일)", example = "1")
+        Integer durationDays,
         @Schema(example = "2026-07-27")
         LocalDate startDate,
         @Schema(example = "2026-08-24")

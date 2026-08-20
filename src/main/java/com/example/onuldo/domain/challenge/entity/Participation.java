@@ -66,8 +66,8 @@ public class Participation {
     @Column(name = "applied_bonus_rate", precision = 5, scale = 4)
     private BigDecimal appliedBonusRate;
 
-    @Column(name = "duration_weeks", nullable = false)
-    private Integer durationWeeks;
+    @Column(name = "duration_days", nullable = false)
+    private Integer durationDays;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -82,6 +82,10 @@ public class Participation {
 
     public void changeStatus(ParticipationStatus status) {
         this.status = status;
+    }
+
+    public int getDurationDays() {
+        return durationDays;
     }
 
     @PrePersist

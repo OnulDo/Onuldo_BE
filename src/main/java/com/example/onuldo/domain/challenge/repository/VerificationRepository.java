@@ -9,18 +9,27 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
-    // POI-08: 파티 정산 전 직접검토(MANUAL_REVIEW) 유예 여부 판단용 — verifiedAt은 검토 "요청" 시각
-    boolean existsByParticipation_IdInAndReviewAndVerifiedAtAfter(
-            Collection<Long> participationIds,
-            VerificationReviewStatus review,
-            LocalDateTime cutoff
+    // POI-08: PASS 승인 자식이 아직 없는 MANUAL_REVIEW는 정산 전 보류 상태로 본다.
+    @Query("""
+            SELECT CASE WHEN COUNT(v) > 0 THEN true ELSE false END
+            FROM Verification v
+            WHERE v.participation.id IN :participationIds
+            AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.MANUAL_REVIEW
+            AND NOT EXISTS (
+                SELECT 1
+                FROM Verification approved
+                WHERE approved.originalVerification = v
+                AND approved.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
+            )
+            """)
+    boolean existsPendingManualReviewByParticipationIds(
+            @Param("participationIds") Collection<Long> participationIds
     );
 
     // 파티 진행 피드: 오늘 PASS 처리된 인증만 "인증 완료"로 집계
@@ -29,6 +38,8 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             FROM Verification v
             JOIN FETCH v.participation p
             JOIN FETCH p.user u
+            LEFT JOIN FETCH v.originalVerification ov
+            LEFT JOIN FETCH ov.originalVerification oov
             WHERE p.party.id = :partyId
             AND v.verificationDate = :date
             AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
@@ -44,6 +55,8 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
             FROM Verification v
             JOIN FETCH v.participation p
             JOIN FETCH p.user u
+            LEFT JOIN FETCH v.originalVerification ov
+            LEFT JOIN FETCH ov.originalVerification oov
             WHERE p.party.id IN :partyIds
             AND v.verificationDate = :date
             AND v.review = com.example.onuldo.domain.challenge.enums.VerificationReviewStatus.PASS
@@ -182,6 +195,11 @@ public interface VerificationRepository extends JpaRepository<Verification, Long
     Optional<Verification> findFirstByParticipation_IdAndVerificationDateAndReviewOrderByVerifiedAtDescIdDesc(
             Long participationId,
             LocalDate verificationDate,
+            VerificationReviewStatus review
+    );
+
+    Optional<Verification> findFirstByOriginalVerification_IdAndReviewOrderByVerifiedAtDescIdDesc(
+            Long originalVerificationId,
             VerificationReviewStatus review
     );
 

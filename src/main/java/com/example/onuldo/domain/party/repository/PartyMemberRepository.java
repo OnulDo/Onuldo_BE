@@ -12,7 +12,14 @@ import java.util.List;
 
 public interface PartyMemberRepository extends JpaRepository<PartyMember, PartyMemberId> {
 
-    List<PartyMember> findByParty_IdOrderByJoinedAtAsc(Long partyId);
+    @Query("""
+            SELECT pm
+            FROM PartyMember pm
+            JOIN FETCH pm.user
+            WHERE pm.party.id = :partyId
+            ORDER BY pm.joinedAt ASC
+            """)
+    List<PartyMember> findByParty_IdOrderByJoinedAtAsc(@Param("partyId") Long partyId);
 
     List<PartyMember> findByParty_IdInOrderByJoinedAtAsc(List<Long> partyIds);
 

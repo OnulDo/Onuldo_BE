@@ -22,9 +22,9 @@ public record PartyCreateReqDto(
         @NotNull(message = "챌린지 ID는 필수입니다.")
         Long challengeId,
 
-        @Schema(example = "4")
+        @Schema(description = "진행 기간(일)", example = "1")
         @NotNull(message = "진행 기간은 필수입니다.")
-        Integer durationWeeks,
+        Integer durationDays,
 
         @Schema(example = "30000")
         @NotNull(message = "도전금은 필수입니다.")

@@ -113,8 +113,8 @@ public interface ChallengeControllerDoc {
             summary = "인증 재검토 요청",
             description = """
                     오늘 자동 실패(AUTO_FAIL) 처리된 본인의 인증 기록에 대해 재검토를 요청합니다.
-                    그 값을 복제한 MANUAL_REVIEW 상태의 인증 기록을 새로 추가합니다.
-                    정산/달성률 계산에는 반영되지 않으며, 재검토가 요청되었다는 기록만 남깁니다.
+                    그 값을 복제한 MANUAL_REVIEW 요청 기록을 남긴 뒤, PASS 상태의 승인 인증 기록을 새로 추가합니다.
+                    정산/달성률 계산에는 승인된 인증으로 즉시 반영됩니다.
                     """
     )
     @ApiErrorCodes({

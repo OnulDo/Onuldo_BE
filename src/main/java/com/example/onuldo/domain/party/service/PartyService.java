@@ -83,8 +83,6 @@ public class PartyService {
     private static final int MIN_MEMBERS = 2;
     private static final int MAX_MEMBERS = 5;
 
-    private static final int DAYS_PER_WEEK = 7;
-
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
     private final PartyChallengeRepository partyChallengeRepository;
@@ -111,7 +109,7 @@ public class PartyService {
 
         participationValidator.validateNotOngoing(userId, challenge.getId());
 
-        challenge.validateDurationOption(request.durationWeeks());
+        challenge.validateDurationOption(request.durationDays());
         challenge.validateDepositOption(request.depositAmount());
 
         if (host.getPointBalance() < request.depositAmount()) {
@@ -123,7 +121,7 @@ public class PartyService {
         }
 
         String inviteCode = generateUniqueInviteCode();
-        int durationDays = request.durationWeeks() * DAYS_PER_WEEK;
+        int durationDays = request.durationDays();
         LocalDateTime inviteExpiresAt = timeService.nowKst().plusDays(durationDays);
 
         Party party = Party.builder()

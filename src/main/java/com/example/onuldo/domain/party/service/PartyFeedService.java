@@ -90,9 +90,27 @@ public class PartyFeedService {
                 .nickname(user.getNickname())
                 .profileImageUrl(user.getProfileImageUrl())
                 .isVerifiedToday(true)
-                .verificationPhotoUrl(verification.getPhotoUrl())
+                .verificationPhotoUrl(resolveVerificationPhotoUrl(verification))
                 .verifiedAt(verification.getVerifiedAt())
                 .build();
+    }
+
+    private String resolveVerificationPhotoUrl(Verification verification) {
+        if (verification.getPhotoUrl() != null) {
+            return verification.getPhotoUrl();
+        }
+
+        Verification original = verification.getOriginalVerification();
+        if (original == null) {
+            return null;
+        }
+
+        if (original.getPhotoUrl() != null) {
+            return original.getPhotoUrl();
+        }
+
+        Verification originalOfOriginal = original.getOriginalVerification();
+        return originalOfOriginal != null ? originalOfOriginal.getPhotoUrl() : null;
     }
 
     private PartyFeedItemResDto generateNotVerifiedFeedItem(User user) {

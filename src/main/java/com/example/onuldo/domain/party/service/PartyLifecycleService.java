@@ -43,9 +43,6 @@ public class PartyLifecycleService {
 
     private static final int MIN_MEMBERS_TO_START = 2;
 
-    // 파티 진행 기간은 2/4/8/12주 단위(일수 14/28/56/84)로만 생성되어 7로 나누어떨어짐
-    private static final int DAYS_PER_WEEK = 7;
-
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
     private final PartyChallengeRepository partyChallengeRepository;
@@ -95,10 +92,10 @@ public class PartyLifecycleService {
         partyRepository.save(party);
 
         // 참여 시작일은 시작 처리 당일부터
-        // durationDays는 시작일·종료일을 포함한 총 수행일수 (ParticipationRecordService.calculateInclusiveDays와 동일 기준)
+        // participation.duration_weeks 컬럼은 기존 스키마 호환을 위해 유지하되, 값은 일 단위 기간으로 저장한다.
         LocalDate startDate = now.toLocalDate();
         LocalDate endDate = startDate.plusDays(party.getDurationDays() - 1);
-        int durationWeeks = party.getDurationDays() / DAYS_PER_WEEK;
+        int durationDays = party.getDurationDays();
 
         // 부족한 파티원이 있거나 이미 다른 곳에서 해당 챌린지를 진행 중인 파티원이 있으면 예외 발생
         // → @Transactional에 의해 그 전에 차감·생성된 파티원분(및 위 party 상태 변경)까지 전부 롤백됨
@@ -108,7 +105,7 @@ public class PartyLifecycleService {
                 .toList();
 
         for (Long memberUserId : memberUserIds) {
-            createPartyParticipation(memberUserId, party, challenge, challengeName, durationWeeks, startDate, endDate);
+            createPartyParticipation(memberUserId, party, challenge, challengeName, durationDays, startDate, endDate);
         }
 
         return PartyStartResDto.of(party);
@@ -123,7 +120,7 @@ public class PartyLifecycleService {
             Party party,
             Challenge challenge,
             String challengeName,
-            int durationWeeks,
+            int durationDays,
             LocalDate startDate,
             LocalDate endDate
     ) {
@@ -159,7 +156,7 @@ public class PartyLifecycleService {
                 .party(party)
                 .participationType(ParticipationType.PARTY)
                 .depositAmount(party.getDepositAmount())
-                .durationWeeks(durationWeeks)
+                .durationDays(durationDays)
                 .startDate(startDate)
                 .endDate(endDate)
                 .build();

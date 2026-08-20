@@ -32,7 +32,7 @@ import java.util.List;
 @Table(name = "challenge")
 public class Challenge {
 
-    private static final List<Integer> DEFAULT_DURATION_OPTIONS = List.of(2, 4, 8, 12);
+    private static final List<Integer> DEFAULT_DURATION_OPTIONS = List.of(14, 28, 56, 84);
     private static final List<Integer> DEFAULT_DEPOSIT_OPTIONS = List.of(10000, 20000, 30000, 50000);
 
     @Id
@@ -103,8 +103,8 @@ public class Challenge {
     @Column(nullable = false, length = 20)
     private ChallengeStatus status = ChallengeStatus.ACTIVE;
 
-    public void validateDurationOption(Integer durationWeeks) {
-        if (durationOptionList == null || !durationOptionList.contains(durationWeeks)) {
+    public void validateDurationOption(Integer durationDays) {
+        if (durationOptionList == null || !durationOptionList.contains(durationDays)) {
             throw new InvalidRequestException(ErrorStatus._INVALID_DURATION_OPTION);
         }
     }
