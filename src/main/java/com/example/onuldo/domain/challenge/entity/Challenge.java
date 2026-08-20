@@ -32,7 +32,7 @@ import java.util.List;
 @Table(name = "challenge")
 public class Challenge {
 
-    private static final List<Integer> DEFAULT_DURATION_OPTIONS = List.of(1);
+    private static final List<Integer> DEFAULT_DURATION_OPTIONS = List.of(14, 28, 56, 84);
     private static final List<Integer> DEFAULT_DEPOSIT_OPTIONS = List.of(10000, 20000, 30000, 50000);
 
     @Id

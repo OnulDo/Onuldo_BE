@@ -59,7 +59,7 @@ SELECT
     'LIFESTYLE_ROUTINE',
     '05:30:00',
     '06:30:00',
-    '[2,4,8,12]',
+    '[1]',
     '[10000,20000,30000,50000]',
     '["이불 개어진 사진"]',
     '["이불이 보이지 않아요"]',
@@ -100,7 +100,7 @@ SELECT
     'FITNESS',
     '06:30:00',
     '08:30:00',
-    '[2,4,8,12]',
+    '[1]',
     '[10000,20000,30000,50000]',
     '["운동 중인 사진"]',
     '["운동 장면이 보이지 않아요"]',
@@ -141,7 +141,7 @@ SELECT
     'PERSONAL_DEVELOPMENT',
     '06:30:00',
     '08:30:00',
-    '[2,4,8,12]',
+    '[1]',
     '[10000,20000,30000,50000]',
     '["책 읽는 사진"]',
     '["책이 보이지 않아요"]',
@@ -182,7 +182,7 @@ SELECT
     'EATING_HABITS',
     '06:30:00',
     '08:30:00',
-    '[2,4,8,12]',
+    '[1]',
     '[10000,20000,30000,50000]',
     '["아침 식사 사진"]',
     '["음식이 보이지 않아요"]',
@@ -193,6 +193,21 @@ SELECT
     FROM challenge
     WHERE name = '건강한 아침 식사'
 );
+
+-- 기간 단위 정책: duration_option_list와 API 요청값은 모두 일(day) 단위다.
+-- 배포 시 이 data.sql이 애플리케이션 트래픽 처리 전에 실행되어, 기존 주 단위 participation을 일 단위로 먼저 변환한다.
+UPDATE challenge
+SET duration_option_list = '[1]';
+
+-- 과거 duration_days 값(2/4/8/12주)을 시작일·종료일을 포함한 실제 수행일수로 변환한다.
+-- 이미 일 단위로 저장된 신규 행과 섞이지 않도록, 기존 주 단위 옵션이면서 날짜 구간이 7의 배수인 행만 변환한다.
+UPDATE participation
+SET end_date = DATE_ADD(start_date, INTERVAL ((duration_days * 7) - 1) DAY),
+    duration_days = duration_days * 7
+WHERE duration_days IN (2, 4, 8, 12)
+  AND start_date IS NOT NULL
+  AND end_date IS NOT NULL
+  AND DATEDIFF(end_date, start_date) BETWEEN (duration_days * 7 - 1) AND (duration_days * 7);
 
 -- #16 파티 정산 결과 조회 API 더미데이터
 -- 주의: refund_amount / bonus_amount / party_share_amount 값은
@@ -219,14 +234,21 @@ INSERT INTO party (name, host_user_id, invite_code, invite_expires_at, status, m
 SELECT '정산 데모 파티',
        (SELECT user_id FROM `user` WHERE email = '오늘두-dummy@test.com'),
        'DEMO01',
-       DATE_SUB(NOW(), INTERVAL 28 DAY),
+       NOW(),
        'FINISHED',
        4,
-       28,
+       1,
        30000,
-       DATE_SUB(NOW(), INTERVAL 28 DAY),
-       DATE_SUB(NOW(), INTERVAL 28 DAY)
+       NOW(),
+       NOW()
     WHERE NOT EXISTS (SELECT 1 FROM party WHERE name = '정산 데모 파티');
+
+UPDATE party
+SET invite_expires_at = NOW(),
+    duration_days = 1,
+    start_triggered_at = NOW(),
+    created_at = NOW()
+WHERE name = '정산 데모 파티';
 
 INSERT INTO party_member (party_id, user_id, role, status, joined_at)
 SELECT p.party_id, u.user_id, 'HOST', 'READY', p.created_at
@@ -258,29 +280,36 @@ FROM party p, challenge c
 WHERE p.name = '정산 데모 파티' AND c.name = '매일 6시 기상'
   AND NOT EXISTS (SELECT 1 FROM party_challenge pc WHERE pc.party_id = p.party_id);
 
-INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_weeks, start_date, end_date, status)
-SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 4, DATE_SUB(CURDATE(), INTERVAL 28 DAY), CURDATE(), 'SUCCESS'
+INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_days, start_date, end_date, status)
+SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 1, CURDATE(), CURDATE(), 'SUCCESS'
 FROM `user` u, challenge c, party p
 WHERE u.email = '오늘두-dummy@test.com' AND c.name = '매일 6시 기상' AND p.name = '정산 데모 파티'
   AND NOT EXISTS (SELECT 1 FROM participation WHERE user_id = u.user_id AND party_id = p.party_id);
 
-INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_weeks, start_date, end_date, status)
-SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 4, DATE_SUB(CURDATE(), INTERVAL 28 DAY), CURDATE(), 'SUCCESS'
+INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_days, start_date, end_date, status)
+SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 1, CURDATE(), CURDATE(), 'SUCCESS'
 FROM `user` u, challenge c, party p
 WHERE u.email = '지호-dummy@test.com' AND c.name = '매일 6시 기상' AND p.name = '정산 데모 파티'
   AND NOT EXISTS (SELECT 1 FROM participation WHERE user_id = u.user_id AND party_id = p.party_id);
 
-INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_weeks, start_date, end_date, status)
-SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 4, DATE_SUB(CURDATE(), INTERVAL 28 DAY), CURDATE(), 'SUCCESS'
+INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_days, start_date, end_date, status)
+SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 1, CURDATE(), CURDATE(), 'SUCCESS'
 FROM `user` u, challenge c, party p
 WHERE u.email = '수아-dummy@test.com' AND c.name = '매일 6시 기상' AND p.name = '정산 데모 파티'
   AND NOT EXISTS (SELECT 1 FROM participation WHERE user_id = u.user_id AND party_id = p.party_id);
 
-INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_weeks, start_date, end_date, status)
-SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 4, DATE_SUB(CURDATE(), INTERVAL 28 DAY), CURDATE(), 'FAIL'
+INSERT INTO participation (user_id, challenge_id, party_id, participation_type, deposit_amount, duration_days, start_date, end_date, status)
+SELECT u.user_id, c.challenge_id, p.party_id, 'PARTY', 30000, 1, CURDATE(), CURDATE(), 'FAIL'
 FROM `user` u, challenge c, party p
 WHERE u.email = '도윤-dummy@test.com' AND c.name = '매일 6시 기상' AND p.name = '정산 데모 파티'
   AND NOT EXISTS (SELECT 1 FROM participation WHERE user_id = u.user_id AND party_id = p.party_id);
+
+UPDATE participation pt
+    JOIN party p ON pt.party_id = p.party_id
+SET pt.duration_days = 1,
+    pt.start_date = CURDATE(),
+    pt.end_date = CURDATE()
+WHERE p.name = '정산 데모 파티';
 
 INSERT INTO settlement (participation_id, deposit_amount, r_value, refund_amount, deposit_refund_amount, bonus_amount, party_share_amount, status, processed_at, confirmed)
 SELECT pt.participation_id, 30000, 1.33, 30000, 20000, 0, 10000, 'COMPLETED', NOW(), true

@@ -293,7 +293,7 @@ public class ParticipationService {
                 .party(null)
                 .participationType(ParticipationType.PERSONAL)
                 .depositAmount(depositAmount)
-                .durationWeeks(durationDays)
+                .durationDays(durationDays)
                 .startDate(startDate)
                 .endDate(endDate)
                 .appliedBonusRate(appliedBonusRate)

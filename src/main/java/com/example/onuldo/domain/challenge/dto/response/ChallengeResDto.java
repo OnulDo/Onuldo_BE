@@ -32,7 +32,7 @@ public record ChallengeResDto(
         LocalTime timeStart,
         @Schema(example = "23:59:59")
         LocalTime timeEnd,
-        @Schema(example = "[2, 4, 8, 12]")
+        @Schema(description = "진행 기간 옵션(일)", example = "[1]")
         List<Integer> durationOptionList,
         @Schema(example = "[10000, 20000, 30000, 50000]")
         List<Integer> depositOptionList,

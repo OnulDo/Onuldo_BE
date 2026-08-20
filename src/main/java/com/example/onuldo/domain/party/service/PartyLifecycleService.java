@@ -156,7 +156,7 @@ public class PartyLifecycleService {
                 .party(party)
                 .participationType(ParticipationType.PARTY)
                 .depositAmount(party.getDepositAmount())
-                .durationWeeks(durationDays)
+                .durationDays(durationDays)
                 .startDate(startDate)
                 .endDate(endDate)
                 .build();
